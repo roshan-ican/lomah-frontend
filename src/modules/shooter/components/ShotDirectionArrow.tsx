@@ -1,14 +1,16 @@
 import React from "react";
-import { correctionDirectionLabel } from "../../../utils/shotDirection";
+import { shotDirectionLabel } from "../../../utils/shotDirection";
 
-/** Hits inside this radius (board mm) count as centre — no correction to give. */
+/** Hits inside this radius (board mm) count as centre — no direction to show. */
 const DEAD_ZONE_MM = 5;
 
 /**
- * Correction arrow: points from the hit *toward* the board centre, i.e. the way
- * the shooter should move their aim. Rendered at the true angle rather than
- * snapped to one of 8 glyphs, so a hit that is far low and slightly left reads
- * as "up, tilted a little right" instead of a flat "up".
+ * Shot direction arrow: points FROM the board centre TOWARD where the hit
+ * landed, i.e. where the shot is relative to the target — the opposite of a
+ * correction arrow, which points the way to shift your aim. Rendered at the
+ * true angle rather than snapped to one of 8 glyphs, so a hit that is far low
+ * and slightly left reads as "down, tilted a little left" instead of a flat
+ * "down".
  */
 export const ShotDirectionArrow: React.FC<{
   x: number;
@@ -20,7 +22,7 @@ export const ShotDirectionArrow: React.FC<{
   const safeX = Number.isFinite(x) ? x : 0;
   const safeY = Number.isFinite(y) ? y : 0;
   const lang = language === "ar" ? "ar" : "en";
-  const label = correctionDirectionLabel(safeX, safeY, lang);
+  const label = shotDirectionLabel(safeX, safeY, lang);
 
   if (Math.hypot(safeX, safeY) < DEAD_ZONE_MM) {
     return (
@@ -35,10 +37,11 @@ export const ShotDirectionArrow: React.FC<{
     );
   }
 
-  // Board mm uses +x right / +y up. The correction vector is (-x, -y).
-  // atan2 gives the maths angle (0° = right, CCW positive); the SVG arrow is
-  // drawn pointing up, so the clockwise CSS rotation is 90° - angle.
-  const angleDeg = (Math.atan2(-safeY, -safeX) * 180) / Math.PI;
+  // Board mm uses +x right / +y up, so the direction of the hit from the
+  // centre is simply (x, y). atan2 gives the maths angle (0° = right, CCW
+  // positive); the SVG arrow is drawn pointing up, so the clockwise CSS
+  // rotation is 90° - angle.
+  const angleDeg = (Math.atan2(safeY, safeX) * 180) / Math.PI;
   const rotation = 90 - angleDeg;
 
   return (

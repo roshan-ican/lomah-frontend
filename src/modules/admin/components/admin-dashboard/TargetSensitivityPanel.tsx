@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { Loader2, RefreshCw } from "lucide-react";
 import { api } from "../../../../utils/api";
+import { ConfirmDialog } from "../../../../components/common/ConfirmDialog";
 import type { Target, WiperPage, WiperPageValues } from "../../../../types";
 
 interface Props {
   target: Target;
   isAr: boolean;
   onNotice: (msg: string) => void;
+  addAdminLog?: (msg: string) => void;
 }
 
   const PAGES: WiperPage[] = ["A", "B"];
@@ -26,7 +28,7 @@ interface Props {
    * are therefore addressed only as Calibration A1..A5 / Calibration B1..B5,
    * never as "left sensor" or similar, anywhere this type is displayed.
    */
-export function TargetSensitivityPanel({ target, isAr, onNotice }: Props) {
+export function TargetSensitivityPanel({ target, isAr, onNotice, addAdminLog }: Props) {
   const [page, setPage] = useState<WiperPage>("A");
   const [values, setValues] = useState<number[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -35,6 +37,12 @@ export function TargetSensitivityPanel({ target, isAr, onNotice }: Props) {
    *  commitWiper, which is the only thing that actually writes. */
   const [drafts, setDrafts] = useState<Map<number, number>>(new Map());
   const [savingWiper, setSavingWiper] = useState<number | null>(null);
+  /** A wiper change awaiting the operator's "are you sure" before it is sent
+   *  to the board. Written only after explicit confirmation, then logged. */
+  const [pendingCommit, setPendingCommit] = useState<{
+    wiperIndex: number;
+    value: number;
+  } | null>(null);
 
   const load = async (forPage: WiperPage) => {
     setLoading(true);
@@ -58,17 +66,27 @@ export function TargetSensitivityPanel({ target, isAr, onNotice }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, target.id]);
 
-  /**
-   * Commit one trimmer. `wiperIndex` is 0-based in the UI (array position);
-   * the wire protocol's wiper numbering is 1-based, hence the +1 below.
-   *
-   * On response, ALL FIVE values are replaced with the device's own reply —
-   * never just the one that was written. The reply is the whole updated
-   * page (confirmed by capture — see frame.codec.ts), so trusting the
-   * drafted value instead of this return would show something that was
-   * never actually confirmed by the board.
-   */
-  const commitWiper = async (wiperIndex: number, value: number) => {
+
+  const requestCommitWiper = (wiperIndex: number, value: number) => {
+    const current = values?.[wiperIndex];
+    // Released on the value already on the board — no write needed, just drop
+    // the draft so the display returns to the committed reading.
+    if (current !== undefined && value === current) {
+      setDrafts((prev) => {
+        const next = new Map(prev);
+        next.delete(wiperIndex);
+        return next;
+      });
+      return;
+    }
+    setPendingCommit({ wiperIndex, value });
+  };
+
+
+  const doWriteWiper = async () => {
+    if (!pendingCommit) return;
+    const { wiperIndex, value } = pendingCommit;
+    setPendingCommit(null);
     setSavingWiper(wiperIndex);
     try {
       const result = await api.patch<WiperPageValues>(
@@ -81,6 +99,9 @@ export function TargetSensitivityPanel({ target, isAr, onNotice }: Props) {
         next.delete(wiperIndex);
         return next;
       });
+      addAdminLog?.(
+        `SENSITIVITY: ${target.label} (${target.ipAddress}) ${page}${wiperIndex + 1} set to ${value}`,
+      );
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Write failed";
       onNotice(isAr ? `خطأ: ${msg}` : `Error: ${msg}`);
@@ -143,7 +164,8 @@ export function TargetSensitivityPanel({ target, isAr, onNotice }: Props) {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
           {Array.from({ length: WIPER_COUNT }, (_v, i) => i).map((i) => {
-            const busy = savingWiper === i || loading;
+    
+            const busy = savingWiper === i || loading || pendingCommit !== null;
             const val = displayed(i);
             return (
               <div key={i} className="space-y-1">
@@ -179,7 +201,7 @@ export function TargetSensitivityPanel({ target, isAr, onNotice }: Props) {
                   // back the per-target queue up for the better part of a
                   // minute for one drag.
                   onPointerUp={(e) =>
-                    void commitWiper(i, Number((e.target as HTMLInputElement).value))
+                    void requestCommitWiper(i, Number((e.target as HTMLInputElement).value))
                   }
                   onKeyUp={(e) => {
                     if (
@@ -187,7 +209,7 @@ export function TargetSensitivityPanel({ target, isAr, onNotice }: Props) {
                         e.key,
                       )
                     ) {
-                      void commitWiper(i, Number((e.target as HTMLInputElement).value));
+                      void requestCommitWiper(i, Number((e.target as HTMLInputElement).value));
                     }
                   }}
                 />
@@ -205,7 +227,7 @@ export function TargetSensitivityPanel({ target, isAr, onNotice }: Props) {
                       ),
                     )
                   }
-                  onBlur={(e) => void commitWiper(i, Number(e.target.value) || 0)}
+                  onBlur={(e) => void requestCommitWiper(i, Number(e.target.value) || 0)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") (e.target as HTMLInputElement).blur();
                   }}
@@ -222,6 +244,35 @@ export function TargetSensitivityPanel({ target, isAr, onNotice }: Props) {
           ? "لا يوجد توثيق لربط الحساسات بالمقاومات المتغيرة. غيّر قيمة واحدة، شغّل اختبار الهدف، ولاحظ الأثر. القيم مباشرة من الجهاز ولا تُحفظ في أي مكان."
           : "Wiper→sensor mapping is not documented. Change one value, run a self-test, and observe. Values are live on the board and are not saved anywhere."}
       </p>
+
+      <ConfirmDialog
+        open={pendingCommit !== null}
+        title={isAr ? "تأكيد تغيير الحساسية" : "Confirm Sensitivity Change"}
+        message={
+          pendingCommit
+            ? isAr
+              ? `هل أنت متأكد أنك تريد تغيير ${page}${pendingCommit.wiperIndex + 1} للهدف ${target.label} إلى ${pendingCommit.value}؟`
+              : `Are you sure you want to change ${page}${pendingCommit.wiperIndex + 1} on ${target.label} to ${pendingCommit.value}?`
+            : ""
+        }
+        language={isAr ? "ar" : "en"}
+        confirmLabel={isAr ? "تغيير" : "Change"}
+        cancelLabel={isAr ? "إلغاء" : "Cancel"}
+        variant="primary"
+        onConfirm={() => void doWriteWiper()}
+        onCancel={() => {
+          if (pendingCommit) {
+            // Revert the draft so the displayed value falls back to whatever
+            // the board last confirmed.
+            setDrafts((prev) => {
+              const next = new Map(prev);
+              next.delete(pendingCommit.wiperIndex);
+              return next;
+            });
+          }
+          setPendingCommit(null);
+        }}
+      />
     </div>
   );
 }

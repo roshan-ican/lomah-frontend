@@ -17,6 +17,7 @@ interface SuperAdminDashboardProps {
    language: LanguageCode;
    setLanguage: (lang: LanguageCode) => void;
    triggerSuccessBanner: (msg: string) => void;
+   addAdminLog: (msg: string) => void;
    handleLogout: () => void;
    adminLogs: string[];
  }
@@ -40,9 +41,10 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
    language,
    setLanguage,
    triggerSuccessBanner,
+   addAdminLog,
    handleLogout,
    adminLogs,
- }) => {
+  }) => {
   const isAr = language === "ar";
   const t: TranslationSet = translations[language];
   const [activeTab, setActiveTab] = useState<SuperAdminTab>("LANE_HARDWARE");
@@ -162,6 +164,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
               <LaneHardwarePanel
                 isAr={isAr}
                 triggerSuccessBanner={triggerSuccessBanner}
+                addAdminLog={addAdminLog}
                 mode="commissioning"
               />
             )}

@@ -42,6 +42,7 @@ import {
 interface Props {
   isAr: boolean;
   triggerSuccessBanner: (msg: string) => void;
+  addAdminLog?: (msg: string) => void;
   readOnly?: boolean;
   mode: "commissioning" | "live";
 }
@@ -86,6 +87,7 @@ function laneStatusLabel(status: LaneStatus, isAr: boolean): string {
 export function LaneHardwarePanel({
   isAr,
   triggerSuccessBanner,
+  addAdminLog,
   readOnly = false,
   mode,
 }: Props) {
@@ -1374,6 +1376,7 @@ export function LaneHardwarePanel({
                           target={target}
                           isAr={isAr}
                           onNotice={triggerSuccessBanner}
+                          addAdminLog={addAdminLog}
                         />
                       )}
                       </div>

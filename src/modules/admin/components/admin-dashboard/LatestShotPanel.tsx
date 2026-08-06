@@ -78,13 +78,7 @@ export function LatestShotPanel({
       {expanded && (
         <div className="border-t border-hud/40 pt-1 mt-1">
           <p className="admin-text-2xs font-mono hud-text-subtle">
-            {isAr ? "الوقت" : "Time"}:{" "}
-            {new Date(latestShot.timestamp).toLocaleTimeString("en-US", {
-              hour: "2-digit",
-              minute: "2-digit",
-              second: "2-digit",
-              fractionalSecondDigits: 3,
-            })}
+            {isAr ? "الوقت" : "Time"}: {latestShot.timestamp}
           </p>
           <ShotSensorDiagnostic
             targetId={latestShot.targetId ?? null}

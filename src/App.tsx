@@ -445,6 +445,7 @@ function App() {
                   language={language}
                   setLanguage={setLanguage}
                   triggerSuccessBanner={triggerSuccessBanner}
+                  addAdminLog={addAdminLog}
                   handleLogout={handleLogout}
                   adminLogs={adminLogs}
                 />

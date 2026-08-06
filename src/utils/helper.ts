@@ -92,6 +92,11 @@ function applyApiSessionToChannel(
             y: sh.y,
             isMiss: sh.isMiss,
             timestamp: sh.firedAt,
+            // Carried per-shot so the 'D' sensor diagnostic can query the
+            // board that actually saw this bullet even after a reload — shots
+            // restored via the API sync otherwise lose targetId and the
+            // query button is left disabled.
+            targetId: stage?.targetId,
           },
           undefined,
           laneId,

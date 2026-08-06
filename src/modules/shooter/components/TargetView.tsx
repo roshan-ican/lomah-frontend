@@ -365,7 +365,7 @@ export const TargetView: React.FC<TargetViewProps> = ({
                 const sh = activeChannel.shots.find(
                   (s) => s.id === selectedShotId,
                 );
-                if (!sh || (sh.isMiss ?? false)) return null;
+                if (!sh) return null;
                 const bulkPreview = bulkDragPreview?.get(sh.id);
                 const xMm = (bulkPreview?.xMm ?? sh.x) + previewDx;
                 const yMm = (bulkPreview?.yMm ?? sh.y) + previewDy;
