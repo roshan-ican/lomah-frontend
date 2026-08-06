@@ -22,6 +22,11 @@ export interface DisplayShot {
   timestamp: string;
   isMiss?: boolean;
   isCalibrationMarker?: boolean;
+  /** Which board reported this shot. Carried per-shot rather than read off the
+   *  lane's current target because a session spans stages, each against a
+   *  different target — the 'D' diagnostic for shot #3 must go to the board
+   *  that actually saw it, not to whatever is armed now. */
+  targetId?: string;
 }
 
 export type { SessionStatus };

@@ -7,7 +7,6 @@ import {
   Square,
   Activity,
   Heart,
-  Crosshair,
   ScanLine,
   HelpCircle,
   ChevronDown,
@@ -40,7 +39,6 @@ interface TargetSensorConsoleProps {
   onPlay: () => void;
   onStop: () => void;
   onHeartbeat: () => void;
-  onSelfTest: () => void;
   onDevData: (shot: number) => void;
 }
 
@@ -103,7 +101,6 @@ export function TargetSensorConsole({
   onPlay,
   onStop,
   onHeartbeat,
-  onSelfTest,
   onDevData,
 }: TargetSensorConsoleProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -246,18 +243,10 @@ export function TargetSensorConsole({
             />
           </>
         )}
-{isCommissioning && (
-           <button
-             type="button"
-             onClick={onSelfTest}
-             disabled={isTesting}
-             title={isAr ? "اختبار ذاتي — T" : "Self Test (T)"}
-             className="flex-1 px-2 py-1 rounded admin-text-2xs font-mono hud-text-subtle hover:text-[var(--hud-accent)] hover:bg-[var(--hud-accent-bg)] disabled:opacity-50 transition-colors"
-           >
-             <Crosshair className="w-3 h-3 inline-block mr-0.5" />
-             {isAr ? "اختبار" : "T"}
-           </button>
-         )}
+        {/* No 'T' button here: each hardware row already carries a self-test
+            control that reports its own outcome (Test → Passed / Failed / No
+            reply). Two buttons firing the same 'T' round trip, one of which
+            showed no result, was the confusing half. */}
       </div>
 
       {/* Protocol Map */}

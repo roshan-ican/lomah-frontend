@@ -1424,7 +1424,6 @@ export function LaneHardwarePanel({
         onPlay={() => getSelectedTarget() && sendPlayCommand(getSelectedTarget()!)}
         onStop={() => getSelectedTarget() && sendStopCommand(getSelectedTarget()!)}
         onHeartbeat={() => getSelectedTarget() && sendHeartbeat(getSelectedTarget()!)}
-        onSelfTest={() => getSelectedTarget() && runSelfTest(getSelectedTarget()!)}
         onDevData={(shot) => getSelectedTarget() && sendDevData(getSelectedTarget()!, shot)}
       />
     </div>

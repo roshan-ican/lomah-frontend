@@ -183,7 +183,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
           <ActivityLog
             logs={adminLogs}
             isAr={isAr}
-            maxHeight="40dvh"
+            storageKey="lomah:activity-log-height:super-admin"
           />
         </main>
       </div>

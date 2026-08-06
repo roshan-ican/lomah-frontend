@@ -95,7 +95,19 @@
           "!vitest/**",
           "!tsx/**",
           "!eslint*/**",
-          "!prettier/**"
+          "!prettier/**",
+          "!.cache/**",
+          "!**/node_modules/.cache/**",
+          "!vite/**",
+          "!esbuild/**",
+          "!@esbuild/**",
+          "!@rollup/**",
+          "!rollup/**",
+          "!webpack/**",
+          "!@angular-devkit/**",
+          "!**/query_engine_bg.cockroachdb.*",
+          "!**/query_engine_bg.mysql.*",
+          "!**/query_engine_bg.postgresql.*"
         ]
       },
       {

@@ -126,6 +126,7 @@ export function mapRawShotToDisplay(
     y: number;
     isMiss?: boolean;
     timestamp?: string | Date;
+    targetId?: string;
   },
   fallbackNumber?: number,
   _laneId = 1,
@@ -141,6 +142,7 @@ export function mapRawShotToDisplay(
 
   return {
     id,
+    targetId: rawShot.targetId,
     score: isMiss
       ? 0
       : (serverScore ?? scoreFromOffset(xVal, yVal, profileType)),

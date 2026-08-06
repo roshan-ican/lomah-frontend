@@ -120,6 +120,17 @@ export interface UnauthorizedEvent {
   reason: "missing_token" | "invalid_token";
 }
 
+/** One line from the server's own logger, mirrored into the admin activity
+ *  log. Admin room only — never sent to a lane. */
+export interface ServerLogEvent {
+  event: "server:log";
+  level: "log" | "warn" | "error";
+  context: string | null;
+  message: string;
+  /** ISO-8601, so a browser in another timezone renders it correctly. */
+  timestamp: string;
+}
+
 export type SessionLifecycleEvent =
   | SessionCreatedEvent
   | SessionStartedEvent
@@ -136,6 +147,7 @@ export type WebSocketEvent =
   | SessionLifecycleEvent
   | TargetCalibratedEvent
   | SensorGateEvent
+  | ServerLogEvent
   | UnauthorizedEvent;
 
 

@@ -1,5 +1,5 @@
-import React from "react";
-import { Activity } from "lucide-react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Activity, ChevronDown, ChevronUp } from "lucide-react";
 
 interface ActivityLogProps {
   logs: string[];
@@ -10,9 +10,21 @@ interface ActivityLogProps {
   limit?: number;
   /** Extra classes for the footer wrapper. */
   className?: string;
-  /** Max height of the log list — any CSS length. Defaults to 40dvh. */
-  maxHeight?: string;
+  /** Starting height of the log list in pixels, used until the operator drags
+   *  the handle. After that their own size wins and is remembered. */
+  defaultHeight?: number;
+  /** Where the dragged height is remembered. Distinct keys let the admin and
+   *  super-admin consoles keep independent sizes — they show the same log but
+   *  sit in very different layouts. */
+  storageKey?: string;
+  /** Start collapsed. Defaults to expanded. */
+  defaultCollapsed?: boolean;
 }
+
+/** Below this the list is too short to read; above it the panel would swallow
+ *  the target view. Both are enforced on every drag frame, not just at rest. */
+const MIN_HEIGHT = 72;
+const maxHeight = () => Math.round(window.innerHeight * 0.8);
 
 export const ActivityLog: React.FC<ActivityLogProps> = ({
   logs,
@@ -20,39 +32,148 @@ export const ActivityLog: React.FC<ActivityLogProps> = ({
   title,
   limit,
   className = "",
-  maxHeight = "40dvh",
+  defaultHeight = 200,
+  storageKey = "lomah:activity-log-height",
+  defaultCollapsed = false,
 }) => {
+  const [collapsed, setCollapsed] = useState(defaultCollapsed);
+  const [height, setHeight] = useState<number>(() => {
+    // Read straight from storage on first render: initialising to the default
+    // and correcting in an effect makes the panel visibly jump on every load.
+    try {
+      const saved = window.localStorage.getItem(storageKey);
+      const parsed = saved ? Number(saved) : NaN;
+      if (Number.isFinite(parsed) && parsed >= MIN_HEIGHT) return parsed;
+    } catch {
+      // Private mode / storage disabled — the default is a fine answer.
+    }
+    return defaultHeight;
+  });
+  const [dragging, setDragging] = useState(false);
+  const heightRef = useRef(height);
+  heightRef.current = height;
+
   const heading = title ?? (isAr ? "سجل الأنشطة" : "Activity Log");
   const rows = typeof limit === "number" ? logs.slice(0, limit) : logs;
 
-  return (
-    <div className={`shrink-0 border-t border-hud mt-3 pt-3 ${className}`}>
-      <h3 className="admin-text-sm font-mono font-bold hud-text uppercase tracking-wider mb-1.5 flex items-center gap-2">
-        <Activity className="w-3.5 h-3.5" />
-        {heading}
-      </h3>
+  const onHandleDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      // The panel is anchored to the BOTTOM of the column, so dragging the
+      // handle upward (decreasing clientY) must make it taller — hence
+      // startY - clientY rather than the other way round.
+      e.preventDefault();
+      const startY = e.clientY;
+      const startHeight = heightRef.current;
+      setDragging(true);
 
-      <div
-        className="space-y-0.5 overflow-y-auto"
-        style={{ maxHeight }}
+      const onMove = (ev: PointerEvent) => {
+        const next = Math.min(
+          maxHeight(),
+          Math.max(MIN_HEIGHT, startHeight + (startY - ev.clientY)),
+        );
+        setHeight(next);
+      };
+
+      const onUp = () => {
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        window.removeEventListener("pointercancel", onUp);
+        setDragging(false);
+        try {
+          window.localStorage.setItem(storageKey, String(heightRef.current));
+        } catch {
+          // Non-fatal: the size still applies for this session.
+        }
+      };
+
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+      // pointercancel matters on touch: without it a cancelled gesture leaves
+      // the move listener attached and the panel follows the finger forever.
+      window.addEventListener("pointercancel", onUp);
+    },
+    [storageKey],
+  );
+
+  // A saved height can exceed the viewport after a resize or a move to a
+  // smaller screen, which would leave the log covering everything.
+  useEffect(() => {
+    const clamp = () => setHeight((h) => Math.min(h, maxHeight()));
+    window.addEventListener("resize", clamp);
+    return () => window.removeEventListener("resize", clamp);
+  }, []);
+
+  return (
+    <div className={`shrink-0 border-t border-hud mt-3 ${className}`}>
+      {!collapsed && (
+        <div
+          onPointerDown={onHandleDown}
+          role="separator"
+          aria-orientation="horizontal"
+          aria-label={isAr ? "تغيير ارتفاع السجل" : "Resize activity log"}
+          className={`group h-2 -mt-1 mb-0.5 flex items-center justify-center
+                      cursor-row-resize touch-none select-none ${
+                        dragging ? "opacity-100" : "opacity-50 hover:opacity-100"
+                      }`}
+        >
+          <span
+            className={`h-0.5 w-10 rounded-full ${
+              dragging ? "bg-[var(--hud-accent)]" : "bg-[var(--hud-divider)]"
+            } group-hover:bg-[var(--hud-accent)]`}
+          />
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={() => setCollapsed((c) => !c)}
+        aria-expanded={!collapsed}
+        className="w-full flex items-center gap-2 mb-1.5 cursor-pointer select-none text-left hover:opacity-80"
       >
-        {rows.length === 0 ? (
-          <p className="font-mono admin-text-2xs hud-text-muted italic">
-            {isAr ? "لا توجد أنشطة مسجلة" : "No activity recorded"}
-          </p>
-        ) : (
-          rows.map((log, idx) => (
-            <div key={idx} className="flex items-start gap-2 px-1.5 py-0.5">
-              <span className="hud-accent opacity-60 shrink-0 font-mono admin-text-2xs">
-                ›
-              </span>
-              <span className="break-all font-mono admin-text-2xs hud-text-subtle">
-                {log}
-              </span>
-            </div>
-          ))
-        )}
-      </div>
+        <Activity className="w-3.5 h-3.5 shrink-0" />
+        <h3 className="admin-text-sm font-mono font-bold hud-text uppercase tracking-wider">
+          {heading}
+        </h3>
+        {/* Count stays visible while collapsed — otherwise there is no way to
+            tell a quiet range from a panel that is simply folded shut. */}
+        <span className="admin-text-3xs font-mono hud-text-muted">
+          ({rows.length})
+        </span>
+        <span className="ms-auto shrink-0">
+          {collapsed ? (
+            <ChevronDown className="w-3.5 h-3.5 hud-text-muted" />
+          ) : (
+            <ChevronUp className="w-3.5 h-3.5 hud-text-muted" />
+          )}
+        </span>
+      </button>
+
+      {!collapsed && (
+        <div
+          className="space-y-0.5 overflow-y-auto"
+          // Explicit height, not min/max: the log shares a flex column with a
+          // greedy flex-1 sibling, and a content-sized list renders as a
+          // sliver there no matter how much room is free.
+          style={{ height }}
+        >
+          {rows.length === 0 ? (
+            <p className="font-mono admin-text-3xs hud-text-muted italic">
+              {isAr ? "لا توجد أنشطة مسجلة" : "No activity recorded"}
+            </p>
+          ) : (
+            rows.map((log, idx) => (
+              <div key={idx} className="flex items-start gap-2 px-1.5 py-0.5">
+                <span className="hud-accent opacity-60 shrink-0 font-mono admin-text-3xs">
+                  ›
+                </span>
+                <span className="break-all font-mono admin-text-3xs hud-text-subtle">
+                  {log}
+                </span>
+              </div>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 };

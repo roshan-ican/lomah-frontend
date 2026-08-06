@@ -10,7 +10,7 @@
 // Phase 2 will grow this file with one function per realtime event; for now it
 // holds the two transforms that were genuinely duplicated in App.tsx.
 
-import type { ActiveShooterChannel, DisplayShot } from "../types";
+import type { ActiveShooterChannel, DisplayShot, Lane } from "../types";
 import { mergeDisplayShots, zoneFromOffset } from "../utils/shotCoordinates";
 
 /** Local clock label (HH:MM:SS) used when a shot has no server timestamp. */
@@ -20,6 +20,26 @@ function clockLabel(): string {
     minute: "2-digit",
     second: "2-digit",
   });
+}
+
+/**
+ * Build a channel from a backend Lane record (as commissioned by the super
+ * admin). The store's hardcoded 10-lane default is only a placeholder until
+ * the real lanes land from GET /lanes; this maps lane fields onto the
+ * channel shape, preserving the lane's id/name so session syncs key off it.
+ */
+export function channelFromLane(lane: Lane): ActiveShooterChannel {
+  return {
+    id: `CH-${lane.id}`,
+    name: "Vacant Lane",
+    opId: "VACANT",
+    unit: lane.siteName || "—",
+    sessionStatus: "NONE",
+    laneStatus: lane.status,
+    shots: [],
+    distance: "—",
+    targetName: "—",
+  };
 }
 
 /**

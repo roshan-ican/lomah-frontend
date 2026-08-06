@@ -13,11 +13,12 @@ import {
   getLaneIdFromChannelId,
 } from "../utils/helper";
 import { laneHasSession } from "../utils/laneSession";
-import { toVacantLane } from "../store/channelMutations";
+import { toVacantLane, channelFromLane } from "../store/channelMutations";
 import { useSessionStore } from "../store/sessionStore";
 import { getCachedShots } from "../db/shotCache";
 import { getCachedChannels } from "../db/channelCache";
 import type { DisplayShot } from "../types";
+import type { Lane } from "../types";
 import { io, Socket } from "socket.io-client";
 import {
   handleRealtimeEvent,
@@ -99,6 +100,28 @@ export function useRealtimeChannels({
       );
     } catch (err) {
       console.warn("[Sync] hydrateChannelsFromCache failed:", err);
+    }
+  };
+
+  /** Reconcile the channel list against the lanes the super admin actually
+   *  commissioned (GET /lanes). The store's hardcoded 10-lane default is a
+   *  placeholder; once real lanes arrive, channels are rebuilt to match them
+   *  exactly — preserving any live session state on lanes that still exist. */
+  const syncLanesFromApi = async () => {
+    try {
+      const lanes = await api.get<Lane[]>("/lanes");
+      const list = Array.isArray(lanes) ? lanes : [];
+      if (!list.length) return;
+      setChannels((prev) => {
+        const existing = new Map(prev.map((ch) => [ch.id, ch]));
+        return list.map((lane) => {
+          const chId = `CH-${lane.id}`;
+          const current = existing.get(chId);
+          return current ?? channelFromLane(lane);
+        });
+      });
+    } catch (err) {
+      console.warn("[Sync] Failed to reconcile lanes:", err);
     }
   };
 
@@ -353,7 +376,10 @@ export function useRealtimeChannels({
     void hydrateChannelsFromCache().then(() => hydrateShotsFromCache());
 
     connectWS();
-    void syncActiveSessions();
+    // Real lane count comes from the super admin's commissions, not the
+    // hardcoded store default — reconcile before sessions so the board never
+    // shows lanes that were never created (or hides ones that were).
+    void syncLanesFromApi().then(() => syncActiveSessions());
     return () => {
       socketRef.current?.disconnect();
       socketRef.current = null;

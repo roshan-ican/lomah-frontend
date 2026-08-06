@@ -81,6 +81,24 @@ export function handleRealtimeEvent(
     return;
   }
 
+  if (event === "server:log") {
+    // Admin-room only at the gateway, but guard here too: a shooter tablet
+    // must never render backend internals even if the room scoping changes.
+    if (authStageRef.current !== "ADMIN_BOARD") return;
+    const time = new Date(data.timestamp).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+    const mark = data.level === "error" ? "✖" : data.level === "warn" ? "⚠" : "";
+    const where = data.context ? `${data.context}: ` : "";
+    // addAdminLog stamps its own time, so this passes the SERVER's time in the
+    // body — the two can differ, and the server's is the one that matters when
+    // matching a UI line against the backend console.
+    addAdminLog(`${mark}${mark ? " " : ""}${where}${data.message} (${time})`);
+    return;
+  }
+
   if (event === "unauthorized") {
     // The gateway disconnects immediately after sending this. Surfacing it as
     // an app event lets the shell route back to login instead of leaving the
@@ -161,7 +179,9 @@ export function handleRealtimeEvent(
           };
         }),
       );
-      addAdminLog(`START: Active shooting in progress on Lane ${laneId}.`);
+      // This event is only emitted after the target echoed PLAY back, so the
+      // handshake mark is earned, not decorative.
+      addAdminLog(`🤝 START: Target acknowledged — active shooting on Lane ${laneId}.`);
       // Stage bulletLimit/durationSeconds come from the session record.
       void syncLaneFromApi(laneId);
       break;
@@ -194,7 +214,7 @@ export function handleRealtimeEvent(
           };
         }),
       );
-      addAdminLog(`RESUME: Shooting resumed on Lane ${laneId}.`);
+      addAdminLog(`🤝 RESUME: Target re-acknowledged — shooting resumed on Lane ${laneId}.`);
       break;
 
     case "session:advanced": {
@@ -322,6 +342,9 @@ export function handleRealtimeEvent(
             y: data.y,
             isMiss: data.isMiss,
             timestamp: data.firedAt,
+            // Kept per-shot so the 'D' sensor diagnostic queries the board
+            // that actually saw this bullet, not whatever is armed now.
+            targetId: data.targetId,
           },
           data.shotNumber,
           laneId,

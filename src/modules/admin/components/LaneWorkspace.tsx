@@ -679,21 +679,31 @@ export const LaneWorkspace: React.FC<LaneWorkspaceProps> = ({
 
                <div className="flex-1 min-h-0 target-stage overflow-visible px-0.5 sm:px-2 py-0.5">
                  <div className="target-fit-box h-full">
-                    {channel.shots.length > 0 && (
-                      <LatestShotPanel
-                        latestShot={{
-                          id:
-                            channel.shots[channel.shots.length - 1].id,
-                          x: channel.shots[channel.shots.length - 1].x,
-                          y: channel.shots[channel.shots.length - 1].y,
-                          score: channel.shots[channel.shots.length - 1].score,
-                          isMiss: channel.shots[channel.shots.length - 1].isMiss,
-                          timestamp:
-                            channel.shots[channel.shots.length - 1].timestamp,
-                        }}
-                        isAr={isAr}
-                      />
-                    )}
+                    {/* Follows the SELECTED shot when the admin clicks one in
+                        the shot log or on the board, so the 'D' sensor query
+                        inside it targets that bullet. Falls back to the newest
+                        shot when nothing is selected. */}
+                    {(() => {
+                      const shown =
+                        channel.shots.find((s) => s.id === selectedShotId) ??
+                        channel.shots[channel.shots.length - 1];
+                      if (!shown) return null;
+                      return (
+                        <LatestShotPanel
+                          latestShot={{
+                            id: shown.id,
+                            x: shown.x,
+                            y: shown.y,
+                            score: shown.score,
+                            isMiss: shown.isMiss ?? false,
+                            timestamp: shown.timestamp,
+                            targetId: shown.targetId,
+                          }}
+                          isSelected={shown.id === selectedShotId}
+                          isAr={isAr}
+                        />
+                      );
+                    })()}
                    <TargetView
                     key={`${channel.id}-${channel.sessionId ?? "none"}-${laneProfile}`}
                     activeChannel={channel}

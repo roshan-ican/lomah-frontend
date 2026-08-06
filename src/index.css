@@ -211,7 +211,14 @@ html.light {
   --hud-scan: rgba(13, 148, 136, 0.05);
   --hud-divider: rgba(13, 148, 136, 0.28);
   --hud-shadow-live: 0 0 24px rgba(5, 150, 105, 0.12);
+}
 
+/* The admin type scale is sizing, not theming — it must NOT live inside
+   html.light. It used to, which left every --admin-font-* token undefined in
+   dark mode (the default), so each .admin-text-* class resolved to an invalid
+   var() and silently fell back to whatever size it inherited. */
+:root {
+  --admin-font-3xs: 0.5rem;
   --admin-font-2xs: 0.5625rem;
   --admin-font-xs: 0.625rem;
   --admin-font-sm: 0.6875rem;
@@ -421,6 +428,7 @@ html.dark ::-webkit-scrollbar-thumb:hover {
   color: var(--hud-text-muted);
 }
 
+.admin-text-3xs { font-size: var(--admin-font-3xs); }
 .admin-text-2xs { font-size: var(--admin-font-2xs); }
 .admin-text-xs  { font-size: var(--admin-font-xs); }
 .admin-text-sm  { font-size: var(--admin-font-sm); }

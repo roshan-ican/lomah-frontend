@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 
+import { ShotSensorDiagnostic } from "./ShotSensorDiagnostic";
+
 interface LatestShot {
   id: number;
   x: number;
@@ -8,16 +10,23 @@ interface LatestShot {
   score: number;
   isMiss: boolean;
   timestamp: string;
+  /** Board that reported it, for the 'D' sensor query. Undefined on shots
+   *  restored from a cache written before targetId was carried per-shot. */
+  targetId?: string;
 }
 
 interface LatestShotPanelProps {
   latestShot: LatestShot | null;
   isAr: boolean;
+  /** True when this is a shot the admin clicked rather than just the newest
+   *  one — the heading changes so the two are never confused. */
+  isSelected?: boolean;
 }
 
 export function LatestShotPanel({
   latestShot,
   isAr,
+  isSelected = false,
 }: LatestShotPanelProps) {
   const [expanded, setExpanded] = useState(false);
 
@@ -32,7 +41,13 @@ export function LatestShotPanel({
         onClick={() => setExpanded(!expanded)}
       >
         <span className="admin-text-2xs font-mono hud-text-subtle uppercase tracking-wider">
-          {isAr ? "آخر طلقة" : "Latest Shot"}
+          {isSelected
+            ? isAr
+              ? "الطلقة المحددة"
+              : "Selected Shot"
+            : isAr
+              ? "آخر طلقة"
+              : "Latest Shot"}
         </span>
         {expanded ? (
           <ChevronUp className="w-3 h-3 hud-text-muted" />
@@ -71,9 +86,11 @@ export function LatestShotPanel({
               fractionalSecondDigits: 3,
             })}
           </p>
-          <p className="admin-text-2xs font-mono hud-text-subtle mt-0.5">
-            {isAr ? "انقر D لاستعلام المستشعرات" : "Click D to query sensors"}
-          </p>
+          <ShotSensorDiagnostic
+            targetId={latestShot.targetId ?? null}
+            shotNumber={latestShot.id}
+            isAr={isAr}
+          />
         </div>
       )}
     </div>

@@ -298,7 +298,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             logs={adminLogs}
             isAr={isAr}
             className="px-4 md:px-6"
-            maxHeight="40dvh"
+            storageKey="lomah:activity-log-height:admin"
           />
         </main>
       </div>
