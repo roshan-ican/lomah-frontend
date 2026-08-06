@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <title>LOMAH Precision — Tactical Shooting Analyzer</title>
+    <!-- Dark Mode Theme Color -->
+    <meta name="theme-color" content="#111316" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <!-- Progressive Web App Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    <!-- Google Fonts for UI typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      (function () {
+        var t = localStorage.getItem("lomah_theme");
+        document.documentElement.classList.add(
+          t === "light" ? "light" : "dark",
+        );
+      })();
+    </script>
+  </head>
+  <body class="select-none antialiased">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      window.process = {
+        env: { NODE_ENV: "development" },
+      };
+    </script>
+  </body>
+</html>

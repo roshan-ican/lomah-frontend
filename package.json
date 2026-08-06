@@ -1,0 +1,135 @@
+{
+  "name": "react-example",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "vite --port=3000 --host=0.0.0.0",
+    "dev:web": "cross-env VITE_WEB_ONLY=true vite --port=3000 --host=0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview",
+    "build:backend": "cd ../lomah-nest && npm run prisma:generate && npm run build",
+    "icon": "node scripts/generate-icon.mjs",
+    "electron:dev": "cross-env NODE_ENV=development vite",
+    "electron:build": "npm run build:backend && npm run build && electron-builder",
+    "electron:preview": "npm run build:backend && npm run build && cross-env NODE_ENV=production electron .",
+    "clean": "rm -rf dist server.js dist-electron",
+    "lint": "tsc --noEmit",
+    "lint:es": "eslint src electron-app",
+    "format": "prettier --write src electron-app",
+    "format:check": "prettier --check src electron-app"
+  },
+  "dependencies": {
+    "idb": "^8.0.3",
+    "lucide-react": "^0.546.0",
+    "motion": "^12.23.24",
+    "react": "^19.0.1",
+    "react-dom": "^19.0.1",
+    "react-router-dom": "^7.18.1",
+    "recharts": "^3.8.1",
+    "socket.io-client": "^4.8.3",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "@tailwindcss/vite": "^4.1.14",
+    "@types/node": "^22.14.0",
+    "@types/react": "^19.2.16",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.0.4",
+    "cross-env": "^10.1.0",
+    "electron": "^42.5.1",
+    "electron-builder": "^26.15.3",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^9.1.2",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "prettier": "^3.9.4",
+    "tailwindcss": "^4.1.14",
+    "typescript": "^5.8.2",
+    "typescript-eslint": "^8.62.1",
+    "vite": "^6.2.3",
+    "vite-plugin-electron": "^1.1.0",
+    "vite-plugin-electron-renderer": "^1.0.0"
+  },
+  "build": {
+    "appId": "com.lomah.app",
+    "productName": "LOMAH",
+    "directories": {
+      "output": "C:\\Users\\amind\\lumah_build"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "!node_modules/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "../lomah-nest/dist",
+        "to": "app/backend/dist"
+      },
+      {
+        "from": "../lomah-nest/prisma",
+        "to": "app/backend/prisma",
+        "filter": [
+          "**/*",
+          "!*.db",
+          "!migrations/dev.db*"
+        ]
+      },
+      {
+        "from": "../lomah-nest/package.json",
+        "to": "app/backend/package.json"
+      },
+      {
+        "from": "../lomah-nest/node_modules",
+        "to": "app/backend/node_modules",
+        "filter": [
+          "**/*",
+          "!@types/**",
+          "!typescript/**",
+          "!@nestjs/cli/**",
+          "!@nestjs/schematics/**",
+          "!@nestjs/testing/**",
+          "!vitest/**",
+          "!tsx/**",
+          "!eslint*/**",
+          "!prettier/**"
+        ]
+      },
+      {
+        "from": "dist",
+        "to": "app/dist"
+      }
+    ],
+    "npmRebuild": false,
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "artifactName": "lomah_0.1.${ext}"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "build/icon.icns",
+      "category": "public.app-category.games",
+      "identity": null
+    },
+    "dmg": {
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    }
+  }
+}

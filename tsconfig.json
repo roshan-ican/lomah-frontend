@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "experimentalDecorators": true,
+    "useDefineForClassFields": false,
+    "module": "ESNext",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "skipLibCheck": true,
+    "moduleResolution": "bundler",
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "allowJs": true,
+    "jsx": "react-jsx",
+    "paths": {
+      "@/*": ["./*"],
+      "@shared/*": ["./src/types/shared/*"]
+    },
+    "allowImportingTsExtensions": true,
+    "noEmit": true
+  },
+  // Without this tsc walks every .ts under the project root, which includes the
+  // backend source that `extraResources` copies into releases/win-unpacked/.
+  // That copy is checked against the *frontend's* config and deps, so it fails
+  // on backend-only types (express-serve-static-core) that were never missing.
+  "exclude": ["node_modules", "dist", "dist-electron", "releases"]
+}
