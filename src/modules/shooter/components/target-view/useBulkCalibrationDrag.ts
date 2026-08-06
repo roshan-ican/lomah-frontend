@@ -1,9 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import {
-  boardMmToSensorCoords,
-  clientToSvgPoint,
-  svgPointToMm,
-} from "@shared/coordinates";
+import { clientToSvgPoint, svgPointToMm } from "@shared/coordinates";
 import type { CalibrateMode } from "../../../../types";
 import type { CalibrationConfirmDetails } from "../../../../components/common/CalibrationConfirmDialog";
 import { clampBoardMm } from "./geometry";
@@ -31,9 +27,10 @@ interface Shot {
 }
 
 interface Params {
+  /** Real shots only — callers must filter out calibration markers, which are
+   *  display-only rows with fractional ids and no server-side shot behind them. */
   shots: Shot[];
   profileType: ProfileType;
-  laneId: number;
   calibrateMode: CalibrateMode;
   onLaneCalibrate?: (
     referenceBoardX: number,
@@ -59,7 +56,6 @@ interface Params {
 export function useBulkCalibrationDrag({
   shots,
   profileType,
-  laneId,
   calibrateMode,
   onLaneCalibrate,
   onShotsCalibrate,
@@ -336,10 +332,14 @@ export function useBulkCalibrationDrag({
     }
 
     if (onShotsCalibrate) {
+      // Board-mm, straight through. This used to run the drag through
+      // boardMmToSensorCoords first, but POST /shots/:n/calibrate takes
+      // board-mm — the same space these markers are drawn in — so the extra
+      // conversion sent raw 16-bit sensor words (x = 10mm went up as 65526) and
+      // the backend dutifully stored them, throwing the shot off the board.
       const updates = [...movedIds].map((id) => {
         const preview = clampBoardMm(previewMap.get(id)!);
-        const sensor = boardMmToSensorCoords(preview.xMm, preview.yMm, laneId);
-        return { shotNumber: id, x: sensor.x, y: sensor.y };
+        return { shotNumber: id, x: preview.xMm, y: preview.yMm };
       });
       setPendingCalibration({
         kind: "shots",

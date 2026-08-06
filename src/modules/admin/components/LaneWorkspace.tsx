@@ -14,7 +14,6 @@ import type { SessionConfig } from "../../../types/session-control";
 
 import { formatLaneLabel, laneHasSession } from "../../../utils/laneSession";
 import { getLaneIdFromChannelId } from "../../../utils/helper";
-import { getLaneError } from "@shared/coordinates";
 import { targetProfileFromTargetId } from "../../../utils/targetProfile";
 import { useSessionStore } from "../../../store/sessionStore";
 
@@ -376,7 +375,12 @@ export const LaneWorkspace: React.FC<LaneWorkspaceProps> = ({
 
   // ─── Offset edit (rail) — bullets preview live; Save asks for confirmation ──
   const laneId = getLaneIdFromChannelId(channel.id);
-  const committedOffset = getLaneError(laneId);
+  // The board's own offset, as the server reports it on every lane sync. This
+  // used to read getLaneError(laneId) — a client-side lane-error Map that
+  // nothing populates any more (see useLaneOffsets: offsets moved onto the
+  // target). It therefore always answered (0, 0), so saving an offset banner'd
+  // success and then snapped the inputs straight back to zero.
+  const committedOffset = channel.targetOffset ?? { x: 0, y: 0 };
   const [editingOffset, setEditingOffset] = useState(false);
   const [draftOffsetX, setDraftOffsetX] = useState(committedOffset.x);
   const [draftOffsetY, setDraftOffsetY] = useState(committedOffset.y);

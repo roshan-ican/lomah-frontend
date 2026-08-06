@@ -43,6 +43,11 @@ export interface SessionStage {
     distanceM: number;
     positionIndex: number;
     profileType: TargetProfileType;
+    /** The board's mounting offset in board-mm, already applied to every shot
+     *  on this stage. Carried so the admin's offset panel can render the value
+     *  the server actually holds instead of assuming (0, 0). */
+    offsetXmm: number;
+    offsetYmm: number;
   };
 }
 

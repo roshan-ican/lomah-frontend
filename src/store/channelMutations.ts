@@ -63,6 +63,8 @@ export function toVacantLane(ch: ActiveShooterChannel): ActiveShooterChannel {
     referenceShotId: undefined,
     calibratedShotCount: undefined,
     pickUsed: false,
+    // NOT reset: the offset belongs to the board, not the session. It survives
+    // the lane going vacant exactly as it survives a restart.
   };
 }
 

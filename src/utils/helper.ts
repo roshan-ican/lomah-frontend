@@ -120,6 +120,12 @@ function applyApiSessionToChannel(
     // moves the label. Falls back to whatever the lane was showing when the
     // payload has no target selected on it.
     distance: stage?.target ? `${stage.target.distanceM}m` : ch.distance,
+    // Server-held mounting offset for the board this stage engages. Kept when
+    // the payload didn't select the target, so a partial snapshot can't blank
+    // out an offset the panel is currently showing.
+    targetOffset: stage?.target
+      ? { x: stage.target.offsetXmm, y: stage.target.offsetYmm }
+      : ch.targetOffset,
     sessionId: activeSession.id,
     activeStageId: stage?.id,
     activeStageOrder: stage?.order,

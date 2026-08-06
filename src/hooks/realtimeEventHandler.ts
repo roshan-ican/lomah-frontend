@@ -462,6 +462,16 @@ export function handleRealtimeEvent(
         `TARGET CAL: Lane ${laneId} target offset (${data.offsetXmm}, ${data.offsetYmm}) mm — ` +
           `${data.shotsUpdated} shot(s) re-scored.`,
       );
+      // The offset panel reads channel.targetOffset. Update it here too, not
+      // just via the sync below: a calibration that re-scored nothing (an empty
+      // stage) skips that sync entirely and would leave a stale number on screen.
+      setChannels((prev) =>
+        prev.map((ch) =>
+          ch.id === chId
+            ? { ...ch, targetOffset: { x: data.offsetXmm, y: data.offsetYmm } }
+            : ch,
+        ),
+      );
       if (data.shotsUpdated > 0) void syncLaneFromApi(laneId);
       if (
         authStageRef.current === "SHOOTER_BOARD" &&

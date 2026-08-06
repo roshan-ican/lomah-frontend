@@ -96,6 +96,11 @@ export interface ActiveShooterChannel {
   /** Total shots present when calibration was first applied. Shots with id <= this
    *  are "old" (dimmed); shots arriving after are "new" (hard red). */
   calibratedShotCount?: number;
+  /** The active stage's TARGET mounting offset, in board-mm, as the server
+   *  holds it. The source of truth for the offset panel — it used to read a
+   *  client-side lane-error cache that nothing ever filled, so it always showed
+   *  (0, 0) and a saved offset appeared to revert on the next render. */
+  targetOffset?: { x: number; y: number };
 }
 
 export interface TargetProfile {

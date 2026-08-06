@@ -13,8 +13,11 @@
 //    error to the other (which the old lane-scoped model did) is the exact bug
 //    the rewrite removed. PATCH /targets/:id/offset, POST /targets/:id/calibrate
 //
-// Both target operations are SUPER_ADMIN-only on the backend: they are
-// commissioning actions, not day-to-day range operation.
+// Both target operations accept ADMIN as well as SUPER_ADMIN on the backend.
+// They were SUPER_ADMIN-only, which made them unreachable: this calibration
+// surface exists only on the ADMIN board (SuperAdminDashboard has no target view
+// to drag a shot on), so every call 403'd. Mounting error is discovered by
+// firing at the board mid-relay, and correcting it is the range officer's job.
 
 import { api } from "../utils/api";
 import { targetProfileFromTargetId } from "../utils/targetProfile";
@@ -84,9 +87,11 @@ export function useCalibration({
     try {
       // Coordinates go up as board-mm exactly as they are drawn — the backend
       // stores board-mm too, so there is no sensor-mm round trip any more.
+      // Rounded here, at the wire boundary: CalibrateShotDto is @IsInt(), and a
+      // drag naturally lands on a fraction of a millimetre.
       const updated = await api.post<Shot>(
         `/sessions/${ctx.sessionId}/stages/${ctx.stageId}/shots/${shotNumber}/calibrate`,
-        { x, y },
+        { x: Math.round(x), y: Math.round(y) },
       );
       const calibrated = mapRawShotToDisplay(
         {
@@ -163,7 +168,7 @@ export function useCalibration({
     }
 
     const ch = channels.find((c) => c.id === selectedChannelId);
-    // The endpoint identifies the reference by SHOT ID, not by coordinates —
+    // The endpoint identifies the reference by WHICH SHOT, not by coordinates —
     // the server re-reads the shot's stored position itself, so a stale local
     // copy cannot skew the derived offset.
     const referenceShot = ch?.shots.find((s) => s.id === referenceShotId);
@@ -175,10 +180,16 @@ export function useCalibration({
     }
 
     try {
+      // stageId + shotNumber, NOT shotId: `referenceShotId` is the 1-based shot
+      // number the board renders and selects by. The Shot row's uuid is never
+      // carried into the UI's shot model, so sending it as `shotId` (which the
+      // DTO validates as a uuid) failed every calibration with a 400 before it
+      // reached the service.
       const target = await api.post<Target>(
         `/targets/${ctx.targetId}/calibrate`,
         {
-          shotId: String(referenceShotId),
+          stageId: ctx.stageId,
+          shotNumber: referenceShotId,
           trueX: Math.round(trueBoardX),
           trueY: Math.round(trueBoardY),
         },
@@ -192,6 +203,7 @@ export function useCalibration({
                 ...c,
                 referenceShotId,
                 calibratedShotCount: shotCount,
+                targetOffset: { x: target.offsetXmm, y: target.offsetYmm },
               }
             : c,
         ),
@@ -254,6 +266,19 @@ export function useCalibration({
         offsetXmm: Math.round(offsetX),
         offsetYmm: Math.round(offsetY),
       });
+      // Paint the server's committed value straight away: syncLaneFromApi below
+      // re-reads it, but the offset panel closes on the boolean this returns and
+      // must not flash the pre-save number in between.
+      setChannels((prev) =>
+        prev.map((c) =>
+          c.id === selectedChannelId
+            ? {
+                ...c,
+                targetOffset: { x: target.offsetXmm, y: target.offsetYmm },
+              }
+            : c,
+        ),
+      );
       await syncLaneFromApi(laneId);
       addAdminLog(
         `TARGET OFFSET: ${target.label} set (${target.offsetXmm}, ${target.offsetYmm}) mm.`,

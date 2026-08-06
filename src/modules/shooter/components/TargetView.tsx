@@ -84,14 +84,22 @@ export const TargetView: React.FC<TargetViewProps> = ({
 
   const svgRef = useRef<SVGSVGElement>(null);
 
+  // "Calibration applied" dividers are display-only rows: their id is
+  // shotCount + 0.5 and no shot exists behind them. Excluded from everything
+  // calibration touches — dragged along with the group they polluted the
+  // selection, the confirm dialog's shot count, and (in the per-shot path) sent
+  // a request for shot #3.5 that could only 404.
+  const calibratableShots = useMemo(
+    () => activeChannel.shots.filter((sh) => !sh.isCalibrationMarker),
+    [activeChannel.shots],
+  );
+
   const shotSvgPoints = useMemo(() => {
-    return activeChannel.shots
-      .filter((sh) => !sh.isCalibrationMarker)
-      .map((sh) => {
-        const { x, y } = mmToSvgPoint(sh.x, sh.y, profileType);
-        return { shotId: sh.id, cx: x, cy: y };
-      });
-  }, [activeChannel.shots, profileType]);
+    return calibratableShots.map((sh) => {
+      const { x, y } = mmToSvgPoint(sh.x, sh.y, profileType);
+      return { shotId: sh.id, cx: x, cy: y };
+    });
+  }, [calibratableShots, profileType]);
 
   const hasOffScreenShots = useMemo(() => {
     if (activeChannel.shots.length === 0) return false;
@@ -131,9 +139,8 @@ export const TargetView: React.FC<TargetViewProps> = ({
     confirmPendingCalibration,
     cancelPendingCalibration,
   } = useBulkCalibrationDrag({
-    shots: activeChannel.shots,
+    shots: calibratableShots,
     profileType,
-    laneId,
     calibrateMode,
     onLaneCalibrate,
     onShotsCalibrate,
@@ -155,12 +162,8 @@ export const TargetView: React.FC<TargetViewProps> = ({
   const canFire = !readOnly && !!handleTargetClick && !isBulkCalibrate;
   const canSelectShots = !readOnly || isBulkCalibrate;
   const newestShotId =
-    activeChannel.shots.length > 0
-      ? Math.max(
-          ...activeChannel.shots
-            .filter((s) => !s.isCalibrationMarker)
-            .map((s) => s.id),
-        )
+    calibratableShots.length > 0
+      ? Math.max(...calibratableShots.map((s) => s.id))
       : null;
 
   const selectShot = (sh: {
@@ -317,9 +320,8 @@ export const TargetView: React.FC<TargetViewProps> = ({
               <BullseyeTarget isDarkMode={isDarkMode} />
             )}
             {/* Single shot rendering with clamping for misses */}
-            {[...activeChannel.shots]
+            {[...calibratableShots]
               .sort((a, b) => a.id - b.id)
-              .filter((sh) => !sh.isCalibrationMarker)
               .map((sh) => {
                 const bulkPreview = bulkDragPreview?.get(sh.id);
                 const xMm = (bulkPreview?.xMm ?? sh.x) + previewDx;
