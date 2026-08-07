@@ -17,6 +17,9 @@ interface SuperAdminDashboardProps {
    language: LanguageCode;
    setLanguage: (lang: LanguageCode) => void;
    triggerSuccessBanner: (msg: string) => void;
+   /** Failures. Rendered red with a warning icon — routing them through
+    *  triggerSuccessBanner produced a green checkmark on the word "Error". */
+   triggerErrorBanner: (msg: string) => void;
    addAdminLog: (msg: string) => void;
    handleLogout: () => void;
    adminLogs: string[];
@@ -41,6 +44,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
    language,
    setLanguage,
    triggerSuccessBanner,
+   triggerErrorBanner,
    addAdminLog,
    handleLogout,
    adminLogs,
@@ -164,6 +168,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
               <LaneHardwarePanel
                 isAr={isAr}
                 triggerSuccessBanner={triggerSuccessBanner}
+                triggerErrorBanner={triggerErrorBanner}
                 addAdminLog={addAdminLog}
                 mode="commissioning"
               />
@@ -176,6 +181,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
               <LaneAssignmentPanel
                 isAr={isAr}
                 triggerSuccessBanner={triggerSuccessBanner}
+                triggerErrorBanner={triggerErrorBanner}
               />
             )}
             {activeTab === "HELP" && (

@@ -9,6 +9,32 @@ interface Props {
   isAr: boolean;
   onNotice: (msg: string) => void;
   addAdminLog?: (msg: string) => void;
+  /** Mirror the 'G'/'W' round trips into the sensor console packet log, so a
+   *  calibration change shows the same real bytes PLAY/STOP/SELF-TEST do
+   *  rather than being the one command that happens invisibly. */
+  onPacket?: (
+    targetId: string,
+    command: string,
+    direction: "tx" | "rx",
+    hex: string,
+    ascii: string,
+    status: "pending" | "success" | "error" | "info",
+    description: string,
+  ) => void;
+}
+
+/** Same rendering the console uses for tx/rx frames — printable bytes through,
+ *  everything else a dot. Kept in step with LaneHardwarePanel's copy. */
+function hexToAscii(hex: string | null | undefined): string {
+  if (!hex) return "—";
+  return hex
+    .split(" ")
+    .map((h) => {
+      const byte = parseInt(h, 16);
+      if (Number.isNaN(byte)) return "?";
+      return byte >= 32 && byte <= 126 ? String.fromCharCode(byte) : ".";
+    })
+    .join("");
 }
 
   const PAGES: WiperPage[] = ["A", "B"];
@@ -28,7 +54,13 @@ interface Props {
    * are therefore addressed only as Calibration A1..A5 / Calibration B1..B5,
    * never as "left sensor" or similar, anywhere this type is displayed.
    */
-export function TargetSensitivityPanel({ target, isAr, onNotice, addAdminLog }: Props) {
+export function TargetSensitivityPanel({
+  target,
+  isAr,
+  onNotice,
+  addAdminLog,
+  onPacket,
+}: Props) {
   const [page, setPage] = useState<WiperPage>("A");
   const [values, setValues] = useState<number[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -52,9 +84,30 @@ export function TargetSensitivityPanel({ target, isAr, onNotice, addAdminLog }: 
         `/targets/${target.id}/wipers?page=${forPage}`,
       );
       setValues(result.values);
+      onPacket?.(
+        target.id,
+        "G",
+        "tx",
+        result.txHex,
+        hexToAscii(result.txHex),
+        "info",
+        `READ WIPER ${forPage} → ${target.ipAddress}`,
+      );
+      onPacket?.(
+        target.id,
+        "G",
+        "rx",
+        result.rxHex ?? "(no reply)",
+        hexToAscii(result.rxHex),
+        "success",
+        `Calibration ${forPage}: ${result.values
+          .map((v, i) => `${forPage}${i + 1}=${v}`)
+          .join(" ")}`,
+      );
     } catch (err) {
       setValues(null);
       const msg = err instanceof Error ? err.message : "Failed to read wipers";
+      onPacket?.(target.id, "G", "rx", "(no reply)", "—", "error", msg);
       onNotice(isAr ? `خطأ: ${msg}` : `Error: ${msg}`);
     } finally {
       setLoading(false);
@@ -99,11 +152,43 @@ export function TargetSensitivityPanel({ target, isAr, onNotice, addAdminLog }: 
         next.delete(wiperIndex);
         return next;
       });
+      // Same treatment PLAY/STOP/SELF-TEST get: the frame that went out, then
+      // the board's own reply — which is the whole updated page, not an echo
+      // of what was asked for.
+      onPacket?.(
+        target.id,
+        "W",
+        "tx",
+        result.txHex,
+        hexToAscii(result.txHex),
+        "info",
+        `WRITE WIPER ${page}${wiperIndex + 1}=${value} → ${target.ipAddress}`,
+      );
+      onPacket?.(
+        target.id,
+        "W",
+        "rx",
+        result.rxHex ?? "(no reply)",
+        hexToAscii(result.rxHex),
+        "success",
+        `Calibration ${page} now: ${result.values
+          .map((v, i) => `${page}${i + 1}=${v}`)
+          .join(" ")}`,
+      );
       addAdminLog?.(
         `SENSITIVITY: ${target.label} (${target.ipAddress}) ${page}${wiperIndex + 1} set to ${value}`,
       );
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Write failed";
+      onPacket?.(
+        target.id,
+        "W",
+        "rx",
+        "(no reply)",
+        "—",
+        "error",
+        `${page}${wiperIndex + 1}=${value}: ${msg}`,
+      );
       onNotice(isAr ? `خطأ: ${msg}` : `Error: ${msg}`);
       // Drop the draft either way — it's now unconfirmed and holding onto it
       // would show a value the board never actually accepted.

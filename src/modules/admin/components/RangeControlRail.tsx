@@ -12,6 +12,7 @@ import {
   InstructorFeedbackForm,
   type InstructorFeedback,
 } from "./InstructorFeedbackForm";
+import { ConfirmDialog } from "../../../components/common/ConfirmDialog";
 import { getLaneError } from "@shared/coordinates";
 
 type RailTab = "live" | "review";
@@ -74,6 +75,16 @@ export const RangeControlRail: React.FC<RangeControlRailProps> = ({
   const status = active.sessionStatus;
   const needsReview = laneNeedsReview(status);
   const [tab, setTab] = useState<RailTab>(needsReview ? "review" : "live");
+
+  /**
+   * Save is only legal once the session has actually ended (COMPLETED). The
+   * review tab is reachable while the session is still live — laneNeedsReview
+   * includes ACTIVE/PAUSED — so a Save tap on a running session must end it
+   * first instead of finalizing it out from under the shooter. Reuses the
+   * existing ConfirmDialog; the confirm action is the same End Session call
+   * the rail's own End Session button makes.
+   */
+  const [confirmEndForSave, setConfirmEndForSave] = useState(false);
 
   useEffect(() => {
     if (needsReview) setTab("review");
@@ -454,7 +465,13 @@ export const RangeControlRail: React.FC<RangeControlRailProps> = ({
           <InstructorFeedbackForm
             key={channel.id}
             language={language}
-            onSave={onSaveFeedback}
+            onSave={(feedback) => {
+              if (status === "COMPLETED") {
+                onSaveFeedback(feedback);
+              } else {
+                setConfirmEndForSave(true);
+              }
+            }}
             onCancel={onCancelSession}
             onDiscard={() => onDiscardReadySession(channel.id)}
           />
@@ -480,6 +497,25 @@ export const RangeControlRail: React.FC<RangeControlRailProps> = ({
           )}
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmEndForSave}
+        title={isAr ? "أنهِ الجلسة أولاً" : "End the session first"}
+        message={
+          isAr
+            ? "الجلسة ما زالت قيد التشغيل. لا يمكن الحفظ قبل إنهاء الجلسة. هل تريد إنهاء الجلسة الآن؟ بعد الإنتهاء يمكنك الحفظ."
+            : "The session is still running. Saving is only allowed after the session has ended. End the session now? You can save once it has ended."
+        }
+        language={language}
+        confirmLabel={isAr ? "إنهاء الجلسة" : "End Session"}
+        cancelLabel={isAr ? "إلغاء" : "Cancel"}
+        variant="danger"
+        onConfirm={() => {
+          setConfirmEndForSave(false);
+          onEndSession();
+        }}
+        onCancel={() => setConfirmEndForSave(false)}
+      />
     </aside>
   );
 };

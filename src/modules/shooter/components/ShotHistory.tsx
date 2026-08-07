@@ -25,6 +25,31 @@ function compactTime(timestamp: string): string {
   return timestamp.slice(0, 5);
 }
 
+/**
+ * Short and long labels for a round with no impact position.
+ *
+ * MISS and LOST are kept apart everywhere they surface because they send the
+ * operator to different places: MISS is the board reporting it could not
+ * triangulate a bullet it definitely saw, LOST is a frame that never reached
+ * the server at all. A screen full of one means check the sensor; a screen full
+ * of the other means check the link.
+ */
+function missLabel(
+  sh: DisplayShot,
+  isAr: boolean,
+): { short: string; detail: string } {
+  if (sh.isLost) {
+    return {
+      short: isAr ? "مفقودة" : "LOST",
+      detail: isAr ? "لم تصل الإشارة" : "no signal",
+    };
+  }
+  return {
+    short: isAr ? "إخفاق" : "MISS",
+    detail: isAr ? "لا يوجد كشف" : "no detection",
+  };
+}
+
 export const ShotHistory: React.FC<ShotHistoryProps> = ({
   shots,
   selectedShotId,
@@ -46,8 +71,21 @@ export const ShotHistory: React.FC<ShotHistoryProps> = ({
   const isHorizontal = layout === "horizontal";
   const rowRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
   const [hidePreCalibration, setHidePreCalibration] = useState(false);
+  const [hideMisses, setHideMisses] = useState(false);
   const hasCalibrationMarker = shots.some((sh) => sh.isCalibrationMarker);
-  const visibleShots = shots.filter((sh) => sh.isCalibrationMarker || !(sh.isMiss ?? false));
+  const hasMisses = shots.some((sh) => sh.isMiss ?? false);
+  // Misses are listed by default.
+  //
+  // They used to be filtered out unconditionally, which is what turned a
+  // thirteen-round string into a log reading "4, 5, 7, 13". Every one of those
+  // rounds was fired, scored and numbered by the server; hiding them made the
+  // shooter's own record look like it had lost data, and buried the fact that
+  // eight consecutive no-detections is a board fault worth stopping for. The
+  // filter stays available as a toggle for anyone who wants hits only.
+  const visibleShots = shots.filter(
+    (sh) =>
+      sh.isCalibrationMarker || !hideMisses || !(sh.isMiss ?? false),
+  );
   // Counts and "newest shot" describe bullets, so divider rows are excluded —
   // a marker's id is deliberately half-way past the last shot, so leaving it in
   // made it win Math.max and stole the newest-shot highlight.
@@ -77,6 +115,21 @@ export const ShotHistory: React.FC<ShotHistoryProps> = ({
     row?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [selectedShotId, noScroll]);
 
+  /** Opt-out for anyone who wants the hits-only view the log used to force. */
+  const missToggle = (className: string) =>
+    hasMisses ? (
+      <button type="button" onClick={() => setHideMisses((v) => !v)} className={className}>
+        {hideMisses ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+        {isAr
+          ? hideMisses
+            ? "إظهار الإخفاقات"
+            : "إخفاء الإخفاقات"
+          : hideMisses
+            ? "Show misses"
+            : "Hide misses"}
+      </button>
+    ) : null;
+
   if ((isHud || isSimulator) && isHorizontal) {
     const chipClass = (isSelected: boolean) =>
       isSelected
@@ -91,16 +144,21 @@ export const ShotHistory: React.FC<ShotHistoryProps> = ({
 
     return (
       <div>
-        {hasCalibrationMarker && (
-          <div className="flex items-center justify-end mb-1">
-            <button
-              type="button"
-              onClick={() => setHidePreCalibration((v) => !v)}
-              className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded ${isSimulator ? "text-[var(--sim-accent)] hover:bg-[var(--sim-accent-soft)]" : "text-[var(--hud-accent)] hover:bg-[var(--hud-accent-bg-subtle)]"}`}
-            >
-              {hidePreCalibration ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-              {isAr ? (hidePreCalibration ? "إظهار الكل" : "إخفاء ما قبل المعايرة") : (hidePreCalibration ? "Show all" : "Hide pre-cal")}
-            </button>
+        {(hasCalibrationMarker || hasMisses) && (
+          <div className="flex items-center justify-end gap-1 mb-1">
+            {hasCalibrationMarker && (
+              <button
+                type="button"
+                onClick={() => setHidePreCalibration((v) => !v)}
+                className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded ${isSimulator ? "text-[var(--sim-accent)] hover:bg-[var(--sim-accent-soft)]" : "text-[var(--hud-accent)] hover:bg-[var(--hud-accent-bg-subtle)]"}`}
+              >
+                {hidePreCalibration ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                {isAr ? (hidePreCalibration ? "إظهار الكل" : "إخفاء ما قبل المعايرة") : (hidePreCalibration ? "Show all" : "Hide pre-cal")}
+              </button>
+            )}
+            {missToggle(
+              `flex items-center gap-1 text-xs px-2 py-0.5 rounded ${isSimulator ? "text-[var(--sim-muted)] hover:bg-[var(--sim-accent-soft)]" : "hud-text-subtle hover:bg-[var(--hud-accent-bg-subtle)]"}`,
+            )}
           </div>
         )}
         <div
@@ -134,6 +192,31 @@ export const ShotHistory: React.FC<ShotHistoryProps> = ({
             }
             const isSelected = selectedShotId === sh.id;
             const chip = chipClass(isSelected);
+
+            // No impact to point an arrow at or a score to show — the chip
+            // holds the round's number and says why it is blank. Not
+            // clickable: selecting a shot drives the target marker and the
+            // calibration tools, and there is no marker to drive.
+            if (sh.isMiss) {
+              const { short } = missLabel(sh, isAr);
+              return (
+                <div
+                  key={sh.id}
+                  className={`shrink-0 flex flex-col items-center justify-center gap-0.5 ${chipSize} font-mono rounded-lg border border-dashed ${
+                    isSimulator
+                      ? "border-[var(--sim-muted)] text-[var(--sim-muted)]"
+                      : "border-[var(--hud-text-subtle,#6B7280)] hud-text-subtle"
+                  } opacity-70`}
+                >
+                  <span className={noScroll ? "text-[10px]" : "text-xs"}>
+                    #{sh.id}
+                  </span>
+                  <span className="text-[9px] font-bold tracking-wider">
+                    {short}
+                  </span>
+                </div>
+              );
+            }
 
             return (
               <button
@@ -227,6 +310,47 @@ export const ShotHistory: React.FC<ShotHistoryProps> = ({
               );
             }
             const isSelected = selectedShotId === sh.id;
+
+            if (sh.isMiss) {
+              const { short, detail } = missLabel(sh, isAr);
+              return (
+                <div
+                  key={sh.id}
+                  className={`w-full flex items-center border-l-4 border-l-transparent hud-shot-row--idle opacity-60 ${
+                    isDistance
+                      ? "shooter-shot-row gap-4 px-3 py-3.5"
+                      : compactRows
+                        ? "range-rail-meta px-2.5 py-2 gap-2"
+                        : "px-2 py-2 text-sm font-mono gap-4"
+                  }`}
+                >
+                  <span
+                    className={`tabular-nums shrink-0 hud-text-subtle ${
+                      isDistance
+                        ? "min-w-[2.5rem] text-left"
+                        : compactRows
+                          ? "w-7 range-rail-stat !text-[inherit]"
+                          : "w-8"
+                    }`}
+                  >
+                    {sh.id}
+                  </span>
+                  <span className="font-mono tracking-wider hud-text-subtle text-xs font-bold">
+                    {short}
+                  </span>
+                  {!compactRows && (
+                    <span className="font-mono text-[10px] hud-text-subtle normal-case">
+                      {detail}
+                    </span>
+                  )}
+                  {!hideTimestamp && !isDistance && (
+                    <span className="ml-auto tabular-nums shrink-0 text-xs hud-text-subtle">
+                      {compactTime(sh.timestamp)}
+                    </span>
+                  )}
+                </div>
+              );
+            }
 
             return (
               <button
@@ -322,6 +446,9 @@ export const ShotHistory: React.FC<ShotHistoryProps> = ({
                 {isAr ? (hidePreCalibration ? "إظهار الكل" : "إخفاء ما قبل المعايرة") : (hidePreCalibration ? "Show all" : "Hide pre-cal")}
               </button>
             )}
+            {missToggle(
+              "flex items-center gap-1 text-xs px-2 py-0.5 rounded hud-text-subtle hover:bg-[var(--hud-accent-bg-subtle)]",
+            )}
             <span className="hud-label hud-accent">
               {realVisibleShots.length} {isAr ? "إجمالي" : "total"}
             </span>
@@ -349,6 +476,9 @@ export const ShotHistory: React.FC<ShotHistoryProps> = ({
               {hidePreCalibration ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
               {isAr ? (hidePreCalibration ? "إظهار الكل" : "إخفاء ما قبل المعايرة") : (hidePreCalibration ? "Show all" : "Hide pre-cal")}
             </button>
+          )}
+          {missToggle(
+            "flex items-center gap-1 text-xs px-2 py-0.5 rounded text-gray-400 hover:bg-gray-500/10",
           )}
           <span className="font-mono text-xs bg-gray-100 dark:bg-[#121417] px-2 py-0.5 rounded text-gray-400">
             {realVisibleShots.length} {isAr ? "إطلاقات" : "Total"}
@@ -378,6 +508,38 @@ export const ShotHistory: React.FC<ShotHistoryProps> = ({
               );
             }
             const isSelected = selectedShotId === sh.id;
+
+            if (sh.isMiss) {
+              const { short, detail } = missLabel(sh, isAr);
+              return (
+                <div
+                  key={sh.id}
+                  className="w-full text-left p-2.5 rounded-lg border border-dashed border-gray-200 dark:border-glass-border flex items-center justify-between gap-2 opacity-70"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-6 h-6 rounded-full flex items-center justify-center font-mono text-xs font-bold shrink-0 bg-gray-100 dark:bg-[#121417] text-gray-400">
+                      {sh.id}
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-xs font-mono font-bold block text-gray-500 dark:text-gray-400">
+                        {isAr ? "طلقة" : "Shot"} #{sh.id}
+                      </span>
+                      <span className="block font-mono text-xs text-gray-400 mt-0.5">
+                        {sh.timestamp}
+                      </span>
+                      {/* Deliberately no x/y line: both are zero, and printing
+                          "x:0mm y:0mm" reads as a dead-centre hit. */}
+                      <span className="block font-mono text-[9px] text-gray-400 mt-0.5">
+                        {detail}
+                      </span>
+                    </div>
+                  </div>
+                  <span className="font-mono text-xs font-bold tracking-wider text-gray-400 shrink-0">
+                    {short}
+                  </span>
+                </div>
+              );
+            }
 
             return (
               <button

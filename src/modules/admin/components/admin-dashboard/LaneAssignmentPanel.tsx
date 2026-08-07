@@ -6,6 +6,9 @@ import type { ConnectedShooter, Lane } from "../../../../types";
 interface Props {
   isAr: boolean;
   triggerSuccessBanner: (msg: string) => void;
+  /** Failures. Rendered red with a warning icon — routing them through
+   *  triggerSuccessBanner produced a green checkmark on the word "Error". */
+  triggerErrorBanner: (msg: string) => void;
 }
 
 /**
@@ -19,7 +22,7 @@ interface Props {
  * that demonstrably exists rather than typing an address they would have to go
  * read off the back of a tablet.
  */
-export function LaneAssignmentPanel({ isAr, triggerSuccessBanner }: Props) {
+export function LaneAssignmentPanel({ isAr, triggerSuccessBanner, triggerErrorBanner }: Props) {
   const [devices, setDevices] = useState<ConnectedShooter[]>([]);
   const [lanes, setLanes] = useState<Lane[]>([]);
   const [loading, setLoading] = useState(false);
@@ -93,7 +96,7 @@ export function LaneAssignmentPanel({ isAr, triggerSuccessBanner }: Props) {
       await loadDevices();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to assign device";
-      triggerSuccessBanner(isAr ? `خطأ: ${msg}` : `Error: ${msg}`);
+      triggerErrorBanner(msg);
       await loadDevices();
     } finally {
       setBusyKey(null);

@@ -9,6 +9,8 @@ interface LatestShot {
   y: number;
   score: number;
   isMiss: boolean;
+  /** Frame never arrived, as opposed to arrived-but-unresolved. */
+  isLost?: boolean;
   timestamp: string;
   /** Board that reported it, for the 'D' sensor query. Undefined on shots
    *  restored from a cache written before targetId was carried per-shot. */
@@ -60,18 +62,39 @@ export function LatestShotPanel({
         <span className="hud-text font-bold">
           #{latestShot.id}
         </span>
-        <span className="hud-text-subtle">
-          X = {latestShot.x} mm
-        </span>
-        <span className="hud-text-subtle">
-          Y = {latestShot.y} mm
-        </span>
+        {/* Coordinates are suppressed for a round with no impact: both are
+            zero, and "X = 0 mm Y = 0 mm" next to the word MISS reads as a shot
+            that landed dead centre — the opposite of what happened. */}
+        {latestShot.isMiss ? (
+          <span className="hud-text-subtle">
+            {latestShot.isLost
+              ? isAr
+                ? "لم تصل الإشارة"
+                : "frame never arrived"
+              : isAr
+                ? "لا يوجد كشف"
+                : "no detection"}
+          </span>
+        ) : (
+          <>
+            <span className="hud-text-subtle">
+              X = {latestShot.x} mm
+            </span>
+            <span className="hud-text-subtle">
+              Y = {latestShot.y} mm
+            </span>
+          </>
+        )}
         <span
           className={`font-bold ${
             latestShot.isMiss ? "text-amber-500" : "text-emerald-500"
           }`}
         >
-          {latestShot.isMiss ? "MISS" : latestShot.score}
+          {latestShot.isLost
+            ? "LOST"
+            : latestShot.isMiss
+              ? "MISS"
+              : latestShot.score}
         </span>
       </div>
 

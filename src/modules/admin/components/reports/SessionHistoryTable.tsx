@@ -194,6 +194,7 @@ export const SessionHistoryTable: React.FC<SessionHistoryTableProps> = ({
               x: number;
               y: number;
               isMiss?: boolean;
+              isLost?: boolean;
               timestamp?: string;
               score?: number | string;
             }) => {
@@ -202,6 +203,7 @@ export const SessionHistoryTable: React.FC<SessionHistoryTableProps> = ({
                 x: sh.x,
                 y: sh.y,
                 isMiss: sh.isMiss,
+                isLost: sh.isLost,
                 timestamp: sh.timestamp,
               });
               const score = Number(sh.score);

@@ -62,7 +62,8 @@ interface LaneWorkspaceProps {
   onAdvanceSession?: (channelId: string) => void;
   onDiscardReadySession: (channelId: string) => void;
 
-  onCreateSession: (config: SessionConfig) => void;
+  /** Resolves true only on a confirmed server write — see SessionControlPanelProps. */
+  onCreateSession: (config: SessionConfig) => Promise<boolean>;
 
   onPauseSession: () => void;
 
@@ -700,6 +701,7 @@ export const LaneWorkspace: React.FC<LaneWorkspaceProps> = ({
                             y: shown.y,
                             score: shown.score,
                             isMiss: shown.isMiss ?? false,
+                            isLost: shown.isLost ?? false,
                             timestamp: shown.timestamp,
                             targetId: shown.targetId,
                           }}

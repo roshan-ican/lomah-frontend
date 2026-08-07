@@ -46,6 +46,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   setLanguage,
   adminLogs,
   triggerSuccessBanner,
+  triggerErrorBanner,
   handleLogout,
   onDiscardReadySession,
   zoomLevel,
@@ -276,6 +277,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 availableShooters={availableShooters}
                 refreshShooters={onRefreshShooters}
                 triggerSuccessBanner={triggerSuccessBanner}
+                triggerErrorBanner={triggerErrorBanner}
               />
             </div>
           )}
@@ -288,6 +290,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <LaneHardwarePanel
                 isAr={isAr}
                 triggerSuccessBanner={triggerSuccessBanner}
+                triggerErrorBanner={triggerErrorBanner}
                 readOnly
                 mode="live"
               />

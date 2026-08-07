@@ -9,6 +9,9 @@ interface Props {
   availableShooters: Shooter[];
   refreshShooters: () => void;
   triggerSuccessBanner: (msg: string) => void;
+  /** Failures. Rendered red with a warning icon — routing them through
+   *  triggerSuccessBanner produced a green checkmark on the word "Error". */
+  triggerErrorBanner: (msg: string) => void;
 }
 
 export function ShooterDevicesTab({
@@ -16,6 +19,7 @@ export function ShooterDevicesTab({
   availableShooters,
   refreshShooters,
   triggerSuccessBanner,
+  triggerErrorBanner,
 }: Props) {
   const [showAddForm, setShowAddForm] = useState(false);
   const [newUsername, setNewUsername] = useState("");
@@ -61,7 +65,7 @@ export function ShooterDevicesTab({
           : err instanceof Error
             ? err.message
             : "Registration failed";
-      triggerSuccessBanner(isAr ? `خطأ: ${msg}` : `Error: ${msg}`);
+      triggerErrorBanner(msg);
     } finally {
       setRegistering(false);
     }
@@ -103,7 +107,7 @@ export function ShooterDevicesTab({
           : err instanceof Error
             ? err.message
             : "Update failed";
-      triggerSuccessBanner(isAr ? `خطأ: ${msg}` : `Error: ${msg}`);
+      triggerErrorBanner(msg);
     } finally {
       setSaving(false);
     }
@@ -126,7 +130,7 @@ export function ShooterDevicesTab({
           : err instanceof Error
             ? err.message
             : "Delete failed";
-      triggerSuccessBanner(isAr ? `خطأ: ${msg}` : `Error: ${msg}`);
+      triggerErrorBanner(msg);
     } finally {
       setDeletingId(null);
     }
@@ -375,6 +379,7 @@ export function ShooterDevicesTab({
         <LaneAssignmentPanel
           isAr={isAr}
           triggerSuccessBanner={triggerSuccessBanner}
+          triggerErrorBanner={triggerErrorBanner}
         />
       </div>
     </div>

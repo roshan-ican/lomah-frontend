@@ -42,6 +42,9 @@ import {
 interface Props {
   isAr: boolean;
   triggerSuccessBanner: (msg: string) => void;
+  /** Failures. Rendered red with a warning icon — routing them through
+   *  triggerSuccessBanner produced a green checkmark on the word "Error". */
+  triggerErrorBanner: (msg: string) => void;
   addAdminLog?: (msg: string) => void;
   readOnly?: boolean;
   mode: "commissioning" | "live";
@@ -87,33 +90,23 @@ function laneStatusLabel(status: LaneStatus, isAr: boolean): string {
 export function LaneHardwarePanel({
   isAr,
   triggerSuccessBanner,
+  triggerErrorBanner,
   addAdminLog,
   readOnly = false,
   mode,
 }: Props) {
   const [lanes, setLanes] = useState<Lane[]>([]);
   const [loading, setLoading] = useState(false);
-  /** Row or lane currently mid-request, so exactly one control shows a spinner
-   *  instead of the whole panel greying out. */
   const [busyId, setBusyId] = useState<string | null>(null);
-  /** Last self-test outcome per target. Deliberately NOT persisted: it says
-   *  "the board answered a moment ago", which stops being true the instant
-   *  someone unplugs it, so it is scoped to this sitting at the console. */
+
   const [testResults, setTestResults] = useState<
     Map<string, TargetSelfTestResult>
   >(new Map());
-  /** Targets with a PLAY in flight. A set, not a single id, so testing a whole
-   *  lane does not serialise behind one board's 4.5s retry budget. */
+
   const [testing, setTesting] = useState<Set<string>>(new Set());
-  /** In-progress edits to a target's IP, keyed by target id. Kept apart from
-   *  `lanes` so typing never triggers a PATCH per keystroke — the change is
-   *  committed on blur/Enter. */
   const [ipDrafts, setIpDrafts] = useState<Map<string, string>>(new Map());
-  /** Selected target for console display */
   const [selectedTargetId, setSelectedTargetId] = useState<string | null>(null);
-  /** Sensor packets log per target */
   const [packetLogs, setPacketLogs] = useState<Map<string, SensorPacket[]>>(new Map());
-  /** Targets currently armed (PLAY sent) */
   const [armedTargets, setArmedTargets] = useState<Set<string>>(new Set());
 
   const setIpDraft = (targetId: string, value: string) =>
@@ -124,25 +117,26 @@ export function LaneHardwarePanel({
       return next;
     });
 
-  /** In-progress edits to a target's command host/port override, keyed by
-   *  target id. Only meaningful for simulated/container targets. */
   const [cmdDrafts, setCmdDrafts] = useState<Map<string, { host: string; port: string }>>(new Map());
 
-  /** Rows with the command-override editor revealed. Defaults hidden so real
-   *  targets (the overwhelming majority) show the compact IP cell only. */
+
   const [cmdOpen, setCmdOpen] = useState<Set<string>>(new Set());
 
   /** Rows with the sensitivity (wiper) panel expanded. Defaults hidden — every
    *  open/refresh is a live UDP round trip, not something to show by default
    *  for every target on the screen. */
   const [sensOpen, setSensOpen] = useState<Set<string>>(new Set());
-  const toggleSens = (targetId: string) =>
+  const toggleSens = (targetId: string) => {
+    // Opening the panel fires a live 'G' read straight away — point the
+    // console at this target so those frames land somewhere visible.
+    if (!sensOpen.has(targetId)) setSelectedTargetId(targetId);
     setSensOpen((prev) => {
       const next = new Set(prev);
       if (next.has(targetId)) next.delete(targetId);
       else next.add(targetId);
       return next;
     });
+  };
 
   const setCmdDraft = (target: Target, field: "host" | "port", value: string) =>
     setCmdDrafts((prev) => {
@@ -208,7 +202,7 @@ export function LaneHardwarePanel({
 
   const fail = (err: unknown, fallback: string) => {
     const msg = err instanceof Error ? err.message : fallback;
-    triggerSuccessBanner(isAr ? `خطأ: ${msg}` : `Error: ${msg}`);
+    triggerErrorBanner(msg);
     // Whatever the client thought it had is now suspect — resync rather than
     // leaving a rejected change sitting on screen looking applied.
     void load();
@@ -424,7 +418,7 @@ export function LaneHardwarePanel({
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Self-test failed";
       logPacket(target.id, "T", "rx", "", "", "error", msg);
-      triggerSuccessBanner(isAr ? `خطأ: ${msg}` : `Error: ${msg}`);
+      triggerErrorBanner(msg);
     } finally {
       setTesting((prev) => {
         const next = new Set(prev);
@@ -617,7 +611,7 @@ export function LaneHardwarePanel({
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Play failed";
       logPacket(target.id, "P", "rx", "", "", "error", msg);
-      triggerSuccessBanner(isAr ? `خطأ: ${msg}` : `Error: ${msg}`);
+      triggerErrorBanner(msg);
     } finally {
       setBusyId(null);
     }
@@ -657,7 +651,7 @@ export function LaneHardwarePanel({
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Stop failed";
       logPacket(target.id, "S", "rx", "", "", "error", msg);
-      triggerSuccessBanner(isAr ? `خطأ: ${msg}` : `Error: ${msg}`);
+      triggerErrorBanner(msg);
     } finally {
       setBusyId(null);
     }
@@ -699,7 +693,7 @@ export function LaneHardwarePanel({
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Heartbeat failed";
       logPacket(target.id, "H", "rx", "", "", "error", msg);
-      triggerSuccessBanner(isAr ? `خطأ: ${msg}` : `Error: ${msg}`);
+      triggerErrorBanner(msg);
     } finally {
       setBusyId(null);
     }
@@ -736,7 +730,7 @@ export function LaneHardwarePanel({
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Dev data failed";
       logPacket(target.id, "D", "rx", "", "", "error", msg);
-      triggerSuccessBanner(isAr ? `خطأ: ${msg}` : `Error: ${msg}`);
+      triggerErrorBanner(msg);
     } finally {
       setBusyId(null);
     }
@@ -1377,6 +1371,7 @@ export function LaneHardwarePanel({
                           isAr={isAr}
                           onNotice={triggerSuccessBanner}
                           addAdminLog={addAdminLog}
+                          onPacket={logPacket}
                         />
                       )}
                       </div>

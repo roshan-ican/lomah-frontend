@@ -9,6 +9,7 @@ import { HudToolbar } from "./target-view/HudToolbar";
 import { BullseyeTarget } from "./target-view/BullseyeTarget";
 import { ShotMarker } from "./target-view/ShotMarker";
 import { ShotListHighlight } from "./target-view/ShotListHighlight";
+import { usePinchZoom } from "./target-view/usePinchZoom";
 
 // Clamp a shot to the visible edge of the CURRENT zoom, not the fixed 400-unit
 // viewBox. Zoom is a CSS `scale(zoomLevel)` on the whole board (see the
@@ -83,14 +84,23 @@ export const TargetView: React.FC<TargetViewProps> = ({
   const resetZoom = () => changeZoom(1 - zoomLevel);
 
   const svgRef = useRef<SVGSVGElement>(null);
+  const pinchAreaRef = useRef<HTMLDivElement>(null);
 
-  // "Calibration applied" dividers are display-only rows: their id is
-  // shotCount + 0.5 and no shot exists behind them. Excluded from everything
-  // calibration touches — dragged along with the group they polluted the
-  // selection, the confirm dialog's shot count, and (in the per-shot path) sent
-  // a request for shot #3.5 that could only 404.
+  /**
+   * Shots that have a real position on the face.
+   *
+   * Misses are excluded, not styled differently. A no-detection carries x=0
+   * y=0 — not "the sensor saw nothing" but literal dead centre — so plotting
+   * one draws a marker on the bullseye, and a run of them stacks the whole run
+   * there. They belong in the shot log, which is where they now appear; here
+   * they can only lie. Dropping them also keeps them out of calibration drag
+   * and out of the newest-shot highlight, both of which need a real impact.
+   */
   const calibratableShots = useMemo(
-    () => activeChannel.shots.filter((sh) => !sh.isCalibrationMarker),
+    () =>
+      activeChannel.shots.filter(
+        (sh) => !sh.isCalibrationMarker && !sh.isMiss && !sh.isLost,
+      ),
     [activeChannel.shots],
   );
 
@@ -149,6 +159,16 @@ export const TargetView: React.FC<TargetViewProps> = ({
     svgRef,
   });
 
+  // Two-finger pinch (and trackpad ctrl+wheel) zoom. Disabled during a bulk
+  // calibration drag, where a second finger on the board means "drag with two
+  // fingers", not "zoom", and where hijacking the gesture would move shots.
+  usePinchZoom({
+    targetRef: pinchAreaRef,
+    zoomLevel,
+    changeZoom,
+    enabled: !isBulkCalibrate,
+  });
+
   // PICK calibration: when the admin taps a shot in the log (which sets the
   // shared selectedShotId), mirror it onto the drag candidate set so the
   // chosen bullet is highlighted on the board and ready to drag — no need to
@@ -160,7 +180,12 @@ export const TargetView: React.FC<TargetViewProps> = ({
   }, [calibrateMode, selectedShotId, setSelectedShotIds]);
 
   const canFire = !readOnly && !!handleTargetClick && !isBulkCalibrate;
-  const canSelectShots = !readOnly || isBulkCalibrate;
+  // Selecting a shot only highlights it — it mutates nothing on the server and
+  // nothing on the board. `readOnly` gates FIRING (see canFire above, which
+  // checks it independently), so tying selection to it as well was what made
+  // the admin lane board — which is always readOnly — refuse taps on bullets
+  // and force the shot log to be the only way in.
+  const canSelectShots = true;
   const newestShotId =
     calibratableShots.length > 0
       ? Math.max(...calibratableShots.map((s) => s.id))
@@ -210,6 +235,12 @@ export const TargetView: React.FC<TargetViewProps> = ({
       )}
 
       <div
+        ref={pinchAreaRef}
+        // pinch-zoom must be off at the CSS level too: touch-action is what
+        // decides whether the browser consumes a two-finger gesture as its own
+        // page zoom before any JS handler is consulted, and preventDefault()
+        // in the listener cannot claw it back once that happens.
+        style={{ touchAction: isBulkCalibrate ? undefined : "pan-x pan-y" }}
         className={`relative flex items-center justify-center ${
           hasOffScreenShots
             ? "overflow-hidden"

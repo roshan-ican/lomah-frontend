@@ -1,4 +1,5 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { io, type Socket } from "socket.io-client";
 import { motion } from "motion/react";
 import { Target, ShieldAlert, Wifi, CheckCircle2, Loader2 } from "lucide-react";
 import { LanguageSwitcher } from "./common/LanguageSwitcher";
@@ -24,6 +25,10 @@ export function ShooterWait() {
   const [error, setError] = useState("");
   const [adminHost, setAdminHost] = useState("");
   const [adminPort, setAdminPort] = useState(DEFAULT_ADMIN_PORT);
+  // Server-minted identity for this device, echoed back when joining the
+  // socket's device room. The device cannot derive this itself — for a tablet
+  // that sends no deviceId the key is its IP, which it has no way to see.
+  const [deviceKey, setDeviceKey] = useState<string | null>(null);
   const [manualIp, setManualIp] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -78,6 +83,8 @@ export function ShooterWait() {
           // leaving a correctly-bound device sitting on this screen.
           const body = await connectRes.json();
           const laneId = body?.data?.laneId ?? body?.laneId;
+          const key = body?.data?.key ?? body?.key;
+          if (key) setDeviceKey(String(key));
           if (laneId) {
             window.location.href = `http://${cleanHost}:${port}/station/${laneId}`;
             return;
@@ -101,28 +108,95 @@ export function ShooterWait() {
   // the lane-bindings panel and assigns it, and this poll picks up the lane on
   // its next tick and moves the device on. Without re-reading the response the
   // shooter would have to restart the app after every new binding.
+  //
+  // This is now the FALLBACK path, not the primary one: the socket effect below
+  // pushes an assignment the instant the admin makes it. The poll stays because
+  // a push is a live broadcast with no queue behind it — if the socket is
+  // reconnecting, blocked, or the assignment landed in the gap before this
+  // device joined its room, the poll is what still gets the tablet onto its
+  // lane. It runs slowly for that reason: it is a safety net, not the mechanism.
   useEffect(() => {
     if (status !== "connected" || !adminHost) return;
-    const interval = setInterval(() => {
-      void (async () => {
-        try {
-          const res = await fetch(
-            `http://${adminHost}:${adminPort}/api/auth/connect`,
-            { method: "POST", signal: AbortSignal.timeout(3000) },
-          );
-          if (!res.ok) return;
-          const body = await res.json();
-          const laneId = body?.data?.laneId ?? body?.laneId;
-          if (laneId) {
-            window.location.href = `http://${adminHost}:${adminPort}/station/${laneId}`;
-          }
-        } catch {
-          /* transient — the next tick retries */
+    // The 3s request timeout is longer than the 2s tick, so a slow or stalled
+    // response would otherwise let ticks stack up into a growing pile of
+    // concurrent requests against an unreachable admin — exactly when the
+    // network can least afford it. One poll in flight at a time; a tick that
+    // arrives while the previous is still running is simply skipped.
+    let inFlight = false;
+    const poll = async () => {
+      if (inFlight) return;
+      inFlight = true;
+      try {
+        const res = await fetch(
+          `http://${adminHost}:${adminPort}/api/auth/connect`,
+          { method: "POST", signal: AbortSignal.timeout(3000) },
+        );
+        if (!res.ok) return;
+        const body = await res.json();
+        const laneId = body?.data?.laneId ?? body?.laneId;
+        if (laneId) {
+          window.location.href = `http://${adminHost}:${adminPort}/station/${laneId}`;
         }
-      })();
-    }, 10000);
+      } catch {
+        /* transient — the next tick retries */
+      } finally {
+        inFlight = false;
+      }
+    };
+    // Fire once immediately: the effect runs the moment the device reaches
+    // "connected", and waiting a full tick to ask for the first time adds
+    // latency to the common case where the admin assigned the lane before the
+    // tablet ever finished connecting.
+    void poll();
+    const interval = setInterval(() => void poll(), 8000);
     return () => clearInterval(interval);
   }, [status, adminHost, adminPort]);
+
+  // Live assignment push. The tablet joins a room keyed by the identity the
+  // server handed it at /auth/connect, and the gateway emits into that room the
+  // moment an admin binds it to a lane — so the handoff is immediate instead of
+  // waiting on the poll above.
+  //
+  // No auth token: shooter tablets have no credentials by design, and
+  // handleConnection admits anonymous sockets precisely so they can be reached
+  // this way. An anonymous socket can never join the admin room.
+  const socketRef = useRef<Socket | null>(null);
+  useEffect(() => {
+    if (status !== "connected" || !adminHost || !deviceKey) return;
+
+    const socket = io(`http://${adminHost}:${adminPort}`, {
+      // Assignment is a one-shot handoff, so a slow upgrade dance is wasted
+      // time — go straight to the transport that carries the push.
+      transports: ["websocket", "polling"],
+    });
+    socketRef.current = socket;
+
+    const join = () => {
+      socket.emit("join-device", { key: deviceKey }, (ack?: { ok: boolean; error?: string }) => {
+        if (ack && !ack.ok) {
+          console.warn(`[WebSocket] join-device refused: ${ack.error}`);
+        }
+      });
+    };
+    // Re-join on every connect, not just the first: rooms live on the server
+    // side of a single connection and are gone after a reconnect.
+    socket.on("connect", join);
+
+    socket.on("device:assigned", (event: { key?: string; laneId?: number | null }) => {
+      // The room already scopes this, but a device that rejoined under a new
+      // key could briefly still be in the old room — only act on our own.
+      if (event?.key && event.key !== deviceKey) return;
+      if (event?.laneId != null) {
+        window.location.href = `http://${adminHost}:${adminPort}/station/${event.laneId}`;
+      }
+    });
+
+    return () => {
+      socket.off("connect", join);
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, [status, adminHost, adminPort, deviceKey]);
 
   const resolveAdminEndpoint =
     useCallback(async (): Promise<AdminEndpoint | null> => {

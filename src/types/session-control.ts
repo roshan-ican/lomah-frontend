@@ -32,7 +32,10 @@ export interface SessionControlPanelProps {
     channel: ActiveShooterChannel | undefined;
     channels: ActiveShooterChannel[];
     setSelectedChannelId: (id: string) => void;
-    onCreateSession: (config: SessionConfig) => void;
+    /** Resolves TRUE only when the server accepted and stored the plan.
+     *  The panel gates closing the edit form on this — a `void` return let a
+     *  rejected save look identical to a successful one. */
+    onCreateSession: (config: SessionConfig) => Promise<boolean>;
     onPauseSession: () => void;
     onResumeSession: () => void;
     onEndSession: () => void;

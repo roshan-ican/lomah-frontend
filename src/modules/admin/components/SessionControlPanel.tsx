@@ -11,7 +11,9 @@ import {
   SkipForward,
   Plus,
   Trash2,
+  GripVertical,
 } from "lucide-react";
+import { Reorder, useDragControls } from "motion/react";
 import type { ActiveShooterChannel } from "../../../types";
 import type { Session } from "../../../types";
 import { formatLaneLabel, laneNeedsReview } from "../../../utils/laneSession";
@@ -117,6 +119,197 @@ function findShooterPendingReviewLane(
  *  has announced itself, not a person with an account. */
 type ConnectedShooter = import("../../../types").ConnectedShooter;
 
+/**
+ * One row of the firing plan while it is being edited.
+ *
+ * Draggable via the grip handle (Reorder.Item + useDragControls). The drag
+ * handle is a separate element so interacting with the number/select inputs
+ * never starts a drag, and `dragListener={false}` keeps the card's text from
+ * being hijacked by pointer gestures. Defined at MODULE scope (not nested in
+ * SessionControlPanel) so its component identity is stable — a nested
+ * definition would remount on every render and drop focus from the inputs.
+ */
+const StageCard: React.FC<{
+  stage: StageDraft;
+  index: number;
+  isAr: boolean;
+  language: "en" | "ar";
+  targetById: Map<string, Target>;
+  canRemove: boolean;
+  onPatch: (index: number, patch: Partial<StageDraft>) => void;
+  onRemove: (index: number) => void;
+}> = ({
+  stage,
+  index,
+  isAr,
+  language,
+  targetById,
+  canRemove,
+  onPatch,
+  onRemove,
+}) => {
+  const dragControls = useDragControls();
+  const tgt = targetById.get(stage.targetId);
+
+  return (
+    <Reorder.Item
+      as="div"
+      value={stage}
+      dragListener={false}
+      dragControls={dragControls}
+      className="p-2.5 rounded-lg border border-hud space-y-2"
+    >
+      <div className="flex items-center justify-between gap-2">
+        {/* min-w-0 + truncate: on narrow panes the title shrinks instead of
+            pushing the action buttons past the rail's overflow clip, which
+            would leave the drag handle off-screen on small viewports. */}
+        <div className="min-w-0 truncate admin-text-2xs font-mono font-bold uppercase tracking-wider hud-accent">
+          {isAr ? `المرحلة ${index + 1}` : `Stage ${index + 1}`}
+          {tgt ? (
+            <span className="hud-text-muted font-normal normal-case tracking-normal ms-2">
+              {targetProfileLabel(tgt.profileType, language)}
+            </span>
+          ) : null}
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            type="button"
+            onPointerDown={(e) => dragControls.start(e)}
+            title={isAr ? "اسحب لإعادة الترتيب" : "Drag to reorder"}
+            aria-label={isAr ? "إعادة ترتيب المرحلة" : "Reorder stage"}
+            className="p-1.5 rounded cursor-grab active:cursor-grabbing touch-none bg-hud-elevated border border-hud hud-text-secondary hover:text-hud-accent hover:border-hud-strong transition-colors"
+          >
+            <GripVertical className="w-4 h-4" />
+          </button>
+          {canRemove && (
+            <button
+              type="button"
+              onClick={() => onRemove(index)}
+              title={isAr ? "حذف المرحلة" : "Remove stage"}
+              className="p-1.5 rounded hud-danger hover:bg-[var(--hud-danger-bg)] cursor-pointer transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* The face beside the target, so a stage aimed at the
+          wrong scoring rings is caught before the relay runs
+          rather than after it is scored. The target itself is
+          fixed by the SUPER_ADMIN's lane configuration — the
+          admin sequences how many stages to run, not which
+          target each one engages. */}
+      <div className="flex items-center gap-2">
+        {tgt && (
+          <TargetFacePreview
+            profileType={tgt.profileType}
+            size={52}
+            title={`${slotCode(tgt.laneId, tgt.positionIndex)} · ${tgt.distanceM}m`}
+            className="hud-text-subtle"
+          />
+        )}
+        <div className="flex-1 min-w-0 px-2.5 py-2 rounded-lg border border-hud bg-hud-elevated">
+          {tgt ? (
+            <>
+              <span className="admin-text-xs font-mono font-bold hud-accent uppercase tracking-wider">
+                {slotCode(tgt.laneId, tgt.positionIndex)} ·{" "}
+                {tgt.distanceM}m
+              </span>
+              <span className="admin-text-2xs font-mono hud-text-muted block truncate">
+                {tgt.label} ·{" "}
+                {targetProfileLabel(tgt.profileType, language)}
+              </span>
+            </>
+          ) : (
+            <span className="admin-text-2xs font-mono hud-warning">
+              {isAr ? "هدف غير متاح" : "Target unavailable"}
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="block hud-text-subtle mb-1 font-mono uppercase admin-text-2xs">
+            {isAr ? "عدد الطلقات" : "Bullets"}
+          </label>
+          <div className="flex items-center gap-1.5">
+            <input
+              type="number"
+              min={0}
+              max={999}
+              value={stage.bulletLimit}
+              onChange={(e) =>
+                onPatch(index, {
+                  bulletLimit: Math.max(
+                    0,
+                    Math.min(999, Number(e.target.value)),
+                  ),
+                })
+              }
+              className="w-16 px-1.5 py-1.5 border rounded text-center hud-form-input"
+            />
+            {/* 0 is not a magic sentinel the admin has to know:
+                it is spelled out right next to the field. */}
+            <span className="admin-text-2xs hud-text-muted italic leading-tight">
+              {stage.bulletLimit > 0
+                ? isAr
+                  ? "تنتهي المرحلة عند بلوغه"
+                  : "stage ends at this count"
+                : isAr
+                  ? "0 = غير محدود"
+                  : "0 = unlimited"}
+            </span>
+          </div>
+        </div>
+        <div>
+          <label className="block hud-text-subtle mb-1 font-mono uppercase admin-text-2xs">
+            {isAr ? "المدة" : "Time"}
+          </label>
+          <select
+            value={stage.durationSeconds}
+            onChange={(e) =>
+              onPatch(index, { durationSeconds: Number(e.target.value) })
+            }
+            title={
+              stage.durationSeconds === 0
+                ? isAr
+                  ? "بلا مؤقّت — تنتهي المرحلة عند انتقالك أو ببلوغ عدد الطلقات"
+                  : "No timer — the stage ends when you advance it, or at the bullet count"
+                : undefined
+            }
+            className="w-full px-2 py-1.5 rounded admin-text-2xs font-mono border hud-form-input cursor-pointer"
+          >
+            {DURATION_PRESETS.map((p) => (
+              <option key={p.seconds} value={p.seconds}>
+                {isAr ? p.labelAr : p.labelEn}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Says out loud what will actually end this stage. The
+          three combinations behave differently and none of it
+          is visible from the controls alone. */}
+      <p className="admin-text-2xs font-mono hud-text-subtle leading-snug">
+        {stage.bulletLimit > 0
+          ? isAr
+            ? `تنتهي تلقائياً بعد ${stage.bulletLimit} طلقة${stage.durationSeconds > 0 ? " أو بانتهاء الوقت" : ""} — ثم تبدأ المرحلة التالية.`
+            : `Ends itself after ${stage.bulletLimit} round${stage.bulletLimit === 1 ? "" : "s"}${stage.durationSeconds > 0 ? " (or when time runs out)" : ""}, then arms the next stage.`
+          : stage.durationSeconds > 0
+            ? isAr
+              ? "تنتهي بانتهاء الوقت — ثم تبدأ المرحلة التالية."
+              : "Ends when the clock runs out, then arms the next stage."
+            : isAr
+              ? "تعمل حتى تضغط «المرحلة التالية»."
+              : "Runs until you press Next Stage."}
+      </p>
+    </Reorder.Item>
+  );
+};
+
 export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
   channel: channelProp,
   channels: channelsProp,
@@ -167,6 +360,10 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
   const [stages, setStages] = useState<StageDraft[]>([]);
   const [notes, setNotes] = useState("");
   const [isEditing, setIsEditing] = useState(false);
+  /** In-flight guard for the create/save request. The submit buttons were
+   *  freely re-clickable while a POST was outstanding, and each click created
+   *  another session on the lane. */
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [connectedShooters, setConnectedShooters] = useState<
     ConnectedShooter[]
   >([]);
@@ -227,17 +424,19 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
       prev.map((s, i) => (i === index ? { ...s, ...patch } : s)),
     );
 
-  /** Default a new stage to the next target down the lane, which is the order
-   *  a multi-distance drill is almost always built in. Targets are fixed by the
-   *  SUPER_ADMIN's lane configuration: stage i targets the lane's i-th
-   *  commissioned target, and there is no dropdown — the admin sequences how
-   *  many stages to run, not which target each one engages. */
+  /** Default a new stage to the first commissioned target NOT already in the
+   *  plan. Originally this picked `laneTargets[prev.length]` — which is only
+   *  valid while the plan stays in lane order. Once the admin drags stages
+   *  around, position and target drift apart, so look up by "not used yet"
+   *  instead: the plan still has one stage per commissioned target, just in
+   *  whatever order the admin arranged. */
   const addStage = () =>
     setStages((prev) => {
       if (laneTargets.length === 0) return prev;
+      const used = new Set(prev.map((s) => s.targetId));
+      const next = laneTargets.find((t) => !used.has(t.id));
       // Can only build one stage per commissioned target.
-      if (prev.length >= laneTargets.length) return prev;
-      const next = laneTargets[prev.length];
+      if (!next) return prev;
       return [...prev, makeStage(next.id)];
     });
 
@@ -298,6 +497,12 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
         .get<Session>(`/sessions/${sessionId}`)
         .then((session) => {
           if (seededSessionIdRef.current !== sessionId) return;
+          // Notes come off the SERVER's copy, not the lane grid's. Now that
+          // they are actually persisted, an admin console that never issued
+          // the create (a second device, or this one after a reload) has no
+          // other source for them — and re-saving a plan whose notes field had
+          // been seeded blank would have wiped the stored text.
+          if (session?.notes != null) setNotes(session.notes);
           if (!session?.stages?.length) return;
           const ordered = [...session.stages].sort(
             (a, b) => a.order - b.order,
@@ -356,13 +561,28 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
   const planIsValid =
     stages.length > 0 && stages.every((s) => targetById.has(s.targetId));
 
-  const submitPlan = () =>
-    onCreateSession({
-      shooterName,
-      stages: stages.map(toStagePlan),
-      notes,
-      distance: planDistance,
-    });
+  /**
+   * Submit the plan and report whether the SERVER took it.
+   *
+   * onCreateSession resolves to false on any rejection — a lane that already
+   * has a running session, a target that moved to another lane, an expired
+   * token, the backend being unreachable. Callers must gate on the result;
+   * nothing here may assume success.
+   */
+  const submitPlan = async (): Promise<boolean> => {
+    if (isSubmitting) return false;
+    setIsSubmitting(true);
+    try {
+      return await onCreateSession({
+        shooterName,
+        stages: stages.map(toStagePlan),
+        notes,
+        distance: planDistance,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // ── SETUP PANEL: no session yet OR editing session ──────────────────────────
   if (status === "NONE" || !status || isEditing) {
@@ -489,157 +709,25 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
                 </p>
               </div>
             ) : (
-              <div className="space-y-2">
-                {stages.map((stage, index) => {
-                  const tgt = targetById.get(stage.targetId);
-                  return (
-                    <div
-                      key={stage.key}
-                      className="p-2.5 rounded-lg border border-hud space-y-2"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="admin-text-2xs font-mono font-bold uppercase tracking-wider hud-accent">
-                          {isAr
-                            ? `المرحلة ${index + 1}`
-                            : `Stage ${index + 1}`}
-                          {tgt ? (
-                            <span className="hud-text-muted font-normal normal-case tracking-normal ms-2">
-                              {targetProfileLabel(tgt.profileType, language)}
-                            </span>
-                          ) : null}
-                        </span>
-                        <div className="flex items-center gap-1 shrink-0">
-                            {stages.length > 1 && (
-                              <button
-                                type="button"
-                                onClick={() => removeStage(index)}
-                                title={isAr ? "حذف المرحلة" : "Remove stage"}
-                                className="p-1 rounded hud-danger hover:bg-[var(--hud-danger-bg)] cursor-pointer transition-colors"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </button>
-                            )}
-                        </div>
-                      </div>
-
-                      {/* The face beside the target, so a stage aimed at the
-                          wrong scoring rings is caught before the relay runs
-                          rather than after it is scored. The target itself is
-                          fixed by the SUPER_ADMIN's lane configuration — no
-                          dropdown: stage i engages the lane's i-th target. */}
-                      <div className="flex items-center gap-2">
-                        {tgt && (
-                          <TargetFacePreview
-                            profileType={tgt.profileType}
-                            size={52}
-                            title={`${slotCode(tgt.laneId, tgt.positionIndex)} · ${tgt.distanceM}m`}
-                            className="hud-text-subtle"
-                          />
-                        )}
-                        <div className="flex-1 min-w-0 px-2.5 py-2 rounded-lg border border-hud bg-hud-elevated">
-                          {tgt ? (
-                            <>
-                              <span className="admin-text-xs font-mono font-bold hud-accent uppercase tracking-wider">
-                                {slotCode(tgt.laneId, tgt.positionIndex)} ·{" "}
-                                {tgt.distanceM}m
-                              </span>
-                              <span className="admin-text-2xs font-mono hud-text-muted block truncate">
-                                {tgt.label} ·{" "}
-                                {targetProfileLabel(tgt.profileType, language)}
-                              </span>
-                            </>
-                          ) : (
-                            <span className="admin-text-2xs font-mono hud-warning">
-                              {isAr
-                                ? "هدف غير متاح"
-                                : "Target unavailable"}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="block hud-text-subtle mb-1 font-mono uppercase admin-text-2xs">
-                            {isAr ? "عدد الطلقات" : "Bullets"}
-                          </label>
-                          <div className="flex items-center gap-1.5">
-<input
-                type="number"
-                min={0}
-                max={999}
-                value={stage.bulletLimit}
-                onChange={(e) =>
-                  patchStage(index, {
-                    bulletLimit: Math.max(
-                      0,
-                      Math.min(999, Number(e.target.value)),
-                    ),
-                  })
-                }
-                className="w-16 px-1.5 py-1.5 border rounded text-center hud-form-input"
-              />
-                            {/* 0 is not a magic sentinel the admin has to know:
-                                it is spelled out right next to the field. */}
-                            <span className="admin-text-2xs hud-text-muted italic leading-tight">
-                              {stage.bulletLimit > 0
-                                ? isAr
-                                  ? "تنتهي المرحلة عند بلوغه"
-                                  : "stage ends at this count"
-                                : isAr
-                                  ? "0 = غير محدود"
-                                  : "0 = unlimited"}
-                            </span>
-                          </div>
-                        </div>
-                        <div>
-                          <label className="block hud-text-subtle mb-1 font-mono uppercase admin-text-2xs">
-                            {isAr ? "المدة" : "Time"}
-                          </label>
-                          <select
-                            value={stage.durationSeconds}
-                            onChange={(e) =>
-                              patchStage(index, {
-                                durationSeconds: Number(e.target.value),
-                              })
-                            }
-                            title={
-                              stage.durationSeconds === 0
-                                ? isAr
-                                  ? "بلا مؤقّت — تنتهي المرحلة عند انتقالك أو ببلوغ عدد الطلقات"
-                                  : "No timer — the stage ends when you advance it, or at the bullet count"
-                                : undefined
-                            }
-                            className="w-full px-2 py-1.5 rounded admin-text-2xs font-mono border hud-form-input cursor-pointer"
-                          >
-                            {DURATION_PRESETS.map((p) => (
-                              <option key={p.seconds} value={p.seconds}>
-                                {isAr ? p.labelAr : p.labelEn}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-
-                      {/* Says out loud what will actually end this stage. The
-                          three combinations behave differently and none of it
-                          is visible from the controls alone. */}
-                      <p className="admin-text-2xs font-mono hud-text-subtle leading-snug">
-                        {stage.bulletLimit > 0
-                          ? isAr
-                            ? `تنتهي تلقائياً بعد ${stage.bulletLimit} طلقة${stage.durationSeconds > 0 ? " أو بانتهاء الوقت" : ""} — ثم تبدأ المرحلة التالية.`
-                            : `Ends itself after ${stage.bulletLimit} round${stage.bulletLimit === 1 ? "" : "s"}${stage.durationSeconds > 0 ? " (or when time runs out)" : ""}, then arms the next stage.`
-                          : stage.durationSeconds > 0
-                            ? isAr
-                              ? "تنتهي بانتهاء الوقت — ثم تبدأ المرحلة التالية."
-                              : "Ends when the clock runs out, then arms the next stage."
-                            : isAr
-                              ? "تعمل حتى تضغط «المرحلة التالية»."
-                              : "Runs until you press Next Stage."}
-                      </p>
-                    </div>
-                  );
-                })}
+              <Reorder.Group
+                axis="y"
+                values={stages}
+                onReorder={setStages}
+                className="space-y-2"
+              >
+                {stages.map((stage, index) => (
+                  <StageCard
+                    key={stage.key}
+                    stage={stage}
+                    index={index}
+                    isAr={isAr}
+                    language={language}
+                    targetById={targetById}
+                    canRemove={stages.length > 1}
+                    onPatch={patchStage}
+                    onRemove={removeStage}
+                  />
+                ))}
 
                 <button
                   type="button"
@@ -653,7 +741,7 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
                   <Plus className="w-3 h-3 shrink-0" />
                   {isAr ? "إضافة مرحلة" : "Add another stage"}
                 </button>
-              </div>
+              </Reorder.Group>
             )}
           </div>
 
@@ -691,27 +779,54 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  submitPlan();
-                  setIsEditing(false);
+                onClick={async () => {
+                  // Close ONLY on a confirmed write.
+                  //
+                  // This used to be `submitPlan(); setIsEditing(false);` — a
+                  // floating promise followed by an unconditional close. The
+                  // panel collapsed and the grid showed the edited plan even
+                  // when the request was refused, so "saved" and "silently
+                  // discarded" looked identical until the next reload put the
+                  // old plan back. Staying open on failure keeps the operator's
+                  // work on screen next to the banner explaining why.
+                  const saved = await submitPlan();
+                  if (saved) setIsEditing(false);
                 }}
                 disabled={
-                  !shooterName.trim() || !planIsValid || !!shooterPendingLane
+                  isSubmitting ||
+                  !shooterName.trim() ||
+                  !planIsValid ||
+                  !!shooterPendingLane
                 }
                 className={`flex-1 admin-text-xs ${btnPrimary}`}
               >
-                {isAr ? "حفظ التعديل" : "Save Changes"}
+                {isSubmitting
+                  ? isAr
+                    ? "جارٍ الحفظ…"
+                    : "Saving…"
+                  : isAr
+                    ? "حفظ التعديل"
+                    : "Save Changes"}
               </button>
             </div>
           ) : (
             <button
-              onClick={submitPlan}
+              onClick={() => void submitPlan()}
               disabled={
-                !shooterName.trim() || !planIsValid || !!shooterPendingLane
+                isSubmitting ||
+                !shooterName.trim() ||
+                !planIsValid ||
+                !!shooterPendingLane
               }
               className={`w-full mt-2 ${btnPrimary}`}
             >
-              {isAr ? "تهيئة وتعيين الجلسة" : "Create Session"}
+              {isSubmitting
+                ? isAr
+                  ? "جارٍ التهيئة…"
+                  : "Configuring…"
+                : isAr
+                  ? "تهيئة وتعيين الجلسة"
+                  : "Create Session"}
             </button>
           )}
         </div>

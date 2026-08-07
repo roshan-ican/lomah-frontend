@@ -20,7 +20,13 @@ export interface DisplayShot {
   y: number;
   zone: "Chest" | "Body" | "Shoulder" | "Head" | "Off-Target";
   timestamp: string;
+  /** Sensor fired, resolved nothing. Kept in the list so the shooter sees the
+   *  round they fired, but never plotted — x/y are zero, not a centre hit. */
   isMiss?: boolean;
+  /** The stronger case: the frame never reached the server at all. Implies
+   *  isMiss. Shown differently because a MISS run means check the board's
+   *  sensor and a LOST run means check the wifi link. */
+  isLost?: boolean;
   isCalibrationMarker?: boolean;
   /** Which board reported this shot. Carried per-shot rather than read off the
    *  lane's current target because a session spans stages, each against a

@@ -1,4 +1,4 @@
-import { TOUCH_HIT_RADIUS } from "./constants";
+import { TOUCH_HIT_RADIUS, TAP_HIT_RADIUS } from "./constants";
 import type { ShotDragHandlers } from "./useBulkCalibrationDrag";
 
 interface ShotMarkerProps {
@@ -93,14 +93,14 @@ export function ShotMarker({
               }
         }
       >
-        {canDragCalibrate && !isMiss && (
+        {canSelectShots && !isMiss && (
           <circle
             cx={cx}
-            cy={cy}  
-            r={TOUCH_HIT_RADIUS}
+            cy={cy}
+            r={canDragCalibrate ? TOUCH_HIT_RADIUS : TAP_HIT_RADIUS}
             fill="transparent"
             pointerEvents="all"
-            style={{ touchAction: "none" }}
+            style={canDragCalibrate ? { touchAction: "none" } : undefined}
           />
         )}
         {canDragCalibrate && isBulkSelected && !isMiss && (

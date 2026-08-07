@@ -125,6 +125,7 @@ export function mapRawShotToDisplay(
     x: number;
     y: number;
     isMiss?: boolean;
+    isLost?: boolean;
     timestamp?: string | Date;
     targetId?: string;
   },
@@ -137,12 +138,17 @@ export function mapRawShotToDisplay(
 
   const xVal = Number.isFinite(rawShot.x) ? rawShot.x : 0;
   const yVal = Number.isFinite(rawShot.y) ? rawShot.y : 0;
-  const isMiss = inferIsMiss(rawShot.x, rawShot.y, rawShot.isMiss);
+  // A lost bullet is a miss by definition — the server writes it that way, but
+  // an older payload that predates isLost will not, so it is forced here rather
+  // than trusted from the wire.
+  const isLost = rawShot.isLost === true;
+  const isMiss = isLost || inferIsMiss(rawShot.x, rawShot.y, rawShot.isMiss);
   const id = resolveShotNumber(rawShot, fallbackNumber);
 
   return {
     id,
     targetId: rawShot.targetId,
+    isLost,
     score: isMiss
       ? 0
       : (serverScore ?? scoreFromOffset(xVal, yVal, profileType)),

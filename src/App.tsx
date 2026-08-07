@@ -7,7 +7,7 @@ import {
   useNavigate,
   useLocation,
 } from "react-router-dom";
-import { Check } from "lucide-react";
+import { AlertTriangle, Check } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { ConfirmDialog } from "./components/common/ConfirmDialog";
 import type { CalibrateMode } from "./types";
@@ -60,8 +60,13 @@ function App() {
   const isAr = language === "ar";
   const t: TranslationSet = translations[language];
 
-  const { showSuccessBanner, adminLogs, triggerSuccessBanner, addAdminLog } =
-    useNotifications();
+  const {
+    banner,
+    adminLogs,
+    triggerSuccessBanner,
+    triggerErrorBanner,
+    addAdminLog,
+  } = useNotifications();
   const { waitForLaneOffsets } = useLaneOffsets();
 
   const { channels } = useSessionStore();
@@ -110,6 +115,7 @@ function App() {
   } = useSessionActions({
     isAr,
     triggerSuccessBanner,
+    triggerErrorBanner,
     addAdminLog,
     setProfileType,
   });
@@ -245,7 +251,7 @@ function App() {
       : shooterAssignedLaneId;
 
     if (laneId == null || isNaN(laneId)) {
-      triggerSuccessBanner(
+      triggerErrorBanner(
         isAr
           ? "لم يتم تعيينك لحارة بعد. انتظر المشرف."
           : "You are not assigned to a lane yet. Await range officer.",
@@ -256,7 +262,7 @@ function App() {
     const targetChannel = isAdmin ? adminActiveChannel : activeChannel;
 
     if (targetChannel.sessionStatus === "CREATED") {
-      triggerSuccessBanner(
+      triggerErrorBanner(
         isAr
           ? "تنبيه: الجلسة لم تبدأ بعد. يرجى الانتظار لتنشيط الجلسة.."
           : "Alert: Session has not started yet. Awaiting Range Officer activation.",
@@ -264,7 +270,7 @@ function App() {
       return;
     }
     if (targetChannel.sessionStatus !== "ACTIVE") {
-      triggerSuccessBanner(
+      triggerErrorBanner(
         isAr
           ? "تنبيه: الجلسة للحارة المحددة موقوفة مؤقتاً."
           : "Alert: Session for targeted lane is currently paused.",
@@ -288,7 +294,7 @@ function App() {
     try {
       await api.post(`/debug/simulate-shot`, { laneId, x: xRaw, y: yRaw });
     } catch (err) {
-      triggerSuccessBanner(
+      triggerErrorBanner(
         isAr
           ? "فشل إرسال الطلقة."
           : `Simulated shot failed: ${(err as Error).message}`,
@@ -304,15 +310,29 @@ function App() {
       className={`min-h-screen flex flex-col font-sans transition-colors duration-200 ${isDarkMode ? "bg-[#0f1115] text-[#e2e2e6] selection:bg-emerald-500/20" : "bg-[#eef2f5] text-[#1e2023]"}`}
     >
       <AnimatePresence>
-        {showSuccessBanner && (
+        {banner && (
           <motion.div
+            key={banner.tone}
+            role={banner.tone === "error" ? "alert" : "status"}
             initial={{ opacity: 0, y: -45, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -25, scale: 0.95 }}
-            className="fixed top-5 left-1/2 -translate-x-1/2 z-[9999] px-5 py-3 rounded-xl border shadow-xl bg-[#1C1F26] border-emerald-500/30 text-emerald-400 font-mono admin-text-sm font-bold flex items-center gap-2.5"
+            className={`fixed top-5 left-1/2 -translate-x-1/2 z-[9999] max-w-[min(90vw,44rem)] px-5 py-3 rounded-xl border shadow-xl bg-[#1C1F26] font-mono admin-text-sm font-bold flex items-start gap-2.5 ${
+              banner.tone === "error"
+                ? "border-red-500/40 text-red-400"
+                : "border-emerald-500/30 text-emerald-400"
+            }`}
           >
-            <Check className="w-4 h-4 text-emerald-400 animate-bounce" />
-            <span>{showSuccessBanner}</span>
+            {banner.tone === "error" ? (
+              <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+            ) : (
+              <Check className="w-4 h-4 text-emerald-400 animate-bounce shrink-0 mt-0.5" />
+            )}
+            {/* Server rejections are full sentences naming the lane and the
+                blocking session — they must wrap, not be clipped to one line. */}
+            <span className="whitespace-pre-wrap break-words">
+              {banner.message}
+            </span>
           </motion.div>
         )}
       </AnimatePresence>
@@ -445,6 +465,7 @@ function App() {
                   language={language}
                   setLanguage={setLanguage}
                   triggerSuccessBanner={triggerSuccessBanner}
+                  triggerErrorBanner={triggerErrorBanner}
                   addAdminLog={addAdminLog}
                   handleLogout={handleLogout}
                   adminLogs={adminLogs}
@@ -471,6 +492,7 @@ function App() {
                   setLanguage={setLanguage}
                   adminLogs={adminLogs}
                   triggerSuccessBanner={triggerSuccessBanner}
+                  triggerErrorBanner={triggerErrorBanner}
                   handleLogout={handleLogout}
                   zoomLevel={zoomLevel}
                   changeZoom={changeZoom}

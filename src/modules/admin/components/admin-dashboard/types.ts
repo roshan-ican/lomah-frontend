@@ -44,7 +44,8 @@ export interface AdminDashboardProps {
   selectedChannelId: string;
   setSelectedChannelId: (id: string) => void;
   handleAdminCommand: (channelId: string, cmd: AdminCommand) => void;
-  onCreateSession: (channelId: string, config: SessionConfig) => void;
+  /** Resolves true only on a confirmed server write — see SessionControlPanelProps. */
+  onCreateSession: (channelId: string, config: SessionConfig) => Promise<boolean>;
   onPauseSession: (channelId: string) => void;
   onResumeSession: (channelId: string) => void;
   onStartAllSessions: () => void;
@@ -60,6 +61,9 @@ export interface AdminDashboardProps {
   setLanguage: (lang: LanguageCode) => void;
   adminLogs: string[];
   triggerSuccessBanner: (msg: string) => void;
+  /** Failures. Rendered red with a warning icon — routing them through
+   *  triggerSuccessBanner produced a green checkmark on the word "Error". */
+  triggerErrorBanner: (msg: string) => void;
   handleLogout: () => void;
   onDiscardReadySession: (channelId: string) => void;
   zoomLevel: number;

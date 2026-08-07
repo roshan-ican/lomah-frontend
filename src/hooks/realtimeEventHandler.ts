@@ -326,7 +326,14 @@ export function handleRealtimeEvent(
         // are no coordinates to draw. The backend has already classified this
         // against the RAW values (before sign correction), which is the only
         // place the distinction survives; never re-derive it here.
-        if (data.isMiss) return prev;
+        //
+        // It is still kept. Dropping it here is what made the shot log read
+        // "4, 5, 7, 13" for a thirteen-round string: the rounds were fired and
+        // numbered, the list just refused to show them, which looks exactly
+        // like data loss to the shooter and hides the one pattern worth
+        // seeing — a run of consecutive no-detections is a board fault. What a
+        // miss must NOT do is get drawn on the target, since its x/y are zero
+        // and would land dead centre; TargetView filters it out there.
 
         if (
           authStageRef.current === "SHOOTER_BOARD" &&
@@ -341,6 +348,7 @@ export function handleRealtimeEvent(
             x: data.x,
             y: data.y,
             isMiss: data.isMiss,
+            isLost: data.isLost,
             timestamp: data.firedAt,
             // Kept per-shot so the 'D' sensor diagnostic queries the board
             // that actually saw this bullet, not whatever is armed now.
@@ -381,10 +389,16 @@ export function handleRealtimeEvent(
       });
 
       if (firstValidShotDetected) onFirstShotFired?.(laneId);
-      if (data.isMiss) break;
 
+      // A no-detection and a never-arrived bullet are different faults and the
+      // operator log should say which: a run of MISS points at the board's
+      // sensor, a run of LOST points at the link.
       addAdminLog(
-        `SHOT: ${data.targetLabel} #${data.shotNumber} (${data.score}) on Lane ${laneId}.`,
+        data.isLost
+          ? `SHOT: ${data.targetLabel} #${data.shotNumber} LOST (frame never arrived) on Lane ${laneId}.`
+          : data.isMiss
+            ? `SHOT: ${data.targetLabel} #${data.shotNumber} MISS (no detection) on Lane ${laneId}.`
+            : `SHOT: ${data.targetLabel} #${data.shotNumber} (${data.score}) on Lane ${laneId}.`,
       );
       cacheShots(chId, laneId);
 
@@ -393,6 +407,11 @@ export function handleRealtimeEvent(
       // "disconnect", so the reconnect resync never runs. stageShotCount is the
       // backend's authoritative running total for this stage at send time — if
       // this device is behind it, something never arrived.
+      //
+      // Both sides of this comparison must count the same things. stageShotCount
+      // is every row the stage holds, misses included, so the local side cannot
+      // exclude them — while misses were being dropped above, the two could
+      // never agree and a full lane refetch fired on essentially every shot.
       {
         const ch = useSessionStore
           .getState()

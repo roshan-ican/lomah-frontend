@@ -122,6 +122,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               x: number;
               y: number;
               isMiss?: boolean;
+              isLost?: boolean;
               timestamp?: string;
             },
             index: number,
@@ -132,6 +133,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 x: sh.x,
                 y: sh.y,
                 isMiss: sh.isMiss,
+                isLost: sh.isLost,
                 timestamp: sh.timestamp,
               },
               index,

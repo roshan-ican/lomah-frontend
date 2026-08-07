@@ -16,6 +16,8 @@ export interface ShotEvent {
   y: number;
   score: number;
   isMiss: boolean;
+  /** Frame never arrived — a placeholder holding the bullet's number. */
+  isLost?: boolean;
   firedAt: string;
   /** Running total for the stage, so a client reconnecting mid-stage does
    *  not start counting from zero. */

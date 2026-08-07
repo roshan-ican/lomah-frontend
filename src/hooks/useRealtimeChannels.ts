@@ -17,7 +17,7 @@ import { toVacantLane, channelFromLane } from "../store/channelMutations";
 import { useSessionStore } from "../store/sessionStore";
 import { getCachedShots } from "../db/shotCache";
 import { getCachedChannels } from "../db/channelCache";
-import type { DisplayShot } from "../types";
+import type { ActiveShooterChannel, DisplayShot } from "../types";
 import type { Lane } from "../types";
 import { io, Socket } from "socket.io-client";
 import {
@@ -63,6 +63,12 @@ export function useRealtimeChannels({
   // real server data — set true the moment syncActiveSessions()'s HTTP sync
   // actually lands. See hydrateChannelsFromCache.
   const serverSyncedRef = useRef(false);
+  // Channel ids currently showing a session that came from the IndexedDB cache
+  // rather than from the server or a live socket event. These are unconfirmed
+  // guesses, and the HTTP sync is allowed to clear them — see the vacate rule
+  // in syncActiveSessions. An id leaves the set the moment the server says
+  // anything about that lane.
+  const cachePaintedRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     selectedChannelIdRef.current = selectedChannelId;
@@ -95,12 +101,49 @@ export function useRealtimeChannels({
           const cachedCh = cached.find((c) => c.id === ch.id);
           if (!cachedCh) return ch;
           const { cachedAt: _cachedAt, ...rest } = cachedCh;
+          // Remember that this lane's session is a cached guess. Without this
+          // the HTTP sync cannot tell "session the server hasn't told us about
+          // yet" from "session the server already ended", and keeps both.
+          if (laneHasSession(rest.sessionStatus)) cachePaintedRef.current.add(ch.id);
           return { ...ch, ...rest, shots: ch.shots };
         }),
       );
     } catch (err) {
       console.warn("[Sync] hydrateChannelsFromCache failed:", err);
     }
+  };
+
+  /**
+   * Reconcile one channel against what GET /sessions just said about its lane.
+   *
+   * The server is authoritative about which sessions are open — findAll
+   * deliberately excludes COMPLETED / CANCELLED / SUPERSEDED. But "no open
+   * session, so vacate" cannot be applied unconditionally: a session created by
+   * a socket event while this request was in flight is not in the response, and
+   * wiping it would drop a live session off the grid.
+   *
+   * So local state survives a silent server EXCEPT when we know it was painted
+   * from the IndexedDB cache at mount. That state is an unconfirmed guess about
+   * a lane the server has now explicitly reported as clear, so the server wins.
+   *
+   * Keeping it unconditionally is what pinned an ended session to the lane grid
+   * across every refresh: the cache repainted the dead session, the server said
+   * the lane was clear, and this handed back the cached session anyway.
+   */
+  const reconcileChannel = (
+    ch: ActiveShooterChannel,
+    activeSession: ApiSessionSnapshot | undefined,
+  ): ActiveShooterChannel => {
+    if (activeSession) {
+      cachePaintedRef.current.delete(ch.id);
+      return applyApiSessionToChannel(ch, activeSession);
+    }
+    if (cachePaintedRef.current.has(ch.id)) {
+      cachePaintedRef.current.delete(ch.id);
+      return toVacantLane(ch);
+    }
+    if (laneHasSession(ch.sessionStatus)) return ch;
+    return toVacantLane(ch);
   };
 
   /** Reconcile the channel list against the lanes the super admin actually
@@ -135,9 +178,7 @@ export function useRealtimeChannels({
       setChannels((prev) =>
         prev.map((ch) => {
           if (ch.id !== chId) return ch;
-          if (activeSession) return applyApiSessionToChannel(ch, activeSession);
-          if (laneHasSession(ch.sessionStatus)) return ch;
-          return toVacantLane(ch);
+          return reconcileChannel(ch, activeSession);
         }),
       );
       await hydrateShotsFromCache([laneId]);
@@ -271,11 +312,7 @@ export function useRealtimeChannels({
         setChannels((prev) =>
           prev.map((ch) => {
             const laneNum = getLaneIdFromChannelId(ch.id);
-            const activeSession = findOpenSessionForLane(list, laneNum);
-            if (activeSession)
-              return applyApiSessionToChannel(ch, activeSession);
-            if (laneHasSession(ch.sessionStatus)) return ch;
-            return toVacantLane(ch);
+            return reconcileChannel(ch, findOpenSessionForLane(list, laneNum));
           }),
         );
         serverSyncedRef.current = true;

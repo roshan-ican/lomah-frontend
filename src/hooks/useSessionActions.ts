@@ -12,15 +12,20 @@
 // lane server-side and returning a confusing error.
 
 import { useState } from "react";
-import { api } from "../utils/api";
+import { api, ApiError } from "../utils/api";
 import { targetProfileFromTargetId } from "../utils/targetProfile";
 import { useSessionStore } from "../store/sessionStore";
 import { toVacantLane } from "../store/channelMutations";
+import { getLaneIdFromChannelId } from "../utils/helper";
+import { clearCachedShots } from "../db/shotCache";
 import type { Session } from "../types";
 
 interface SessionActionsDeps {
   isAr: boolean;
   triggerSuccessBanner: (msg: string) => void;
+  /** Failures get their own channel. Routing them through the success banner
+   *  is what made a rejected save render as a green checkmark. */
+  triggerErrorBanner: (msg: string) => void;
   addAdminLog: (msg: string) => void;
   setProfileType: (val: "FIGURE" | "CIRCULAR") => void;
 }
@@ -35,6 +40,7 @@ export interface StagePlan {
 export function useSessionActions({
   isAr,
   triggerSuccessBanner,
+  triggerErrorBanner,
   addAdminLog,
   setProfileType,
 }: SessionActionsDeps) {
@@ -49,7 +55,7 @@ export function useSessionActions({
   const requireSessionId = (chId: string): string | null => {
     const sessionId = channels.find((c) => c.id === chId)?.sessionId;
     if (!sessionId) {
-      triggerSuccessBanner(
+      triggerErrorBanner(
         isAr
           ? "لا توجد جلسة على هذه الحارة."
           : "No session on this lane to act on.",
@@ -59,10 +65,32 @@ export function useSessionActions({
     return sessionId;
   };
 
-  const fail = (err: unknown, fallback: string) =>
-    triggerSuccessBanner(
-      `Error: ${err instanceof Error ? err.message : fallback}`,
-    );
+  /**
+   * Show why something failed, in the operator's words where possible.
+   *
+   * `ApiError.message` is already the server's own sentence — apiFetchJson
+   * joins class-validator's array or lifts Nest's `message` string — so the
+   * lane id, the blocking session and its status all come through verbatim.
+   * `fallback` only covers the cases with no server response at all (network
+   * down, backend not running), where the raw TypeError ("Failed to fetch")
+   * says nothing useful to a range officer.
+   *
+   * Returns false so callers can `if (!ok) return;` rather than having to
+   * duplicate the try/catch.
+   */
+  const fail = (err: unknown, fallback: string): false => {
+    const detail =
+      err instanceof ApiError
+        ? err.message
+        : err instanceof Error && err.message && !/fetch/i.test(err.message)
+          ? err.message
+          : isAr
+            ? "تعذّر الوصول إلى الخادم."
+            : "Could not reach the server.";
+    triggerErrorBanner(`${fallback}: ${detail}`);
+    addAdminLog(`FAILED: ${fallback} — ${detail}`);
+    return false;
+  };
 
   const handleAdminCommand = async (
     channelId: string,
@@ -80,7 +108,7 @@ export function useSessionActions({
     if (!sessionId) return;
     const stageId = laneObj.activeStageId;
     if (!stageId) {
-      triggerSuccessBanner(
+      triggerErrorBanner(
         isAr ? "لا توجد مرحلة نشطة." : "No active stage to reset.",
       );
       return;
@@ -95,16 +123,23 @@ export function useSessionActions({
         isAr ? "تم تصفير الإطلاقات الحالية." : "Shot logs cleared.",
       );
     } catch (err) {
-      fail(err, "Failed to reset shots");
+      fail(err, isAr ? "تعذّر تصفير الإطلاقات" : "Could not clear shots");
     }
   };
 
   /**
-   * Create a session from a stage plan.
+   * Create a session from a stage plan, or replace the lane's pending one.
    *
    * `stages` fire in array order, each against its own target with its own
    * bullet count and clock — this is the multi-target capability the whole
    * rewrite exists for. A single-target relay is simply a one-stage plan.
+   *
+   * RETURNS whether the server accepted it. This is not decoration: "Edit
+   * Config" closes its panel on the strength of this boolean. It used to call
+   * this function without awaiting it and close unconditionally, so a rejected
+   * save collapsed the form and left the edited plan painted on the grid from
+   * local state alone — indistinguishable from a real save until a reload put
+   * the old plan back.
    */
   const handleCreateSession = async (
     chId: string,
@@ -114,34 +149,45 @@ export function useSessionActions({
       distance?: string;
       notes?: string;
     },
-  ) => {
+  ): Promise<boolean> => {
     const laneId = parseInt(chId.replace("CH-", ""), 10);
     const stages = config.stages ?? [];
     const first = stages[0];
     if (!first) {
-      triggerSuccessBanner(
+      triggerErrorBanner(
         isAr ? "يجب إضافة مرحلة واحدة على الأقل." : "Add at least one stage.",
       );
-      return;
+      return false;
     }
-    setProfileType(targetProfileFromTargetId(first.targetId));
 
-    // "Edit Config" lands here too, and creating is the only way to change a
-    // plan — SessionsService has no update-stages operation. Cancel the
-    // existing CREATED session first, or the lane accumulates a second live
-    // session that nothing will ever address again: every command in this file
-    // goes through the ONE session id held in channel state, so the abandoned
-    // one can be neither started nor stopped, and it keeps showing up in
-    // GET /sessions forever.
+    // "Edit Config" lands here too: creating is the only way to change a plan,
+    // since SessionsService has no update-stages operation.
+    //
+    // The swap is the SERVER's job now, not two unsequenced calls from here.
+    // This used to POST /stop and then POST /sessions, which had three ways to
+    // go wrong that all ended with the operator believing a plan was stored:
+    // the stop could fail while the create succeeded (two open sessions on one
+    // lane, only one of them addressable), the stop could succeed while the
+    // create failed (lane silently emptied and the plan lost), and the stop was
+    // skipped entirely for anything other than status CREATED, so editing a
+    // running relay forked the lane outright. `replaceExisting` hands both
+    // halves to one transaction that either applies or leaves the lane alone.
+    //
+    // "Open" here must mean exactly what the server means by it — the statuses
+    // SessionsService.findAll treats as live. A COMPLETED session awaiting
+    // review is NOT open: it no longer occupies the lane server-side, so
+    // asking to replace it would be a request about a session the guard
+    // cannot see.
     const existing = channels.find((c) => c.id === chId);
-    if (existing?.sessionId && existing.sessionStatus === "CREATED") {
-      try {
-        await api.post(`/sessions/${existing.sessionId}/stop`);
-      } catch {
-        // Non-fatal: a stale id that no longer exists server-side is exactly
-        // the state we are trying to leave behind.
-      }
-    }
+    const replaceExisting =
+      !!existing?.sessionId &&
+      (existing.sessionStatus === "CREATED" ||
+        existing.sessionStatus === "ACTIVE" ||
+        existing.sessionStatus === "PAUSED");
+
+    // Only mutate view state the request cannot roll back AFTER it succeeds.
+    // setProfileType used to run here, before the POST, so a refused save left
+    // the target board rendering the profile of a plan that was never stored.
 
     try {
       // The created session is the ONLY place its id comes from — capture it,
@@ -149,8 +195,16 @@ export function useSessionActions({
       const created = await api.post<Session>("/sessions", {
         laneId,
         shooterName: config.shooterName || undefined,
+        // Persisted server-side now (Session.notes). Sending it used to 400
+        // under `forbidNonWhitelisted`, so it was simply never sent and lived
+        // only in this browser's memory and IndexedDB — which is why notes
+        // vanished on reload and never appeared on a second admin console.
+        notes: config.notes?.trim() || undefined,
         stages,
+        replaceExisting,
       });
+
+      setProfileType(targetProfileFromTargetId(first.targetId));
 
       setChannels((prev) =>
         prev.map((ch) =>
@@ -171,7 +225,10 @@ export function useSessionActions({
                 distance: config.distance ?? ch.distance,
                 bulletLimit: first.bulletLimit,
                 durationSeconds: first.durationSeconds,
-                notes: config.notes,
+                // Echo what the SERVER stored, not what the form held. If the
+                // column ever truncates or normalises the text, the panel
+                // shows the stored value rather than a hopeful local copy.
+                notes: created.notes ?? undefined,
                 shots: [],
                 referenceShotId: undefined,
                 calibratedShotCount: undefined,
@@ -180,11 +237,32 @@ export function useSessionActions({
             : ch,
         ),
       );
-      triggerSuccessBanner(
-        isAr ? "تمت تهيئة الجلسة." : "Session configured.",
+      addAdminLog(
+        replaceExisting
+          ? `EDIT: Lane ${laneId} plan replaced (session ${created.id}).`
+          : `CREATE: Lane ${laneId} configured (session ${created.id}).`,
       );
+      triggerSuccessBanner(
+        replaceExisting
+          ? isAr
+            ? "تم حفظ التعديل."
+            : "Changes saved."
+          : isAr
+            ? "تمت تهيئة الجلسة."
+            : "Session configured.",
+      );
+      return true;
     } catch (err) {
-      fail(err, "Failed to create session");
+      return fail(
+        err,
+        replaceExisting
+          ? isAr
+            ? "لم يتم حفظ التعديل"
+            : "Changes not saved"
+          : isAr
+            ? "تعذّر إنشاء الجلسة"
+            : "Failed to create session",
+      );
     }
   };
 
@@ -200,7 +278,7 @@ export function useSessionActions({
       );
       triggerSuccessBanner(isAr ? "تم تعليق الجلسة." : "Session paused.");
     } catch (err) {
-      fail(err, "Failed to pause session");
+      fail(err, isAr ? "تعذّر تعليق الجلسة" : "Could not pause session");
     }
   };
 
@@ -243,7 +321,7 @@ export function useSessionActions({
         ch.sessionId,
     );
     if (lanesToStart.length === 0) {
-      triggerSuccessBanner(
+      triggerErrorBanner(
         isAr
           ? "لا توجد جلسات جاهزة لبدء التشغيل الجماعي."
           : "No lanes are ready for bulk start.",
@@ -290,7 +368,9 @@ export function useSessionActions({
         `START FAILED: ${r.lane} — ${"message" in r ? r.message : "unknown error"}`,
       ),
     );
-    triggerSuccessBanner(
+    // A partial bulk start is a failure report, not a confirmation — some of
+    // those lanes are not running and the operator has to know which.
+    triggerErrorBanner(
       isAr
         ? `تم تشغيل ${startedCount} حارة. فشل: ${failed.map((r) => r.lane).join(", ")}`
         : `Started ${startedCount} lane(s). Failed: ${failed.map((r) => r.lane).join(", ")}`,
@@ -302,7 +382,7 @@ export function useSessionActions({
       (ch) => ch.sessionStatus === "ACTIVE" && ch.sessionId,
     );
     if (lanesToPause.length === 0) {
-      triggerSuccessBanner(
+      triggerErrorBanner(
         isAr
           ? "لا توجد جلسات نشطة لإيقافها جماعياً."
           : "No active lanes to pause together.",
@@ -372,7 +452,7 @@ export function useSessionActions({
             : "Advanced to the next stage.",
       );
     } catch (err) {
-      fail(err, "Failed to advance stage");
+      fail(err, isAr ? "تعذّر الانتقال للمرحلة التالية" : "Could not advance stage");
     }
   };
 
@@ -386,7 +466,7 @@ export function useSessionActions({
         isAr ? "تم إنهاء الجولة بنجاح." : "Session completed.",
       );
     } catch (err) {
-      fail(err, "Failed to end session");
+      fail(err, isAr ? "تعذّر إنهاء الجلسة" : "Could not end session");
     }
   };
 
@@ -409,7 +489,7 @@ export function useSessionActions({
       );
       triggerSuccessBanner(message);
     } catch (err) {
-      fail(err, "Failed to stop session");
+      fail(err, isAr ? "تعذّر إيقاف الجلسة" : "Could not stop session");
     }
   };
 
@@ -460,13 +540,29 @@ export function useSessionActions({
           `Target acquisition: ${feedback.targetAcquisition}`,
         ].join(" | "),
       });
+      // Close the lane locally right away instead of waiting on the
+      // session:reviewed WS broadcast. Every other closing action
+      // (stopSession, pause) updates local state as soon as its API call
+      // succeeds; this one used to be the sole exception, so a missed or
+      // delayed socket event left the lane showing the reviewed session
+      // indefinitely — including across a refresh, since nothing had ever
+      // written the vacated state to the local store or its IndexedDB
+      // write-through cache. The WS event still fires and is idempotent
+      // against this (toVacantLane / clearCachedShots on an already-vacant
+      // lane is a no-op), so other admin consoles watching the same lane
+      // still update correctly.
+      void clearCachedShots(sessionId, getLaneIdFromChannelId(chId));
+      setChannels((prev) =>
+        prev.map((ch) => (ch.id === chId ? toVacantLane(ch) : ch)),
+      );
+      addAdminLog(`REVIEW: Session on Lane ${chId.replace("CH-", "")} finalized and saved.`);
       triggerSuccessBanner(
         isAr
           ? "تم حفظ التوجيهات وإنهاء الجلسة."
           : "Coach feedback saved. Lane session closed.",
       );
     } catch (err) {
-      fail(err, "Failed to save feedback");
+      fail(err, isAr ? "لم يتم حفظ التقييم" : "Feedback not saved");
     }
   };
 

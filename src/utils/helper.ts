@@ -91,6 +91,7 @@ function applyApiSessionToChannel(
             x: sh.x,
             y: sh.y,
             isMiss: sh.isMiss,
+            isLost: sh.isLost,
             timestamp: sh.firedAt,
             // Carried per-shot so the 'D' sensor diagnostic can query the
             // board that actually saw this bullet even after a reload — shots

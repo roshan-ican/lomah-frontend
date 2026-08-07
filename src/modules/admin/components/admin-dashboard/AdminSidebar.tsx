@@ -62,17 +62,18 @@ export function AdminSidebar({
       label: t.liveCommandGrid,
     },
     {
-      tab: "SESSIONS" as const,
-      icon: <Crosshair className="w-4 h-4 shrink-0" />,
-      label: isAr ? "سجل الجلسات" : "Session History",
-    },
-    {
       tab: "SHOOTERS" as const,
       icon: <Users className="w-4 h-4 shrink-0" />,
       // Roster AND lane assignment: moving people between lanes is range
       // operation, so it belongs to the admin, not the commissioning console.
       label: isAr ? "الرُماة والأجهزة" : "Shooters & Devices",
     },
+    {
+      tab: "SESSIONS" as const,
+      icon: <Crosshair className="w-4 h-4 shrink-0" />,
+      label: isAr ? "سجل الجلسات" : "Session History",
+    },
+
     {
       tab: "REPORTS" as const,
       icon: <FileSpreadsheet className="w-4 h-4 shrink-0" />,

@@ -120,7 +120,11 @@ export function StationTerminal() {
       const sessionId = activeChannelRef.current.sessionId;
       if (!sessionId) return;
 
-      const record = await api.get<Session>(`/sessions/${sessionId}`);
+      // `/sessions/:id` is ADMIN-only, and a shooter tablet carries no JWT.
+      // `/sessions/by-lane/:laneId` is the public, lane-scoped read that
+      // returns the same live-session shape without the auth requirement.
+      const record = await api.get<Session | null>(`/sessions/by-lane/${laneId}`);
+      if (!record) return;
       const stage = resolveDisplayStage(record);
       const shots = stage?.shots ?? [];
       if (!shots.length) return;
@@ -133,6 +137,7 @@ export function StationTerminal() {
             x: s.x,
             y: s.y,
             isMiss: s.isMiss,
+            isLost: s.isLost,
             timestamp: s.firedAt,
           },
           undefined,
@@ -227,12 +232,18 @@ export function StationTerminal() {
     const sessionId = activeChannelRef.current.sessionId;
     if (!sessionId) return;
     try {
-      const record = await api.get<Session>(`/sessions/${sessionId}`);
+      // Same auth reasoning as restoreShots: the protected `/sessions/:id`
+      // route 401s a token-less shooter tablet, so read the lane's live
+      // session through the public endpoint instead. Otherwise the stage
+      // plan (durationSeconds, bulletLimit) never lands and the timer falls
+      // back to its 10-minute default countdown.
+      const record = await api.get<Session | null>(`/sessions/by-lane/${laneId}`);
+      if (!record) return;
       applySessionRecord(record);
     } catch (err) {
       console.warn("[StationTerminal] Session refresh failed:", err);
     }
-  }, [applySessionRecord]);
+  }, [laneId, applySessionRecord]);
 
   /**
    * Discover an already-active session on this lane at mount/reconnect time.
@@ -464,14 +475,18 @@ export function StationTerminal() {
         // Sentinel miss — the sensor fired but resolved nothing, so there is
         // no position to draw. Already classified by the backend against the
         // raw values; never re-derived here.
-        if (data.isMiss) return;
-
+        //
+        // Kept in the list all the same: a round that was fired belongs in the
+        // shooter's log whether or not the board could locate it. Only the
+        // target plot skips it, since its x/y are zero and drawing them would
+        // put a no-detection on the bullseye.
         const newShot = mapRawShotToDisplay(
           {
             shotNumber: data.shotNumber,
             x: data.x,
             y: data.y,
             isMiss: data.isMiss,
+            isLost: data.isLost,
             timestamp: data.firedAt,
           },
           data.shotNumber,
