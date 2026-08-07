@@ -17,6 +17,7 @@ import { applyCalibratedShots } from "../store/channelMutations";
 import { targetProfileFromTargetId } from "../utils/targetProfile";
 import { clickToSensorCoords } from "../utils/shotCoordinates";
 import { api, getAuthToken, syncServerClock } from "../utils/api";
+import { stationUrl } from "../utils/shooterNavigation";
 import { ShooterDashboard } from "../modules/shooter/components/ShooterDashboard";
 import { useSessionStore } from "../store/sessionStore";
 import { useLaneOffsets } from "../hooks/useLaneOffsets";
@@ -90,6 +91,9 @@ export function StationTerminal() {
   const targetSvgRef = useRef<SVGSVGElement | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const activeChannelRef = useRef(activeChannel);
+  /** Server-minted device key, same one ShooterWait used before the redirect —
+   *  needed to join the device room so a reassignment push lands here. */
+  const deviceKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     activeChannelRef.current = activeChannel;
@@ -332,7 +336,58 @@ export function StationTerminal() {
       // replay events fired during the gap, so without this a shooter that
       // briefly lost wifi stays permanently behind on shots.
       void restoreShots();
+
+      // Learn this device's server-minted key and join its device room, so an
+      // admin reassigning this tablet to another lane pushes `device:assigned`
+      // straight here and the terminal follows without a manual reload. The
+      // response also carries the lane the server believes this device owns —
+      // if an assignment landed while we were disconnected, the mismatch is
+      // what still moves us (the same catch-up role ShooterWait's poll plays).
+      void (async () => {
+        try {
+          const identity = await api.post<{
+            key?: string;
+            laneId?: number | null;
+          }>("/auth/connect", {});
+          if (identity?.key) {
+            deviceKeyRef.current = identity.key;
+            socket.emit(
+              "join-device",
+              { key: identity.key },
+              (ack?: RoomAck) => {
+                if (ack && !ack.ok) {
+                  console.warn(
+                    `[StationTerminal] join-device refused: ${ack.error}`,
+                  );
+                }
+              },
+            );
+          }
+          if (identity?.laneId != null && identity.laneId !== laneId) {
+            window.location.href = stationUrl(identity.laneId);
+          }
+        } catch (err) {
+          console.warn("[StationTerminal] device room bind failed:", err);
+        }
+      })();
     });
+
+    socket.on(
+      "device:assigned",
+      (event: { key?: string; laneId?: number | null }) => {
+        // The room already scopes this, but a device that rejoined under a new
+        // key could briefly still be in the old room — only act on our own.
+        if (event?.key && event.key !== deviceKeyRef.current) return;
+        if (event?.laneId == null) {
+          // Released — the admin gave this device's lane away. Back to waiting.
+          window.location.href = `${window.location.origin}/station/unassigned`;
+          return;
+        }
+        if (event.laneId !== laneId) {
+          window.location.href = stationUrl(event.laneId);
+        }
+      },
+    );
 
     socket.on("unauthorized", (payload: { reason?: string }) => {
       console.error(
