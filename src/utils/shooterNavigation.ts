@@ -6,3 +6,20 @@ export function goToShooterScan(): void {
   }
   window.location.href = "/station/unassigned";
 }
+
+/** Post-assignment destination for a shooter tablet.
+ *  http(s) origin → the origin the UI is already served from (Vite dev on
+ *  :3000, or the backend's SPA on :3001 in web deployment) — jumping to a
+ *  hardcoded backend port is what used to strand a dev shooter on a stale
+ *  built screen. The Electron shooter bootstrap runs off a file:// URL, which
+ *  can't host the SPA, so that case keeps the admin backend URL. */
+export function stationUrl(
+  laneId: number,
+  adminHost: string,
+  adminPort: number,
+): string {
+  if (window.location.protocol === "file:") {
+    return `http://${adminHost}:${adminPort}/station/${laneId}`;
+  }
+  return `${window.location.origin}/station/${laneId}`;
+}

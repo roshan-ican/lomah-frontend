@@ -11,6 +11,7 @@ import {
   normalizeHost,
   probeLocalAdmin,
 } from "../utils/adminConnection";
+import { stationUrl } from "../utils/shooterNavigation";
 
 type Status =
   | "idle"
@@ -86,7 +87,7 @@ export function ShooterWait() {
           const key = body?.data?.key ?? body?.key;
           if (key) setDeviceKey(String(key));
           if (laneId) {
-            window.location.href = `http://${cleanHost}:${port}/station/${laneId}`;
+            window.location.href = stationUrl(laneId, cleanHost, port);
             return;
           }
         }
@@ -135,7 +136,7 @@ export function ShooterWait() {
         const body = await res.json();
         const laneId = body?.data?.laneId ?? body?.laneId;
         if (laneId) {
-          window.location.href = `http://${adminHost}:${adminPort}/station/${laneId}`;
+          window.location.href = stationUrl(laneId, adminHost, adminPort);
         }
       } catch {
         /* transient — the next tick retries */
@@ -187,7 +188,7 @@ export function ShooterWait() {
       // key could briefly still be in the old room — only act on our own.
       if (event?.key && event.key !== deviceKey) return;
       if (event?.laneId != null) {
-        window.location.href = `http://${adminHost}:${adminPort}/station/${event.laneId}`;
+        window.location.href = stationUrl(event.laneId, adminHost, adminPort);
       }
     });
 
