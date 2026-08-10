@@ -437,15 +437,41 @@ export function useRealtimeChannels({
     void hydrateChannelsFromCache().then(() => hydrateShotsFromCache());
 
     connectWS();
-    // Real lane count comes from the super admin's commissions, not the
-    // hardcoded store default — reconcile before sessions so the board never
-    // shows lanes that were never created (or hides ones that were).
-    void syncLanesFromApi().then(() => syncActiveSessions());
+    // Real lane count comes from the super admin's commissions — reconcile
+    // before sessions so the board never shows lanes that were never created
+    // (or hides ones that were).
+    //
+    // Only meaningful if a token already exists at mount (a reload of an
+    // already-logged-in board). On a cold login this 401s and the authStage
+    // effect below is what actually populates the grid.
+    if (getAuthToken()) {
+      void syncLanesFromApi().then(() => syncActiveSessions());
+    }
     return () => {
       socketRef.current?.disconnect();
       socketRef.current = null;
     };
   }, []);
+
+  /**
+   * Pull the lane list again once the user is actually authenticated.
+   *
+   * The mount effect above runs on `[]`, which means its syncLanesFromApi()
+   * fires before login has happened — GET /lanes 401s, the catch swallows it,
+   * and nothing retries. The result was an empty board on first load that only
+   * filled in after a refresh, when the token was already in localStorage by
+   * the time the hook mounted. The ten placeholder lanes used to hide this by
+   * rendering something regardless of what the server said.
+   *
+   * Keyed on authStage alone, so it runs on the login transition and not on
+   * every lane the operator clicks.
+   */
+  useEffect(() => {
+    if (authStage !== "ADMIN_BOARD" && authStage !== "SHOOTER_BOARD") return;
+    if (!getAuthToken()) return;
+    void syncLanesFromApi();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authStage]);
 
   useEffect(() => {
     if (authStage !== "ADMIN_BOARD") return;

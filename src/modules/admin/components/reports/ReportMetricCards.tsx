@@ -80,7 +80,7 @@ export const ReportMetricCards: React.FC<ReportMetricCardsProps> = ({
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 shrink-0">
       {cards.map(
         ({ icon: Icon, label, value, accent, loading: cardLoading }) => (
           <div

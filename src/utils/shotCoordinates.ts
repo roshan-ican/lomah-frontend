@@ -81,6 +81,29 @@ export function sortShotsNewestFirst(shots: DisplayShot[]): DisplayShot[] {
   return [...shots].sort((a, b) => b.id - a.id);
 }
 
+/**
+ * Would replacing `existing` with `incoming` lose information?
+ *
+ * The same shot number is announced more than once on purpose: the server holds
+ * a no-detection shot, asks the board to re-read it, and re-announces the row
+ * with a real position when the board answers. That direction — miss or lost
+ * becoming a located hit — must always be allowed through.
+ *
+ * The other direction must not be. A late LOST placeholder, a replayed event
+ * after a reconnect, or an out-of-order delivery would otherwise erase a bullet
+ * hole the shooter is already looking at and put a miss in its place. Position
+ * is the tiebreak because it is the thing that cannot be invented: a row with
+ * coordinates was located by the board, a row without one never was.
+ */
+export function isDowngrade(
+  existing: DisplayShot,
+  incoming: DisplayShot,
+): boolean {
+  const existingLocated = !existing.isMiss && !existing.isLost;
+  const incomingLocated = !incoming.isMiss && !incoming.isLost;
+  return existingLocated && !incomingLocated;
+}
+
 export function mergeDisplayShots(
   existing: DisplayShot[],
   incoming: DisplayShot[],

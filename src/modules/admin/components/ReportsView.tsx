@@ -262,7 +262,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       </div>
 
       {activePanel === "analytics" ? (
-        <div className="flex-1 min-h-0 flex flex-col gap-3 overflow-hidden">
+        <div className="flex-1 min-h-0 flex flex-col gap-3 overflow-y-auto">
           <ReportMetricCards
             summary={report?.summary ?? null}
             loading={loadingReport}
@@ -296,7 +296,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           </div>
         </div>
       ) : (
-        <div className="flex-1 min-h-0 overflow-hidden">
+        <div className="flex-1 min-h-0 overflow-y-auto">
           <DayTargetPanel
             shots={rangeShots}
             shooterName={selectedShooter}

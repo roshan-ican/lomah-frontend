@@ -20,6 +20,7 @@ import type { Dispatch, RefObject, SetStateAction } from "react";
 import type { WebSocketEvent } from "@shared/types/events";
 import type { AuthStage } from "../types";
 import {
+  isDowngrade,
   mapRawShotToDisplay,
   mergeDisplayShots,
 } from "../utils/shotCoordinates";
@@ -394,7 +395,17 @@ export function handleRealtimeEvent(
             );
             return { ...ch, sessionId: data.sessionId, shots: [newShot] };
           }
-          if (ch.shots.some((s) => s.id === newShot.id)) return ch;
+          // A shot number can legitimately be announced twice. The server asks
+          // the board to re-read a bullet that came back as a no-detection, or
+          // one it had already written off as lost, and when the board answers
+          // it upserts the SAME row and re-announces it — so the second event
+          // carries the position the first one lacked.
+          //
+          // This used to `return ch` on any repeat, which made that recovery
+          // invisible: the corrected shot was in the database and in the API
+          // response, but never on the screen until a refetch.
+          const existing = ch.shots.find((s) => s.id === newShot.id);
+          if (existing && isDowngrade(existing, newShot)) return ch;
           return { ...ch, shots: mergeDisplayShots(ch.shots, [newShot]) };
         });
       });
