@@ -39,22 +39,12 @@ export function AdminHeader({
   handleLogout,
 }: Props) {
   return (
-    <header
-      className={`fixed top-0 left-0 right-0 admin-app-header safe-area-inset-x border-b flex justify-between items-center z-40 ${
-        isDarkMode
-          ? "bg-[#121417] border-hud"
-          : "bg-[#121417] border-hud"
-      }`}
-    >
+    <header className="fixed top-0 left-0 right-0 admin-app-header safe-area-inset-x border-b border-hud flex justify-between items-center z-40 bg-hud-rail">
       <div className="flex items-center gap-1.5 sm:gap-2 select-none min-w-0">
         <button
           type="button"
           onClick={() => setNavOpen((open) => !open)}
-          className={`touch-target inline-flex items-center justify-center rounded-lg border transition-colors cursor-pointer shrink-0 ${
-            isDarkMode
-              ? "border-hud hover:bg-[var(--hud-accent-bg-subtle)] hud-text-secondary"
-              : "border-hud hover:bg-[var(--hud-accent-bg-subtle)] hud-text-secondary"
-          }`}
+          className="touch-target inline-flex items-center justify-center rounded-lg border border-hud hover:bg-[var(--hud-accent-bg-subtle)] hud-text-secondary transition-colors cursor-pointer shrink-0"
           aria-label={
             navOpen
               ? isAr

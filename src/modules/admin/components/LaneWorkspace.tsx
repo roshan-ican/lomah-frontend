@@ -613,7 +613,7 @@ export const LaneWorkspace: React.FC<LaneWorkspaceProps> = ({
       >
         <div className="range-layout-target relative flex flex-col min-h-0 overflow-visible bg-hud-target-stage">
           {showLiveBoards ? (
-            <div className="flex-1 min-h-0 overflow-y-auto admin-lane-grid-panel bg-[#0f1115]">
+            <div className="flex-1 min-h-0 overflow-y-auto admin-lane-grid-panel bg-hud-elevated">
               <div className="flex flex-wrap items-end justify-between gap-3 mb-4">
                 <div>
                   <h2 className="hud-label hud-accent flex items-center gap-2">
@@ -813,7 +813,7 @@ export const LaneWorkspace: React.FC<LaneWorkspaceProps> = ({
               />
             </>
           ) : (
-            <div className="flex-1 min-h-0 overflow-y-auto admin-lane-grid-panel bg-[#0f1115]">
+            <div className="flex-1 min-h-0 overflow-y-auto admin-lane-grid-panel bg-hud-elevated">
               <ActiveLanes
                 channels={channels}
                 selectedChannelId={selectedChannelId}
