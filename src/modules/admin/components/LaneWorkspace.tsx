@@ -25,11 +25,17 @@ import { RangeControlRail } from "./RangeControlRail";
 
 import { SessionControlPanel } from "./SessionControlPanel";
 
-import { LatestShotPanel } from "./admin-dashboard/LatestShotPanel";
+import {
+  LatestShotPanel,
+  shotPanelTitle,
+} from "./admin-dashboard/LatestShotPanel";
+import { DraggablePanel } from "./admin-dashboard/DraggablePanel";
 
 import type { InstructorFeedback } from "./InstructorFeedbackForm";
 
 import { MobileRangeTabBar } from "../../../components/common/MobileRangeTabBar";
+import { ConfirmDialog } from "../../../components/common/ConfirmDialog";
+import { LaneOffsetEditDialog } from "../../../components/common/LaneOffsetEditDialog";
 
 import { useMobilePortrait } from "../../../hooks/useMobilePortrait";
 
@@ -37,19 +43,12 @@ type MobilePane = "main" | "rail";
 
 interface LaneWorkspaceProps {
   channels: ActiveShooterChannel[];
-
   channel: ActiveShooterChannel;
-
   laneFocused: boolean;
-
   controlPanelOpen: boolean;
-
   setControlPanelOpen: React.Dispatch<React.SetStateAction<boolean>>;
-
   onFocusLane: (channelId: string) => void;
-
   onShowAllLanes: () => void;
-
   setSelectedChannelId: (id: string) => void;
 
   handleAdminCommand: (
@@ -64,45 +63,26 @@ interface LaneWorkspaceProps {
 
   /** Resolves true only on a confirmed server write — see SessionControlPanelProps. */
   onCreateSession: (config: SessionConfig) => Promise<boolean>;
-
   onPauseSession: () => void;
-
   onResumeSession: () => void;
-
   onDiscardSession: () => void;
-
   onSaveFeedback: (feedback: InstructorFeedback) => void;
-
   onCancelSession: () => void;
 
   isDarkMode: boolean;
-
   language: "en" | "ar";
-
   t: TranslationSet;
-
   profileType: "FIGURE" | "CIRCULAR";
-
   setProfileType: (val: "FIGURE" | "CIRCULAR") => void;
-
   showGrid: boolean;
-
   setShowGrid: (val: boolean) => void;
-
   zoomLevel: number;
-
   changeZoom: (factor: number) => void;
-
   selectedShotId: number | null;
-
   setSelectedShotId: (id: number | null) => void;
-
   targetContainerRef: React.RefObject<HTMLDivElement | null>;
-
   calibrateMode: CalibrateMode;
-
   setCalibrateMode: (val: CalibrateMode) => void;
-
   onLaneCalibrate: (
     referenceBoardX: number,
     referenceBoardY: number,
@@ -114,19 +94,12 @@ interface LaneWorkspaceProps {
   onShotsCalibrate: (
     updates: { shotNumber: number; x: number; y: number }[],
   ) => void;
-
   triggerSuccessBanner: (msg: string) => void;
-
   availableShooters: Shooter[];
-
   selectedChannelId: string;
-
   liveBoardMode: boolean;
-
   calibrationLaneId: number | null;
-
   setCalibrationLaneId: (laneId: number | null) => void;
-
   onCalibrationDismiss: () => void;
 
   onSetOffset: (
@@ -347,6 +320,11 @@ export const LaneWorkspace: React.FC<LaneWorkspaceProps> = ({
 
   const [mobilePane, setMobilePane] = useState<MobilePane>("main");
 
+  // Closed by default. The readout is a diagnostic the operator reaches for,
+  // not something they watch — and on a small screen a panel that opens itself
+  // over the board is worse than the fixed strip it replaced.
+  const [showShotPanel, setShowShotPanel] = useState(false);
+
   useEffect(() => {
     if (!laneFocused) {
       setMobilePane("main");
@@ -374,7 +352,7 @@ export const LaneWorkspace: React.FC<LaneWorkspaceProps> = ({
   const showRailInLayout =
     hasRail && (isMobilePortrait ? mobilePane === "rail" : showRailOnDesktop);
 
-  // ─── Offset edit (rail) — bullets preview live; Save asks for confirmation ──
+  // ─── Offset edit — bullets preview live; Save commits immediately ─────────
   const laneId = getLaneIdFromChannelId(channel.id);
   // The board's own offset, as the server reports it on every lane sync. This
   // used to read getLaneError(laneId) — a client-side lane-error Map that
@@ -385,7 +363,7 @@ export const LaneWorkspace: React.FC<LaneWorkspaceProps> = ({
   const [editingOffset, setEditingOffset] = useState(false);
   const [draftOffsetX, setDraftOffsetX] = useState(committedOffset.x);
   const [draftOffsetY, setDraftOffsetY] = useState(committedOffset.y);
-  const [confirmOffset, setConfirmOffset] = useState(false);
+  const [savingOffset, setSavingOffset] = useState(false);
 
   useEffect(() => {
     if (!editingOffset) {
@@ -407,22 +385,44 @@ export const LaneWorkspace: React.FC<LaneWorkspaceProps> = ({
 
   const cancelEditOffset = () => {
     setEditingOffset(false);
-    setConfirmOffset(false);
     setDraftOffsetX(committedOffset.x);
     setDraftOffsetY(committedOffset.y);
   };
 
-  const requestSaveOffset = () => setConfirmOffset(true);
+  /** Clears the drag-derived reference/recal badge fields — used after any
+   *  write that isn't derived from a specific shot (a manual X/Y entry, or a
+   *  reset to zero), so the badge never attributes a number to a shot that
+   *  didn't produce it. */
+  const clearCalibrationRefFields = () => {
+    useSessionStore
+      .getState()
+      .setChannels((prev) =>
+        prev.map((c) =>
+          c.id === channel.id
+            ? {
+                ...c,
+                referenceShotId: undefined,
+                calibratedShotCount: undefined,
+              }
+            : c,
+        ),
+      );
+  };
 
-  const confirmSaveOffset = async () => {
-    const ok = await onSetOffset(
-      laneId,
-      Number(draftOffsetX) || 0,
-      Number(draftOffsetY) || 0,
-    );
-    if (ok) {
-      setEditingOffset(false);
-      setConfirmOffset(false);
+  const saveOffset = async () => {
+    setSavingOffset(true);
+    try {
+      const ok = await onSetOffset(
+        laneId,
+        Number(draftOffsetX) || 0,
+        Number(draftOffsetY) || 0,
+      );
+      if (ok) {
+        clearCalibrationRefFields();
+        setEditingOffset(false);
+      }
+    } finally {
+      setSavingOffset(false);
     }
   };
 
@@ -433,19 +433,7 @@ export const LaneWorkspace: React.FC<LaneWorkspaceProps> = ({
   const confirmResetOffset = async () => {
     const ok = await onSetOffset(laneId, 0, 0);
     if (ok) {
-      useSessionStore
-        .getState()
-        .setChannels((prev) =>
-          prev.map((c) =>
-            c.id === channel.id
-              ? {
-                  ...c,
-                  referenceShotId: undefined,
-                  calibratedShotCount: undefined,
-                }
-              : c,
-          ),
-        );
+      clearCalibrationRefFields();
       setEditingOffset(false);
     }
     setConfirmReset(false);
@@ -465,9 +453,18 @@ export const LaneWorkspace: React.FC<LaneWorkspaceProps> = ({
       return;
     }
 
-    // Pick is a one-time, first-calibration convenience. Once it has been
-    // chosen (even if cancelled), only bulk calibration is ever offered again.
-    if (channel.pickUsed) {
+    // The first calibration of a session is the one-bullet pick; every
+    // calibration after it, in the same session, is a bulk group drag.
+    //
+    // Gated on the server's pick flag rather than anything local. The old
+    // local boolean was set the moment pick was ENTERED and cleared by
+    // session:started — which fires per stage, not per session — so a stage
+    // advance handed pick back mid-session and a page refresh lost it
+    // entirely. Gating on the calibration COUNT instead had the opposite
+    // fault: resetting the offset to zero bumps the count, so a reset before
+    // any real calibration silently ate the pick. Only calibrate-from-shot
+    // sets this flag, and nothing in the session clears it.
+    if (channel.pickCalibrationUsed) {
       setCalibrateMode("bulk");
       setCalibrationLaneId(getLaneIdFromChannelId(channel.id));
 
@@ -483,21 +480,18 @@ export const LaneWorkspace: React.FC<LaneWorkspaceProps> = ({
     setCalibrateMode("pick");
     setCalibrationLaneId(getLaneIdFromChannelId(channel.id));
 
-    // Mark pick as used the instant it's chosen so it can never be re-entered,
-    // even if the user toggles calibration off without completing it.
-    const chId = channel.id;
-    useSessionStore
-      .getState()
-      .setChannels((prev) =>
-        prev.map((c) => (c.id === chId ? { ...c, pickUsed: true } : c)),
-      );
-
     triggerSuccessBanner(
       isAr
         ? "انقر على طلقة في قائمة الطلقات أو على الهدف لتعيينها كمركز حقيقي، ثم اسحبها إلى مكانها"
         : "Tap a shot in the shot log or on the board to set it as the true center, then drag it into place",
     );
   };
+
+  // What pressing the button will actually do, named on the button itself.
+  // The two calibrations behave differently enough — one bullet marked as true
+  // centre, versus the whole group dragged — that a single "CALIBRATE" label
+  // leaves the operator to discover which one they got by trying it.
+  const nextCalibrateIsBulk = channel.pickCalibrationUsed === true;
 
   const calibrateBtn = (
     <>
@@ -507,6 +501,15 @@ export const LaneWorkspace: React.FC<LaneWorkspaceProps> = ({
         type="button"
         onClick={toggleCalibrate}
         disabled={channel.shots.length === 0}
+        title={
+          nextCalibrateIsBulk
+            ? isAr
+              ? "اسحب كل الطلقات معاً لمحاذاة المجموعة"
+              : "Drag the whole group to align it — adds to the current offset"
+            : isAr
+              ? "عيّن طلقة واحدة كمركز حقيقي (مرة واحدة لكل جلسة)"
+              : "Mark one bullet as true centre (once per session)"
+        }
         className={`hud-label px-2 py-1 cursor-pointer inline-flex items-center gap-1 disabled:opacity-30 ${
           calibrateMode === "bulk" || calibrateMode === "pick"
             ? "hud-toolbar-btn--active"
@@ -515,7 +518,13 @@ export const LaneWorkspace: React.FC<LaneWorkspaceProps> = ({
       >
         <Crosshair className="w-3 h-3" />
 
-        {isAr ? "معايرة" : "CALIBRATE"}
+        {nextCalibrateIsBulk
+          ? isAr
+            ? "معايرة جماعية"
+            : "BULK CALIBRATE"
+          : isAr
+            ? "معايرة"
+            : "CALIBRATE"}
       </button>
     </>
   );
@@ -534,13 +543,7 @@ export const LaneWorkspace: React.FC<LaneWorkspaceProps> = ({
       onSaveFeedback={onSaveFeedback}
       onCancelSession={onCancelSession}
       onDiscardReadySession={onDiscardSession}
-      editingOffset={editingOffset}
-      draftOffsetX={draftOffsetX}
-      draftOffsetY={draftOffsetY}
       onStartEditOffset={startEditOffset}
-      onDraftOffsetChange={draftOffsetChange}
-      onSaveOffset={requestSaveOffset}
-      onCancelEditOffset={cancelEditOffset}
       onResetOffset={requestResetOffset}
     />
   ) : showAssignRail ? (
@@ -657,6 +660,22 @@ export const LaneWorkspace: React.FC<LaneWorkspaceProps> = ({
                 <span className="range-display-label hud-accent tracking-[0.14em] truncate">
                   {laneLabel}
                 </span>
+
+                {/* Pops the floating shot readout. Lives here rather than on
+                    the board's own toolbar so that it stays reachable when the
+                    panel has been dragged over those controls. */}
+                <button
+                  type="button"
+                  onClick={() => setShowShotPanel((v) => !v)}
+                  aria-pressed={showShotPanel}
+                  aria-label={isAr ? "بيانات الطلقة" : "Shot readout"}
+                  title={isAr ? "بيانات الطلقة" : "Shot readout"}
+                  className={`touch-target ms-auto inline-flex items-center justify-center rounded-md cursor-pointer hover:bg-[var(--hud-accent-bg-subtle)] ${
+                    showShotPanel ? "hud-accent" : "hud-text-muted hover:hud-accent"
+                  }`}
+                >
+                  <Crosshair className="w-4 h-4" />
+                </button>
               </div>
 
                 {calibrationLaneId != null &&
@@ -682,34 +701,52 @@ export const LaneWorkspace: React.FC<LaneWorkspaceProps> = ({
                   </div>
                 )}
 
-               <div className="flex-1 min-h-0 target-stage overflow-visible px-0.5 sm:px-2 py-0.5">
-                 <div className="target-fit-box h-full">
+               {/* `relative` is what the floating shot panel positions
+                   against: it must be the target stage, not the page, so the
+                   panel stays put relative to the board rather than drifting
+                   over the rails when the window resizes. */}
+               <div className="relative flex-1 min-h-0 target-stage overflow-visible px-0.5 sm:px-2 py-0.5">
                     {/* Follows the SELECTED shot when the admin clicks one in
                         the shot log or on the board, so the 'D' sensor query
                         inside it targets that bullet. Falls back to the newest
-                        shot when nothing is selected. */}
-                    {(() => {
-                      const shown =
-                        channel.shots.find((s) => s.id === selectedShotId) ??
-                        channel.shots[channel.shots.length - 1];
-                      if (!shown) return null;
-                      return (
-                        <LatestShotPanel
-                          latestShot={{
-                            id: shown.id,
-                            x: shown.x,
-                            y: shown.y,
-                            score: shown.score,
-                            isMiss: shown.isMiss ?? false,
-                            isLost: shown.isLost ?? false,
-                            timestamp: shown.timestamp,
-                            targetId: shown.targetId,
-                          }}
-                          isSelected={shown.id === selectedShotId}
-                          isAr={isAr}
-                        />
-                      );
-                    })()}
+                        shot when nothing is selected.
+
+                        Floated over the board rather than stacked above it:
+                        see DraggablePanel for why it no longer takes layout
+                        space. */}
+                    {showShotPanel &&
+                      (() => {
+                        const shown =
+                          channel.shots.find((s) => s.id === selectedShotId) ??
+                          channel.shots[channel.shots.length - 1];
+                        if (!shown) return null;
+                        const isSelected = shown.id === selectedShotId;
+                        return (
+                          <DraggablePanel
+                            storageKey="lomah.admin.shotPanel.position"
+                            title={shotPanelTitle(isSelected, isAr)}
+                            onClose={() => setShowShotPanel(false)}
+                            isAr={isAr}
+                          >
+                            <LatestShotPanel
+                              latestShot={{
+                                id: shown.id,
+                                x: shown.x,
+                                y: shown.y,
+                                score: shown.score,
+                                isMiss: shown.isMiss ?? false,
+                                isLost: shown.isLost ?? false,
+                                timestamp: shown.timestamp,
+                                targetId: shown.targetId,
+                              }}
+                              isSelected={isSelected}
+                              isAr={isAr}
+                              embedded
+                            />
+                          </DraggablePanel>
+                        );
+                      })()}
+                 <div className="target-fit-box h-full">
                    <TargetView
                     key={`${channel.id}-${channel.sessionId ?? "none"}-${laneProfile}`}
                     activeChannel={channel}
@@ -746,65 +783,34 @@ export const LaneWorkspace: React.FC<LaneWorkspaceProps> = ({
                 </div>
               </div>
 
-              {confirmOffset && (
-                <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50">
-                  <div className="mx-4 w-full max-w-xs rounded-lg border border-hud-strong bg-hud-rail p-4 shadow-xl">
-                    <p className="range-rail-meta leading-relaxed mb-4">
-                      {isAr
-                        ? `هل أنت متأكد أنك تريد تعديل إزاحة الحارة إلى (${draftOffsetX}, ${draftOffsetY}) مم؟ ستُعاد تسجيل جميع الطلقات.`
-                        : `Are you sure you want to edit the lane offset to (${draftOffsetX}, ${draftOffsetY}) mm? All shots will be re-scored.`}
-                    </p>
+              <LaneOffsetEditDialog
+                open={editingOffset}
+                committedX={committedOffset.x}
+                committedY={committedOffset.y}
+                draftX={draftOffsetX}
+                draftY={draftOffsetY}
+                onChangeX={(v) => draftOffsetChange("x", v)}
+                onChangeY={(v) => draftOffsetChange("y", v)}
+                onSave={saveOffset}
+                onCancel={cancelEditOffset}
+                busy={savingOffset}
+              />
 
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={confirmSaveOffset}
-                        className="flex-1 hud-label px-3 py-2 rounded-lg hud-btn-resume cursor-pointer"
-                      >
-                        {isAr ? "نعم، تعديل" : "Yes, edit"}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setConfirmOffset(false)}
-                        className="flex-1 hud-label px-3 py-2 rounded-lg hud-toolbar-btn--idle cursor-pointer"
-                      >
-                        {isAr ? "إلغاء" : "Cancel"}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {confirmReset && (
-                <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50">
-                  <div className="mx-4 w-full max-w-xs rounded-lg border border-hud-strong bg-hud-rail p-4 shadow-xl">
-                    <p className="range-rail-meta leading-relaxed mb-4">
-                      {isAr
-                        ? "هل أنت متأكد أنك تريد إلغاء معايرة الحارة؟ ستعود جميع الطلقات إلى إحداثيات المستشعر الأصلية."
-                        : "Are you sure you want to reset the lane calibration? All shots will return to their original sensor coordinates."}
-                    </p>
-
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={confirmResetOffset}
-                        className="flex-1 hud-label px-3 py-2 rounded-lg hud-btn-end cursor-pointer"
-                      >
-                        {isAr ? "نعم، إلغاء المعايرة" : "Yes, reset"}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setConfirmReset(false)}
-                        className="flex-1 hud-label px-3 py-2 rounded-lg hud-toolbar-btn--idle cursor-pointer"
-                      >
-                        {isAr ? "إلغاء" : "Cancel"}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
+              <ConfirmDialog
+                open={confirmReset}
+                title={isAr ? "إلغاء معايرة الحارة" : "Reset lane calibration"}
+                message={
+                  isAr
+                    ? "هل أنت متأكد أنك تريد إلغاء معايرة الحارة؟ ستعود جميع الطلقات إلى إحداثيات المستشعر الأصلية."
+                    : "Are you sure you want to reset the lane calibration? All shots will return to their original sensor coordinates."
+                }
+                language={language}
+                confirmLabel={isAr ? "نعم، إلغاء المعايرة" : "Yes, reset"}
+                cancelLabel={isAr ? "إلغاء" : "Cancel"}
+                variant="danger"
+                onConfirm={confirmResetOffset}
+                onCancel={() => setConfirmReset(false)}
+              />
             </>
           ) : (
             <div className="flex-1 min-h-0 overflow-y-auto admin-lane-grid-panel bg-[#0f1115]">

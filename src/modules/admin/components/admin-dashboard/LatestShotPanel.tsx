@@ -23,12 +23,23 @@ interface LatestShotPanelProps {
   /** True when this is a shot the admin clicked rather than just the newest
    *  one — the heading changes so the two are never confused. */
   isSelected?: boolean;
+  /** Rendered inside a host that already draws a frame and a title bar (see
+   *  DraggablePanel), so this drops its own box and heading rather than
+   *  nesting a second border and repeating the title. */
+  embedded?: boolean;
+}
+
+/** The heading, also used as the floating panel's drag-bar title. */
+export function shotPanelTitle(isSelected: boolean, isAr: boolean): string {
+  if (isSelected) return isAr ? "الطلقة المحددة" : "Selected Shot";
+  return isAr ? "آخر طلقة" : "Latest Shot";
 }
 
 export function LatestShotPanel({
   latestShot,
   isAr,
   isSelected = false,
+  embedded = false,
 }: LatestShotPanelProps) {
   const [expanded, setExpanded] = useState(false);
 
@@ -37,28 +48,38 @@ export function LatestShotPanel({
   }
 
   return (
-    <div className="rounded-lg border border-hud bg-hud-elevated/80 p-2 space-y-1">
-      <div
-        className="flex items-center justify-between cursor-pointer select-none"
-        onClick={() => setExpanded(!expanded)}
-      >
-        <span className="admin-text-2xs font-mono hud-text-subtle uppercase tracking-wider">
-          {isSelected
-            ? isAr
-              ? "الطلقة المحددة"
-              : "Selected Shot"
-            : isAr
-              ? "آخر طلقة"
-              : "Latest Shot"}
-        </span>
-        {expanded ? (
-          <ChevronUp className="w-3 h-3 hud-text-muted" />
-        ) : (
-          <ChevronDown className="w-3 h-3 hud-text-muted" />
-        )}
-      </div>
+    <div
+      className={
+        embedded
+          ? "space-y-1"
+          : "rounded-lg border border-hud bg-hud-elevated/80 p-2 space-y-1"
+      }
+    >
+      {!embedded && (
+        <div
+          className="flex items-center justify-between cursor-pointer select-none"
+          onClick={() => setExpanded(!expanded)}
+        >
+          <span className="admin-text-2xs font-mono hud-text-subtle uppercase tracking-wider">
+            {shotPanelTitle(isSelected, isAr)}
+          </span>
+          {expanded ? (
+            <ChevronUp className="w-3 h-3 hud-text-muted" />
+          ) : (
+            <ChevronDown className="w-3 h-3 hud-text-muted" />
+          )}
+        </div>
+      )}
 
-      <div className="flex items-center gap-3 admin-text-2xs font-mono">
+      <div
+        className={`flex items-center gap-3 admin-text-2xs font-mono ${
+          // Embedded, the title row that carried the expand chevron belongs to
+          // the host panel's drag bar — so the readout itself becomes the
+          // control, rather than leaving the diagnostic with no way to open.
+          embedded ? "cursor-pointer select-none" : ""
+        }`}
+        onClick={embedded ? () => setExpanded(!expanded) : undefined}
+      >
         <span className="hud-text font-bold">
           #{latestShot.id}
         </span>
@@ -96,6 +117,12 @@ export function LatestShotPanel({
               ? "MISS"
               : latestShot.score}
         </span>
+        {embedded &&
+          (expanded ? (
+            <ChevronUp className="w-3 h-3 hud-text-muted ms-auto shrink-0" />
+          ) : (
+            <ChevronDown className="w-3 h-3 hud-text-muted ms-auto shrink-0" />
+          ))}
       </div>
 
       {expanded && (

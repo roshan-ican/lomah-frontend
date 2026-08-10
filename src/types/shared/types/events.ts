@@ -110,6 +110,12 @@ export interface TargetCalibratedEvent {
   offsetXmm: number;
   offsetYmm: number;
   shotsUpdated: number;
+  /** Calibrations on the open session including this one; 1 means the
+   *  one-bullet pick has just been spent. Null when no session was running. */
+  sessionCalibrationCount: number | null;
+  /** Whether the session's one-bullet pick has been spent. One-way within a
+   *  session — a reset to zero does not restore it. */
+  sessionPickUsed: boolean | null;
 }
 
 export interface SensorGateEvent extends SensorGateStatus {

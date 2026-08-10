@@ -18,7 +18,7 @@ import { useSessionStore } from "../store/sessionStore";
 import { toVacantLane } from "../store/channelMutations";
 import { getLaneIdFromChannelId } from "../utils/helper";
 import { clearCachedShots } from "../db/shotCache";
-import type { Session } from "../types";
+import type { Session, Target } from "../types";
 
 interface SessionActionsDeps {
   isAr: boolean;
@@ -50,6 +50,18 @@ export function useSessionActions({
     open: boolean;
     channelId: string | null;
   }>({ open: false, channelId: null });
+
+  /** The carried-calibration prompt raised on a session's first start. `target`
+   *  is the row as the SERVER holds it, re-read at prompt time rather than
+   *  taken from channel.targetOffset — a lane configured seconds ago has no
+   *  offset in local state at all, and showing "0, 0" for a board that is in
+   *  fact calibrated is the one answer this prompt must never give. */
+  const [carriedCalibration, setCarriedCalibration] = useState<{
+    open: boolean;
+    channelId: string | null;
+    target: Target | null;
+    busy: boolean;
+  }>({ open: false, channelId: null, target: null, busy: false });
 
   /** Resolve a lane channel to the session it is running, or surface why not. */
   const requireSessionId = (chId: string): string | null => {
@@ -232,7 +244,10 @@ export function useSessionActions({
                 shots: [],
                 referenceShotId: undefined,
                 calibratedShotCount: undefined,
-                pickUsed: false,
+                // Freshly created session row — the server's count is 0 and
+                // the one-bullet pick is available.
+                calibrationCount: created.calibrationCount ?? 0,
+                pickCalibrationUsed: created.pickCalibrationUsed ?? false,
               }
             : ch,
         ),
@@ -282,14 +297,65 @@ export function useSessionActions({
     }
   };
 
+  /**
+   * Read the target's CURRENT stored offset, or null if there is nothing to
+   * decide about (no target on the lane, offset already zero, or the read
+   * failed).
+   *
+   * A failed read returns null deliberately: the offset is a detail about the
+   * relay, and refusing to start a relay because a GET timed out would be a
+   * worse outcome than starting on the stored value. The miss is logged so it
+   * is not silent.
+   */
+  const readCarriedOffset = async (chId: string): Promise<Target | null> => {
+    const targetId = channels.find((c) => c.id === chId)?.targetName;
+    if (!targetId) return null;
+    try {
+      const target = await api.get<Target>(`/targets/${targetId}`);
+      if (target.offsetXmm === 0 && target.offsetYmm === 0) return null;
+      return target;
+    } catch (err) {
+      addAdminLog(
+        `CALIBRATION CHECK SKIPPED: could not read target ${targetId} — ` +
+          `${err instanceof Error ? err.message : "unknown error"}`,
+      );
+      return null;
+    }
+  };
+
   /** Both the "Start" (status CREATED) and "Resume" (status PAUSED) buttons in
    *  the UI funnel here. Dispatch on the lane's actual status: a session that
-   *  has never run belongs on /start, and only a PAUSED one is a real resume. */
-  const handleStartOrResumeSession = async (chId: string) => {
+   *  has never run belongs on /start, and only a PAUSED one is a real resume.
+   *
+   *  `skipCalibrationGate` is set by the prompt's own two answers, so answering
+   *  it re-enters here without raising it a second time. It is NOT a general
+   *  escape hatch — every other caller goes through the gate. */
+  const handleStartOrResumeSession = async (
+    chId: string,
+    opts?: { skipCalibrationGate?: boolean },
+  ) => {
     const sessionId = requireSessionId(chId);
     if (!sessionId) return;
     const isFirstStart =
       channels.find((c) => c.id === chId)?.sessionStatus === "CREATED";
+
+    // Only on the FIRST start. A resume is the same relay continuing, and the
+    // operator already answered this question for it — re-asking mid-relay,
+    // after shots are on the board, would invite zeroing an offset those shots
+    // were scored against.
+    if (isFirstStart && !opts?.skipCalibrationGate) {
+      const carried = await readCarriedOffset(chId);
+      if (carried) {
+        setCarriedCalibration({
+          open: true,
+          channelId: chId,
+          target: carried,
+          busy: false,
+        });
+        return;
+      }
+    }
+
     try {
       await api.post(
         `/sessions/${sessionId}/${isFirstStart ? "start" : "resume"}`,
@@ -314,6 +380,69 @@ export function useSessionActions({
     }
   };
 
+  const closeCarriedCalibration = () =>
+    setCarriedCalibration({
+      open: false,
+      channelId: null,
+      target: null,
+      busy: false,
+    });
+
+  /** "Keep & start" — the stored offset stands, nothing is written. */
+  const keepCarriedCalibration = async () => {
+    const chId = carriedCalibration.channelId;
+    const target = carriedCalibration.target;
+    if (!chId || !target) return closeCarriedCalibration();
+    closeCarriedCalibration();
+    addAdminLog(
+      `CALIBRATION KEPT: ${target.label} starts on stored offset ` +
+        `(${target.offsetXmm}, ${target.offsetYmm}) mm.`,
+    );
+    await handleStartOrResumeSession(chId, { skipCalibrationGate: true });
+  };
+
+  /**
+   * "Reset to zero & start" — zero the target, THEN start.
+   *
+   * Order matters and the start is conditional on the write: starting first
+   * would put live rounds through the old offset in the window before the
+   * PATCH lands, and starting anyway after a failed PATCH would run the whole
+   * relay on an offset the operator explicitly rejected. On failure the prompt
+   * stays open with the error banner, so the choice is still theirs.
+   */
+  const resetCarriedCalibration = async () => {
+    const chId = carriedCalibration.channelId;
+    const target = carriedCalibration.target;
+    if (!chId || !target) return closeCarriedCalibration();
+
+    setCarriedCalibration((prev) => ({ ...prev, busy: true }));
+    try {
+      await api.patch<Target>(`/targets/${target.id}/offset`, {
+        offsetXmm: 0,
+        offsetYmm: 0,
+      });
+    } catch (err) {
+      setCarriedCalibration((prev) => ({ ...prev, busy: false }));
+      fail(
+        err,
+        isAr ? "تعذّر تصفير المعايرة" : "Could not reset calibration",
+      );
+      return;
+    }
+
+    setChannels((prev) =>
+      prev.map((ch) =>
+        ch.id === chId ? { ...ch, targetOffset: { x: 0, y: 0 } } : ch,
+      ),
+    );
+    closeCarriedCalibration();
+    addAdminLog(
+      `CALIBRATION RESET: ${target.label} offset zeroed ` +
+        `(was ${target.offsetXmm}, ${target.offsetYmm} mm).`,
+    );
+    await handleStartOrResumeSession(chId, { skipCalibrationGate: true });
+  };
+
   const handleResumeAllSessions = async () => {
     const lanesToStart = channels.filter(
       (ch) =>
@@ -328,6 +457,28 @@ export function useSessionActions({
       );
       return;
     }
+
+    // Bulk start deliberately does NOT raise the carried-calibration prompt —
+    // one modal per lane, answered in sequence, is not a bulk action any more.
+    // The operator is told instead of asked, in the log, so a lane that
+    // inherited an offset this way is still traceable afterwards.
+    const carried = (
+      await Promise.all(
+        lanesToStart
+          .filter((ch) => ch.sessionStatus === "CREATED")
+          .map(async (ch) => {
+            const target = await readCarriedOffset(ch.id);
+            return target
+              ? `Lane ${getLaneIdFromChannelId(ch.id)} — ${target.label} ` +
+                  `(${target.offsetXmm}, ${target.offsetYmm}) mm`
+              : null;
+          }),
+      )
+    ).filter((line): line is string => line !== null);
+    if (carried.length > 0) {
+      addAdminLog(`CALIBRATION CARRIED into bulk start: ${carried.join("; ")}`);
+    }
+
     const results = await Promise.all(
       lanesToStart.map(async (ch) => {
         const isFirstStart = ch.sessionStatus === "CREATED";
@@ -582,5 +733,9 @@ export function useSessionActions({
     handleDiscardReadySession,
     discardConfirm,
     setDiscardConfirm,
+    carriedCalibration,
+    keepCarriedCalibration,
+    resetCarriedCalibration,
+    closeCarriedCalibration,
   };
 }

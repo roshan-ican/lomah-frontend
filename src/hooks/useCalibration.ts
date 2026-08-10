@@ -226,8 +226,12 @@ export function useCalibration({
       // The server re-scored the stage; re-read rather than replaying the
       // arithmetic locally.
       await syncLaneFromApi(ctx.laneId);
+      // Names the seam the same way the server's CALIBRATED line does, so the
+      // console log and the backend log can be read against each other without
+      // translating between them.
       addAdminLog(
-        `TARGET CAL: ${target.label} offset (${target.offsetXmm}, ${target.offsetYmm}) mm.`,
+        `TARGET CAL: ${target.label} offset (${target.offsetXmm}, ${target.offsetYmm}) mm ` +
+          `from shot #${referenceShotId} — in force from shot #${shotCount + 1}.`,
       );
       triggerSuccessBanner(
         isAr

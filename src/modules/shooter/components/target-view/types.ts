@@ -55,7 +55,8 @@ export interface TargetViewProps {
   lockProfileType?: boolean;
   toolbarExtra?: React.ReactNode;
   /** Transient offset (x,y mm) applied only to bullet display while the admin
-   *  previews an offset edit in the rail. Committed offset still comes from the
-   *  lane error store; this shifts bullets live without persisting anything. */
+   *  previews an offset edit. Committed offset comes from
+   *  activeChannel.targetOffset; this shifts bullets live without persisting
+   *  anything. */
   previewOffset?: { x: number; y: number } | null;
 }

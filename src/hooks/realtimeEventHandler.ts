@@ -133,7 +133,10 @@ export function handleRealtimeEvent(
                 endTime: undefined,
                 referenceShotId: undefined,
                 calibratedShotCount: undefined,
-                pickUsed: false,
+                // A brand new session row starts at zero, so the one-bullet
+                // pick is available again — the only place this is reset.
+                calibrationCount: 0,
+                pickCalibrationUsed: false,
               }
             : ch,
         ),
@@ -175,7 +178,14 @@ export function handleRealtimeEvent(
             shots: fresh ? [] : ch.shots,
             referenceShotId: undefined,
             calibratedShotCount: undefined,
-            pickUsed: false,
+            // NOT reset unconditionally. This event fires every time a stage
+            // arms, not once per session — zeroing it here handed the
+            // one-bullet pick back on every stage advance, which is exactly
+            // the bug where a second calibration mid-session was offered as a
+            // pick instead of a bulk drag. Only a genuinely new session
+            // restores it; otherwise the server's count stands.
+            calibrationCount: fresh ? 0 : ch.calibrationCount,
+            pickCalibrationUsed: fresh ? false : ch.pickCalibrationUsed,
           };
         }),
       );
@@ -268,7 +278,8 @@ export function handleRealtimeEvent(
                   endTime: new Date(data.endedAt).toISOString(),
                   referenceShotId: undefined,
                   calibratedShotCount: undefined,
-                  pickUsed: false,
+                  calibrationCount: 0,
+                  pickCalibrationUsed: false,
                 }
             : ch,
         ),
@@ -487,7 +498,18 @@ export function handleRealtimeEvent(
       setChannels((prev) =>
         prev.map((ch) =>
           ch.id === chId
-            ? { ...ch, targetOffset: { x: data.offsetXmm, y: data.offsetYmm } }
+            ? {
+                ...ch,
+                targetOffset: { x: data.offsetXmm, y: data.offsetYmm },
+                // Applied straight from the event so the calibrate button
+                // switches from pick to bulk immediately. Waiting for the sync
+                // below would leave a window — and a calibration that
+                // re-scored nothing skips that sync entirely.
+                calibrationCount:
+                  data.sessionCalibrationCount ?? ch.calibrationCount,
+                pickCalibrationUsed:
+                  data.sessionPickUsed ?? ch.pickCalibrationUsed,
+              }
             : ch,
         ),
       );
