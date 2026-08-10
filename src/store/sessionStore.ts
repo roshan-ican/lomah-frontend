@@ -2,36 +2,23 @@ import { create } from "zustand";
 import type { ActiveShooterChannel } from "../types";
 import { setCachedChannels } from "../db/channelCache";
 
-const INITIAL_CHANNELS: ActiveShooterChannel[] = Array.from(
-  { length: 10 },
-  (_v, idx) => {
-    const laneNumber = idx + 1;
-    const defaultUnits = [
-      "ALPHA SQUADRON",
-      "DESERT COBRA",
-      "SUPPORT SQUAD",
-      "NORTH SHIELD",
-      "EAST FALCON",
-      "WEST RANGER",
-      "CENTRAL VIGIL",
-      "IRON GUARD",
-      "SILVER HAWK",
-      "ONYX WARDEN",
-    ];
-    return {
-      id: `CH-${laneNumber}`,
-      name: `Shooter ${laneNumber}`,
-      opId: `OP-${String(laneNumber).padStart(4, "0")}`,
-      unit: defaultUnits[idx] || "ALPHA SQUADRON",
-      sessionStatus: "NONE" as const,
-      laneStatus: "AVAILABLE",
-      distance:
-        laneNumber % 3 === 0 ? "500m" : laneNumber % 2 === 0 ? "300m" : "100m",
-      targetName: `Target ${String(laneNumber).padStart(2, "0")}`,
-      shots: [],
-    };
-  },
-);
+/**
+ * No lanes until the server names them.
+ *
+ * This used to seed ten invented lanes — "Shooter 3", "ALPHA SQUADRON",
+ * "500m" — as a placeholder until GET /lanes replaced them. On a range with
+ * fewer than ten commissioned lanes that meant the grid painted lanes that do
+ * not exist, then silently dropped them a moment later, and the invented
+ * distances and unit names were indistinguishable from real ones while they
+ * were up. On a range with MORE than ten, lanes 11+ were missing until the
+ * fetch landed.
+ *
+ * An empty grid for the width of one request is the honest state: the client
+ * genuinely does not know the lane list yet. The IndexedDB cache
+ * (hydrateChannelsFromCache) is what fills that gap on a relaunch, and it
+ * holds lanes that really were commissioned last time.
+ */
+const INITIAL_CHANNELS: ActiveShooterChannel[] = [];
 
 interface SessionStore {
   channels: ActiveShooterChannel[];

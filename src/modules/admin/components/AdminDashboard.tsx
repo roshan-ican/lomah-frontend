@@ -7,6 +7,7 @@ import { ReportsView } from "./ReportsView";
 import { AdminHelp } from "./AdminHelp";
 import { translations, TranslationSet } from "../../../translations";
 import { shotsForLaneDisplay } from "../../../utils/laneSession";
+import { noLaneChannel } from "../../../store/channelMutations";
 import { targetProfileFromTargetId } from "../../../utils/targetProfile";
 import type { AdminDashboardProps, AdminTab } from "./admin-dashboard/types";
 import { useSensorGate } from "./admin-dashboard/useSensorGate";
@@ -94,7 +95,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   });
 
   const activeChannel =
-    channels.find((c) => c.id === selectedChannelId) || channels[0];
+    channels.find((c) => c.id === selectedChannelId) ??
+    channels[0] ??
+    noLaneChannel();
   const previewChannel = {
     ...activeChannel,
     shots: shotsForLaneDisplay(

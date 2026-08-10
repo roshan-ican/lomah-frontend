@@ -95,10 +95,19 @@ export interface ActiveShooterChannel {
   notes?: string;
   /** Shot id the admin designated as the calibration reference (true-center anchor). */
   referenceShotId?: number;
-  /** Once pick mode has been chosen on this session, it can never be entered
-   *  again — subsequent calibrations are bulk-only. Set the moment pick is
-   *  entered, so even toggling off without completing blocks pick reuse. */
-  pickUsed?: boolean;
+  /** Calibrations applied to this session so far, mirrored from the server
+   *  (Session.calibrationCount). Informational only. */
+  calibrationCount?: number;
+  /** Whether this session's one-bullet "pick" calibration has been spent,
+   *  mirrored from the server (Session.pickCalibrationUsed). False offers
+   *  pick; true offers bulk only.
+   *
+   *  Server-held because every local version of this fact was wrong in some
+   *  direction: a page refresh, a stage advance, or a second admin console all
+   *  handed pick back on an already-calibrated session, and gating on the
+   *  calibration count instead let a reset-to-zero consume the pick before it
+   *  had ever been used. */
+  pickCalibrationUsed?: boolean;
   /** Total shots present when calibration was first applied. Shots with id <= this
    *  are "old" (dimmed); shots arriving after are "new" (hard red). */
   calibratedShotCount?: number;

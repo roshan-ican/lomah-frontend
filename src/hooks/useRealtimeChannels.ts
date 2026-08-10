@@ -94,8 +94,25 @@ export function useRealtimeChannels({
     try {
       const cached = await getCachedChannels();
       if (!cached.length) return;
-      setChannels((prev) =>
-        prev.map((ch) => {
+      setChannels((prev) => {
+        if (serverSyncedRef.current) return prev;
+
+        // Nothing to map over on a cold start — the store no longer seeds
+        // placeholder lanes, so the cached list IS the lane list until the
+        // server sends the real one. Without this the grid stays blank for the
+        // whole first request, which is the flicker the placeholders were
+        // there to hide.
+        if (!prev.length) {
+          return cached.map((cachedCh) => {
+            const { cachedAt: _cachedAt, ...rest } = cachedCh;
+            if (laneHasSession(rest.sessionStatus)) {
+              cachePaintedRef.current.add(rest.id);
+            }
+            return { ...rest, shots: [] };
+          });
+        }
+
+        return prev.map((ch) => {
           if (serverSyncedRef.current) return ch;
           if (ch.sessionStatus !== "NONE" || ch.sessionId) return ch;
           const cachedCh = cached.find((c) => c.id === ch.id);
@@ -106,8 +123,8 @@ export function useRealtimeChannels({
           // yet" from "session the server already ended", and keeps both.
           if (laneHasSession(rest.sessionStatus)) cachePaintedRef.current.add(ch.id);
           return { ...ch, ...rest, shots: ch.shots };
-        }),
-      );
+        });
+      });
     } catch (err) {
       console.warn("[Sync] hydrateChannelsFromCache failed:", err);
     }
@@ -147,14 +164,13 @@ export function useRealtimeChannels({
   };
 
   /** Reconcile the channel list against the lanes the super admin actually
-   *  commissioned (GET /lanes). The store's hardcoded 10-lane default is a
-   *  placeholder; once real lanes arrive, channels are rebuilt to match them
-   *  exactly — preserving any live session state on lanes that still exist. */
+   *  commissioned (GET /lanes). Channels are rebuilt to match the response
+   *  exactly — preserving any live session state on lanes that still exist,
+   *  and dropping channels for lanes that no longer do. */
   const syncLanesFromApi = async () => {
     try {
       const lanes = await api.get<Lane[]>("/lanes");
       const list = Array.isArray(lanes) ? lanes : [];
-      if (!list.length) return;
       setChannels((prev) => {
         const existing = new Map(prev.map((ch) => [ch.id, ch]));
         return list.map((lane) => {
@@ -302,6 +318,11 @@ export function useRealtimeChannels({
     const syncActiveSessions = async () => {
       try {
         await waitForLaneOffsets();
+
+        if (!useSessionStore.getState().channels.length) {
+          await syncLanesFromApi();
+        }
+
         const sessions = await api.get<ApiSessionSnapshot[]>("/sessions");
         if (authStageRef.current === "SHOOTER_BOARD") {
           const user = loggedInUsernameRef.current;
@@ -309,13 +330,16 @@ export function useRealtimeChannels({
           return;
         }
         const list = Array.isArray(sessions) ? sessions : [];
-        setChannels((prev) =>
-          prev.map((ch) => {
+        let applied = false;
+        setChannels((prev) => {
+          applied = prev.length > 0;
+          return prev.map((ch) => {
             const laneNum = getLaneIdFromChannelId(ch.id);
             return reconcileChannel(ch, findOpenSessionForLane(list, laneNum));
-          }),
-        );
-        serverSyncedRef.current = true;
+          });
+        });
+
+        if (applied) serverSyncedRef.current = true;
         await hydrateShotsFromCache();
       } catch {
         console.warn(

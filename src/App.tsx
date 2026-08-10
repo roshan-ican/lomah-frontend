@@ -10,6 +10,7 @@ import {
 import { AlertTriangle, Check } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { ConfirmDialog } from "./components/common/ConfirmDialog";
+import { CarriedCalibrationDialog } from "./components/common/CarriedCalibrationDialog";
 import type { CalibrateMode } from "./types";
 import { AuthStage, AUTH_STAGE_PATH, authStageFromPath } from "./types";
 import { translations, TranslationSet } from "./translations";
@@ -23,6 +24,7 @@ import { useCalibration } from "./hooks/useCalibration";
 import { useRealtimeChannels } from "./hooks/useRealtimeChannels";
 import { useAuthFlow } from "./hooks/useAuthFlow";
 import { createUnassignedShooterChannel } from "./utils/helper";
+import { noLaneChannel } from "./store/channelMutations";
 
 const ShooterDashboard = React.lazy(() =>
   import("./modules/shooter/components/ShooterDashboard").then((m) => ({
@@ -112,6 +114,10 @@ function App() {
     handleDiscardReadySession,
     discardConfirm,
     setDiscardConfirm,
+    carriedCalibration,
+    keepCarriedCalibration,
+    resetCarriedCalibration,
+    closeCarriedCalibration,
   } = useSessionActions({
     isAr,
     triggerSuccessBanner,
@@ -141,7 +147,9 @@ function App() {
   // ─── Derived channel ─────────────────────────────────────────────────────
 
   const adminActiveChannel =
-    channels.find((c) => c.id === selectedChannelId) || channels[0];
+    channels.find((c) => c.id === selectedChannelId) ??
+    channels[0] ??
+    noLaneChannel();
 
   const shooterSessionChannel =
     shooterAssignedLaneId != null
@@ -351,6 +359,23 @@ function App() {
         variant="danger"
         onConfirm={executeDiscardSession}
         onCancel={() => setDiscardConfirm({ open: false, channelId: null })}
+      />
+
+      {/* Raised on a session's first start when the target still carries an
+          offset from earlier work — see CarriedCalibrationDialog. */}
+      <CarriedCalibrationDialog
+        open={carriedCalibration.open}
+        targetLabel={carriedCalibration.target?.label ?? ""}
+        distanceM={carriedCalibration.target?.distanceM}
+        offset={{
+          x: carriedCalibration.target?.offsetXmm ?? 0,
+          y: carriedCalibration.target?.offsetYmm ?? 0,
+        }}
+        language={language}
+        busy={carriedCalibration.busy}
+        onKeep={keepCarriedCalibration}
+        onReset={resetCarriedCalibration}
+        onCancel={closeCarriedCalibration}
       />
 
       <Suspense fallback={null}>

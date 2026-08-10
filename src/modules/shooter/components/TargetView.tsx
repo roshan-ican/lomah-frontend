@@ -1,7 +1,6 @@
 import React, { useRef, useMemo, useEffect } from "react";
 import type { TargetViewProps } from "./target-view/types";
-import { getLaneError, mmToSvgPoint } from "@shared/coordinates";
-import { getLaneIdFromChannelId } from "../../../utils/helper";
+import { mmToSvgPoint } from "@shared/coordinates";
 import { CalibrationConfirmDialog } from "../../../components/common/CalibrationConfirmDialog";
 import { SVG_VIEW_BOX, EDGE_CLAMP_PAD } from "./target-view/constants";
 import { useBulkCalibrationDrag } from "./target-view/useBulkCalibrationDrag";
@@ -75,8 +74,13 @@ export const TargetView: React.FC<TargetViewProps> = ({
           ? 560
           : 340;
 
-  const laneId = getLaneIdFromChannelId(activeChannel.id);
-  const boardOffset = getLaneError(laneId);
+  // The board's committed mounting offset, as the server reports it on every
+  // lane sync — NOT the client-side lane-error cache (getLaneError), which
+  // nothing populates and always answers (0, 0). Reading that here meant a
+  // preview during an edit was computed as (draft - 0) instead of
+  // (draft - committed), so on any target that already had a nonzero offset
+  // the live bullet-shift preview was wrong by exactly that offset.
+  const boardOffset = activeChannel.targetOffset ?? { x: 0, y: 0 };
   const hasSensorOffset = boardOffset.x !== 0 || boardOffset.y !== 0;
   const previewDx = previewOffset ? previewOffset.x - boardOffset.x : 0;
   const previewDy = previewOffset ? previewOffset.y - boardOffset.y : 0;

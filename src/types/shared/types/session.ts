@@ -61,6 +61,14 @@ export interface Session {
    *  totalPausedMs so the stage clock can exclude paused time. */
   pausedAt: string | null;
   totalPausedMs: number;
+  /** Calibrations performed on this session, of any kind — pick, bulk, a
+   *  hand-typed offset, or a reset to zero. Informational; it does NOT gate
+   *  the pick (see pickCalibrationUsed). */
+  calibrationCount: number;
+  /** Whether the one-bullet "pick" calibration has been spent on this session.
+   *  Once true it stays true until a new session — resetting the offset does
+   *  not hand it back. */
+  pickCalibrationUsed: boolean;
   notes: string | null;
   feedback: string | null;
   createdBy: string | null;

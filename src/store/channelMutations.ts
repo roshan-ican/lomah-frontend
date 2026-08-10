@@ -43,6 +43,30 @@ export function channelFromLane(lane: Lane): ActiveShooterChannel {
 }
 
 /**
+ * Stand-in for "there is no lane to show".
+ *
+ * The admin views derive `activeChannel` as `find(...) ?? channels[0]`, which
+ * is undefined before the lane list arrives — and every one of those views
+ * reads `.sessionStatus` off it immediately. This keeps them from throwing
+ * without reintroducing invented lanes: it is never added to `channels`, so it
+ * cannot appear in the grid, and it carries no session, so every
+ * session-gated pane stays closed.
+ */
+export function noLaneChannel(): ActiveShooterChannel {
+  return {
+    id: "CH-0",
+    name: "—",
+    opId: "—",
+    unit: "—",
+    sessionStatus: "NONE",
+    laneStatus: "AVAILABLE",
+    shots: [],
+    distance: "—",
+    targetName: "—",
+  };
+}
+
+/**
  * Reset a lane to the empty "Vacant Lane" state: no session, no shots.
  * Used whenever a session ends, is reviewed, cancelled, or a sync finds the
  * lane idle. Spreads the original channel so lane identity (id/unit/distance)
@@ -62,7 +86,8 @@ export function toVacantLane(ch: ActiveShooterChannel): ActiveShooterChannel {
     // A new session resets calibration: pick can be used once again.
     referenceShotId: undefined,
     calibratedShotCount: undefined,
-    pickUsed: false,
+    calibrationCount: 0,
+    pickCalibrationUsed: false,
     // NOT reset: the offset belongs to the board, not the session. It survives
     // the lane going vacant exactly as it survives a restart.
   };

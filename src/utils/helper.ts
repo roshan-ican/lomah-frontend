@@ -133,6 +133,10 @@ function applyApiSessionToChannel(
       ? { x: stage.target.offsetXmm, y: stage.target.offsetYmm }
       : ch.targetOffset,
     sessionId: activeSession.id,
+    calibrationCount: activeSession.calibrationCount ?? 0,
+    // The server owns this — it is what makes the once-per-session pick
+    // calibration survive a refresh, a stage advance, and a second console.
+    pickCalibrationUsed: activeSession.pickCalibrationUsed ?? false,
     activeStageId: stage?.id,
     activeStageOrder: stage?.order,
     stageCount: activeSession.stages?.length ?? 0,

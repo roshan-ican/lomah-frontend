@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { Pause, Play, Square, Pencil, Check, X, SkipForward } from "lucide-react";
+import { Pause, Play, Square, Pencil, X, SkipForward } from "lucide-react";
 import type { ActiveShooterChannel } from "../../../types";
 import type { TranslationSet } from "../../../translations";
 import { formatLaneLabel, laneNeedsReview } from "../../../utils/laneSession";
-import { getLaneIdFromChannelId } from "../../../utils/helper";
 import { useSessionStore } from "../../../store/sessionStore";
 import { SessionTimer } from "../../shooter/components/SessionTimer";
 import { ShotHistory } from "../../shooter/components/ShotHistory";
@@ -13,7 +12,6 @@ import {
   type InstructorFeedback,
 } from "./InstructorFeedbackForm";
 import { ConfirmDialog } from "../../../components/common/ConfirmDialog";
-import { getLaneError } from "@shared/coordinates";
 
 type RailTab = "live" | "review";
 
@@ -30,15 +28,10 @@ interface RangeControlRailProps {
   onDiscardReadySession: (channelId: string) => void;
   onSaveFeedback: (feedback: InstructorFeedback) => void;
   onCancelSession: () => void;
-  /** Controlled offset-edit state owned by LaneWorkspace so the target board
-   *  can preview bullet movement live while the admin edits the values. */
-  editingOffset: boolean;
-  draftOffsetX: number;
-  draftOffsetY: number;
+  /** Opens the offset-edit dialog LaneWorkspace owns (it needs to sit over the
+   *  target board, not inside the rail, so bullet positions can preview live
+   *  while the admin edits the values). */
   onStartEditOffset: () => void;
-  onDraftOffsetChange: (axis: "x" | "y", value: number) => void;
-  onSaveOffset: () => void;
-  onCancelEditOffset: () => void;
   onResetOffset: () => void;
 }
 
@@ -55,13 +48,7 @@ export const RangeControlRail: React.FC<RangeControlRailProps> = ({
   onSaveFeedback,
   onCancelSession,
   onDiscardReadySession,
-  editingOffset,
-  draftOffsetX,
-  draftOffsetY,
   onStartEditOffset,
-  onDraftOffsetChange,
-  onSaveOffset,
-  onCancelEditOffset,
   onResetOffset,
 }) => {
   const isAr = language === "ar";
@@ -96,8 +83,11 @@ export const RangeControlRail: React.FC<RangeControlRailProps> = ({
 
   const totalScore = realShots.reduce((sum, s) => sum + s.score, 0);
 
-  const laneId = getLaneIdFromChannelId(channel.id);
-  const boardOffset = getLaneError(laneId);
+  // The board's committed mounting offset, as the server reports it on every
+  // lane sync. This used to read getLaneError(laneId) — a client-side
+  // lane-error cache that nothing populates any more (offsets moved onto the
+  // target) — which always answered (0, 0), so this badge never rendered.
+  const boardOffset = channel.targetOffset ?? { x: 0, y: 0 };
 
   const hasCalibration = boardOffset.x !== 0 || boardOffset.y !== 0;
   const canEditOffset =
@@ -260,7 +250,7 @@ export const RangeControlRail: React.FC<RangeControlRailProps> = ({
                   {isAr ? "معايرة" : "CALIBRATED"}
                 </span>
 
-                {!editingOffset && canEditOffset && (
+                {canEditOffset && (
                   <div className="flex items-center gap-1">
                     <button
                       type="button"
@@ -283,66 +273,24 @@ export const RangeControlRail: React.FC<RangeControlRailProps> = ({
                 )}
               </div>
 
-              {editingOffset ? (
-                <div className="flex items-center gap-2">
-                  <label className="range-rail-meta flex items-center gap-1">
-                    <span className="hud-text-subtle">x</span>
-                    <input
-                      type="number"
-                      value={draftOffsetX}
-                      onChange={(e) => onDraftOffsetChange("x", Number(e.target.value))}
-                      className="w-16 bg-hud-elevated border border-hud rounded px-1.5 py-1 admin-text-sm font-mono text-hud-strong focus:outline-none focus:border-hud-accent"
-                    />
-                  </label>
-
-                  <label className="range-rail-meta flex items-center gap-1">
-                    <span className="hud-text-subtle">y</span>
-                    <input
-                      type="number"
-                      value={draftOffsetY}
-                      onChange={(e) => onDraftOffsetChange("y", Number(e.target.value))}
-                      className="w-16 bg-hud-elevated border border-hud rounded px-1.5 py-1 admin-text-sm font-mono text-hud-strong focus:outline-none focus:border-hud-accent"
-                    />
-                  </label>
-
-                  <button
-                    type="button"
-                    onClick={onSaveOffset}
-                    className="hud-label inline-flex items-center gap-1 px-2 py-1 rounded-md hud-btn-resume cursor-pointer touch-target"
-                  >
-                    <Check className="w-3 h-3" />
-                    {isAr ? "حفظ" : "Save"}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={onCancelEditOffset}
-                    className="hud-label inline-flex items-center gap-1 px-2 py-1 rounded-md hud-toolbar-btn--idle cursor-pointer touch-target"
-                  >
-                    <X className="w-3 h-3" />
-                    {isAr ? "إلغاء" : "Cancel"}
-                  </button>
-                </div>
-              ) : (
-                <div className="range-rail-meta font-mono leading-relaxed">
-                  <span className="hud-text-strong">
-                    Δ x{boardOffset.x} y{boardOffset.y}mm
+              <div className="range-rail-meta font-mono leading-relaxed">
+                <span className="hud-text-strong">
+                  Δ x{boardOffset.x} y{boardOffset.y}mm
+                </span>
+                {channel.referenceShotId != null && (
+                  <span className="hud-text-subtle">
+                    {" "}
+                    · REF #{channel.referenceShotId}
                   </span>
-                  {channel.referenceShotId != null && (
-                    <span className="hud-text-subtle">
-                      {" "}
-                      · REF #{channel.referenceShotId}
-                    </span>
-                  )}
-                  {channel.calibratedShotCount != null && (
-                    <span className="hud-text-subtle">
-                      {" "}
-                      · {channel.calibratedShotCount}{" "}
-                      {isAr ? "معايرة" : "recal"}
-                    </span>
-                  )}
-                </div>
-              )}
+                )}
+                {channel.calibratedShotCount != null && (
+                  <span className="hud-text-subtle">
+                    {" "}
+                    · {channel.calibratedShotCount}{" "}
+                    {isAr ? "معايرة" : "recal"}
+                  </span>
+                )}
+              </div>
             </div>
           )}
 
