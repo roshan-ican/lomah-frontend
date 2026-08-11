@@ -112,9 +112,9 @@ export function AdminHeader({
         <ThemeSwitcher isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} />
         <button
           onClick={handleLogout}
-          className="touch-target inline-flex items-center justify-center rounded admin-text-xs font-mono font-bold hud-danger hover:bg-[var(--hud-danger-bg)] border border-transparent hover:border-[var(--hud-danger-border)] cursor-pointer"
+          className="touch-target inline-flex items-center justify-center rounded admin-text-xs font-mono font-bold hud-danger hover:bg-[var(--hud-danger-bg)] border border-transparent hover:border-[var(--hud-danger-border)] cursor-pointer px-3 py-2"
         >
-          <LogOut className="w-3.5 h-3.5" />
+          <LogOut className="w-3.5 h-3.5 text-center justify-center" />
           <span className="hidden sm:inline">{t.logoutNode}</span>
         </button>
       </div>

@@ -40,6 +40,7 @@ interface TargetSensorConsoleProps {
   onStop: () => void;
   onHeartbeat: () => void;
   onDevData: (shot: number) => void;
+  readonly?: boolean;
 }
 
 const COMMAND_NAMES: Record<string, string> = {

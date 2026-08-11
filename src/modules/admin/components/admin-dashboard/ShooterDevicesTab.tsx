@@ -154,8 +154,24 @@ export function ShooterDevicesTab({
           <button
             type="button"
             onClick={() => setShowAddForm(!showAddForm)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg admin-text-2xs font-mono font-bold hud-btn-primary cursor-pointer transition-colors"
-          >
+            className="
+            inline-flex items-center justify-center gap-1.5
+            px-3 py-1.5
+            rounded-lg
+            border-2
+            border-[var(--hud-primary-border)]
+            admin-text-2xs
+            font-mono
+            font-bold
+            hud-btn-primary
+            cursor-pointer
+            transition-all
+            duration-150
+            hover:bg-[var(--hud-primary-bg)]
+            hover:border-[var(--hud-primary-border)]
+            hover:brightness-125
+            "
+          > 
             <UserPlus className="w-3 h-3 shrink-0" />
             {isAr ? "إضافة رامي" : "Add Shooter"}
           </button>

@@ -1410,20 +1410,22 @@ export function LaneHardwarePanel({
       </div>
       </div>
 
-      <TargetSensorConsole
-        target={getSelectedTarget()}
-        isAr={isAr}
-        packets={packetLogs.get(selectedTargetId ?? "") ?? []}
-        isConnected={true}
-        isArmed={selectedTargetId ? armedTargets.has(selectedTargetId) : false}
-        isTesting={selectedTargetId ? testing.has(selectedTargetId) : false}
-        mode={mode}
-        onClear={() => selectedTargetId && clearConsole(selectedTargetId)}
-        onPlay={() => getSelectedTarget() && sendPlayCommand(getSelectedTarget()!)}
-        onStop={() => getSelectedTarget() && sendStopCommand(getSelectedTarget()!)}
-        onHeartbeat={() => getSelectedTarget() && sendHeartbeat(getSelectedTarget()!)}
-        onDevData={(shot) => getSelectedTarget() && sendDevData(getSelectedTarget()!, shot)}
-      />
+      {!readOnly && (
+        <TargetSensorConsole
+          target={getSelectedTarget()}
+          isAr={isAr}
+          packets={packetLogs.get(selectedTargetId ?? "") ?? []}
+          isConnected={true}
+          isArmed={selectedTargetId ? armedTargets.has(selectedTargetId) : false}
+          isTesting={selectedTargetId ? testing.has(selectedTargetId) : false}
+          mode={mode}
+          onClear={() => selectedTargetId && clearConsole(selectedTargetId)}
+          onPlay={() => getSelectedTarget() && sendPlayCommand(getSelectedTarget()!)}
+          onStop={() => getSelectedTarget() && sendStopCommand(getSelectedTarget()!)}
+          onHeartbeat={() => getSelectedTarget() && sendHeartbeat(getSelectedTarget()!)}
+          onDevData={(shot) => getSelectedTarget() && sendDevData(getSelectedTarget()!, shot)}
+        />
+      )}
     </div>
   );
 }
