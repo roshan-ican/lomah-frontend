@@ -269,7 +269,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
           {activeTab === "HELP" && (
             <div className="flex-1 min-h-0 overflow-hidden p-4 md:p-5 w-full">
-              <AdminHelp language={language} t={t} />
+              {/* ADMIN keeps the session-ops guide (default variant). */}
+              <AdminHelp language={language} t={t} variant="rangeOfficer" />
             </div>
           )}
 

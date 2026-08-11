@@ -11,12 +11,18 @@ import {
   Users,
   FileText,
   Compass,
+  ScanLine,
+  Wifi,
 } from "lucide-react";
 import { TranslationSet } from "../../../translations";
 
 interface AdminHelpProps {
   language: "en" | "ar";
   t: TranslationSet;
+  /** Two audiences, two manuals. ADMIN runs relays day to day (default);
+   *  SUPER_ADMIN commissions and tests hardware and never sees a live
+   *  session — so the guide is content, not just a permissions tweak. */
+  variant?: "rangeOfficer" | "superAdmin";
 }
 
 function GuideCard({
@@ -67,8 +73,12 @@ function Step({
   );
 }
 
-export const AdminHelp: React.FC<AdminHelpProps> = ({ language }) => {
+export const AdminHelp: React.FC<AdminHelpProps> = ({
+  language,
+  variant = "rangeOfficer",
+}) => {
   const isAr = language === "ar";
+  const isSuperAdmin = variant === "superAdmin";
 
   return (
     <div
@@ -78,17 +88,39 @@ export const AdminHelp: React.FC<AdminHelpProps> = ({ language }) => {
       <div className="shrink-0 border-b border-hud pb-3">
         <h1 className="hud-accent admin-text-lg flex items-center gap-2">
           <BookOpen className="w-5 h-5" />
-          {isAr
-            ? "دليل ضابط الميدان والتشغيل"
-            : "RANGE OFFICER ADMIN GUIDE & MANUAL"}
+          {isSuperAdmin
+            ? isAr
+              ? "دليل المشرف الأعلى للعتاد"
+              : "SUPER ADMIN HARDWARE GUIDE & MANUAL"
+            : isAr
+              ? "دليل ضابط الميدان والتشغيل"
+              : "RANGE OFFICER ADMIN GUIDE & MANUAL"}
         </h1>
         <p className="admin-text-xs font-mono hud-text-muted mt-1.5 leading-relaxed">
-          {isAr
-            ? "مرجع سريع لتشغيل الميدان: بدء الجلسات، التحكم بالمستشعر، المعايرة، وتصدير النتائج."
-            : "Quick reference for running the range — starting sessions, controlling the sensor, calibrating, and exporting results."}
+          {isSuperAdmin
+            ? isAr
+              ? "مرجع سريع لتهيئة الحارات، اختبار الأهداف، وإدارة أجهزة الرماة."
+              : "Quick reference for commissioning lanes, testing targets, and managing shooter devices."
+            : isAr
+              ? "مرجع سريع لتشغيل الميدان: بدء الجلسات، التحكم بالمستشعر، المعايرة، وتصدير النتائج."
+              : "Quick reference for running the range — starting sessions, controlling the sensor, calibrating, and exporting results."}
         </p>
       </div>
 
+      {isSuperAdmin ? (
+        <SuperAdminGuide isAr={isAr} />
+      ) : (
+        <RangeOfficerGuide isAr={isAr} />
+      )}
+    </div>
+  );
+};
+
+/** Everything that used to be inline in AdminHelp's return — unchanged, just
+ *  extracted so the component can switch between two full guides. */
+function RangeOfficerGuide({ isAr }: { isAr: boolean }) {
+  return (
+    <>
       {/* ── Lane status legend ─────────────────────────────────────────── */}
       <div className="shrink-0 grid grid-cols-1 md:grid-cols-3 gap-3">
         <div className="p-3 rounded-lg border flex gap-2.5 hud-lane-card--live min-h-0">
@@ -366,6 +398,250 @@ export const AdminHelp: React.FC<AdminHelpProps> = ({ language }) => {
           </div>
         </GuideCard>
       </div>
+    </>
+  );
+}
+
+/** SUPER_ADMIN's guide: commissioning, testing, and shooter devices — no
+ *  session-ops content, since that account never touches a live relay. */
+function SuperAdminGuide({ isAr }: { isAr: boolean }) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      {/* 1 — Navigation */}
+      <GuideCard
+        icon={<Compass className="w-4 h-4" />}
+        title={isAr ? "١. لوحة الملاحة" : "1. Console navigation"}
+      >
+        <ul className="space-y-1.5 list-disc pl-4">
+          <Step term={isAr ? "الحارات والأهداف" : "Lanes & Targets"}>
+            {isAr
+              ? " — تهيئة الحارات وتركيب الأهداف عليها؛ العناوين تُشتق من الحارة والموضع، لا تُكتب يدوياً."
+              : " — commission lanes and mount targets on them; addresses are derived from lane and position, never typed."}
+          </Step>
+          <Step term={isAr ? "أجهزة الرماة" : "Shooter Devices"}>
+            {isAr
+              ? " — كل جهاز لوحي متصل بالخادم حالياً، وتعيينه لحارة."
+              : " — every tablet currently talking to the server, and assigning it to a lane."}
+          </Step>
+          <Step term={isAr ? "الدليل" : "Manual"}>
+            {isAr ? " — هذا الدليل." : " — this guide."}
+          </Step>
+        </ul>
+      </GuideCard>
+
+      {/* 2 — Configuring a lane & target */}
+      <GuideCard
+        icon={<Crosshair className="w-4 h-4" />}
+        title={isAr ? "٢. تهيئة حارة وهدف" : "2. Configure a lane & target"}
+      >
+        <ol className="space-y-1.5 list-decimal pl-4">
+          <li>
+            {isAr
+              ? 'افتح "الحارات والأهداف".'
+              : 'Open "Lanes & Targets".'}
+          </li>
+          <li>
+            {isAr
+              ? "أضف هدفاً إلى فتحة في الحارة — حدد التسمية والمسافة ونوع الملف الشخصي."
+              : "Add a target to a lane slot — set its label, distance, and profile."}
+          </li>
+          <li>
+            {isAr
+              ? "عنوان IP يُشتق تلقائياً من الحارة والموضع — لا تكتبه يدوياً."
+              : "The IP address is assigned automatically from the lane and position — never typed."}
+          </li>
+          <li>
+            {isAr
+              ? 'احفظ — يظهر الصف "متصل" بمجرد استجابة اللوح.'
+              : 'Save — the row shows "Online" once the board answers.'}
+          </li>
+        </ol>
+      </GuideCard>
+
+      {/* 3 — Testing a target */}
+      <GuideCard
+        icon={<Play className="w-4 h-4" />}
+        title={isAr ? "٣. اختبار هدف" : "3. Test a target"}
+      >
+        <ul className="space-y-1.5 list-disc pl-4">
+          <Step term={isAr ? "تشغيل" : "Play"}>
+            {isAr
+              ? " — يسلّح الهدف ويبدأ الكشف."
+              : " — arms the target and starts detection."}
+          </Step>
+          <Step term={isAr ? "إيقاف" : "Stop"}>
+            {isAr ? " — ينزع تسليح الهدف." : " — disarms it."}
+          </Step>
+          <Step term={isAr ? "نبض" : "Heartbeat"}>
+            {isAr
+              ? " — يتحقق من استجابة اللوح دون تسليحه."
+              : " — pings the board to confirm it's reachable, without arming it."}
+          </Step>
+        </ul>
+        <p className="mt-2 hud-text-muted">
+          {isAr
+            ? "يُرسل أمر واحد فقط للوح في كل مرة — انتظر الاستجابة (شارة \"اختبار\") قبل إرسال أمر آخر."
+            : 'Only one command goes to a board at a time — wait for the "Testing" badge to clear before sending another.'}
+        </p>
+      </GuideCard>
+
+      {/* 4 — Self-test success vs failure */}
+      <GuideCard
+        icon={<CheckCircle className="w-4 h-4" />}
+        title={
+          isAr
+            ? "٤. الاختبار الذاتي: نجاح أم فشل"
+            : "4. Self-test: success vs failure"
+        }
+      >
+        <p>
+          {isAr
+            ? 'لكل هدف زر "اختبار" خاص به في صفه — استخدمه، وليس زر التشغيل.'
+            : 'Each target row has its own "Test" button — use that, not Play.'}
+        </p>
+        <ul className="space-y-1.5 list-disc pl-4 mt-2">
+          <Step term={isAr ? "متوقف" : "Stopped"}>
+            {isAr
+              ? " — الهدف غير مسلَّح؛ سلّحه (تشغيل) قبل الاختبار."
+              : " — the target isn't armed; arm it (Play) before testing."}
+          </Step>
+          <Step term={isAr ? "فشل" : "Fail"}>
+            {isAr
+              ? " — الهدف مسلَّح لكن الاختبار فشل: مؤقت اللوح لا يعمل بشكل صحيح."
+              : " — the target is armed but the test failed: the board's timer isn't working."}
+          </Step>
+          <Step term={isAr ? "نجاح" : "Success"}>
+            {isAr
+              ? " — الهدف مسلَّح والاختبار ناجح، بموضع قريب من x ≈ 150- مم، y ≈ 600 مم."
+              : " — the target is armed and the test passed, reporting a position near x ≈ -150mm, y ≈ 600mm."}
+          </Step>
+        </ul>
+        <p className="mt-2 hud-warning">
+          {isAr
+            ? "انحراف كبير عن ذلك الموضع يستحق المراجعة حتى لو كانت النتيجة \"ناجحة\"."
+            : 'A result far from that position is worth a second look even when it reports "success."'}
+        </p>
+      </GuideCard>
+
+      {/* 5 — Sensitivity / wiper tuning */}
+      <GuideCard
+        icon={<Layers className="w-4 h-4" />}
+        title={isAr ? "٥. ضبط الحساسية" : "5. Sensitivity / wiper tuning"}
+      >
+        <p>
+          {isAr
+            ? "افتح لوحة الحساسية في صف الهدف لقراءة أو كتابة صفحتي الضبط (A/B)، خمس قيم لكل منهما."
+            : "Open a target row's sensitivity panel to read or write its two trim pages (A/B), 5 values each."}
+        </p>
+        <p className="mt-2 hud-warning">
+          {isAr
+            ? "التغييرات تُطبَّق على اللوح فوراً ولا تُحفظ في أي مكان — لا يوجد \"تراجع\"."
+            : "Changes apply on the board immediately and are not saved anywhere — there's no undo."}
+        </p>
+        <p className="mt-2 hud-text-muted">
+          {isAr
+            ? "ربط الوايبر بالمستشعرات غير موثق: غيّر قيمة واحدة، شغّل اختباراً ذاتياً، ولاحظ الأثر قبل تغيير غيرها."
+            : "Wiper-to-sensor mapping isn't documented: change one value, run a self-test, and observe before changing another."}
+        </p>
+      </GuideCard>
+
+      {/* 6 — Diagnosing a shot */}
+      <GuideCard
+        icon={<ScanLine className="w-4 h-4" />}
+        title={isAr ? "٦. تشخيص طلقة" : "6. Diagnose a shot"}
+      >
+        <p>
+          {isAr
+            ? "في وحدة التحكم، أدخل رقم طلقة (١–١٠٠) من الجلسة الحالية واطلب بيانات مستشعراتها."
+            : "In the console, enter a shot number (1–100) from the current session and request its sensor data."}
+        </p>
+        <p className="mt-2 hud-text-muted">
+          {isAr
+            ? "يُبلغ اللوح بأي من مستشعراته الثمانية كشف تلك الطلقة — مفيد عندما تصل طلقة عند (0، 0)، أي أن المستشعرات لم تحدد موضعها جميعاً."
+            : "The board reports which of its 8 sensors detected that shot — useful when a shot lands at (0, 0), meaning not every sensor triangulated it."}
+        </p>
+      </GuideCard>
+
+      {/* 7 — Shooter Devices tab */}
+      <GuideCard
+        icon={<Wifi className="w-4 h-4" />}
+        title={isAr ? "٧. تبويب أجهزة الرماة" : "7. Shooter Devices tab"}
+      >
+        <p>
+          {isAr
+            ? "يسرد كل جهاز لوحي متصل حالياً، ويُحدَّث تلقائياً كل بضع ثوانٍ."
+            : "Lists every tablet currently connected, refreshed automatically every few seconds."}
+        </p>
+        <p className="mt-2">
+          {isAr
+            ? "عيّن جهازاً لحارة لوضعه في الخدمة، أو ألغِ تعيينه لإخراجه منها."
+            : "Assign a device to a lane to put it in service, or release it to take it out."}
+        </p>
+        <p className="mt-2 hud-text-muted">
+          {isAr
+            ? "التعيين يعتمد على الجهاز أولاً — الرماة لا يسجّلون الدخول، فـ\"من هنا\" هو أي جهاز يتحدث مع الخادم."
+            : "Assignment is device-first — shooters have no accounts, so \"who is here\" is whichever tablet is talking to the server."}
+        </p>
+      </GuideCard>
+
+      {/* 8 — Status indicators */}
+      <GuideCard
+        icon={<Info className="w-4 h-4" />}
+        title={isAr ? "٨. دلالات الحالة" : "8. Status indicators"}
+      >
+        <ul className="space-y-1.5 list-disc pl-4">
+          <Step term={isAr ? "متصل / غير متصل" : "Connected / Offline"}>
+            {isAr
+              ? " — هل يستطيع الخادم الوصول إلى اللوح الآن."
+              : " — whether the server can reach that board right now."}
+          </Step>
+          <Step term={isAr ? "مسلَّح / غير مسلَّح" : "Armed / Disarmed"}>
+            {isAr
+              ? " — هل أُرسل أمر التشغيل والكشف يعمل."
+              : " — whether Play has been sent and detection is running."}
+          </Step>
+          <Step term={isAr ? "اختبار" : "Testing"}>
+            {isAr
+              ? " — أمر قيد التنفيذ؛ انتظر انتهاءه قبل إرسال آخر."
+              : " — a command is in flight; wait for it to clear before sending another."}
+          </Step>
+        </ul>
+      </GuideCard>
+
+      {/* 9 — Troubleshooting */}
+      <GuideCard
+        icon={<ShieldAlert className="w-4 h-4" />}
+        title={isAr ? "٩. استكشاف الأخطاء" : "9. Troubleshooting"}
+        variant="danger"
+        className="md:col-span-2 xl:col-span-3"
+      >
+        <div className="space-y-2.5">
+          <p>
+            <strong className="hud-text">
+              {isAr ? "لا استجابة:" : "No reply:"}
+            </strong>{" "}
+            {isAr
+              ? "تحقق من تغذية اللوح واتصاله بشبكة الميدان."
+              : "Check the board's power and that it's on the range's network."}
+          </p>
+          <p>
+            <strong className="hud-text">
+              {isAr ? "استمرار فشل الاختبار الذاتي بعد تعديل الحساسية:" : "Self-test keeps failing after a sensitivity change:"}
+            </strong>{" "}
+            {isAr
+              ? "تراجع عن آخر قيمة وايبر غيّرتها — على الأرجح أنها زادت الأمر سوءاً."
+              : "Revert the last wiper value you changed — it likely made things worse."}
+          </p>
+          <p>
+            <strong className="hud-text">
+              {isAr ? "الهدف لا يتسلّح:" : "A target won't arm:"}
+            </strong>{" "}
+            {isAr
+              ? "تأكد أنه ليس مسلَّحاً بالفعل من مكان آخر، ثم أعد محاولة التشغيل."
+              : "Confirm it isn't already armed elsewhere, then retry Play."}
+          </p>
+        </div>
+      </GuideCard>
     </div>
   );
-};
+}

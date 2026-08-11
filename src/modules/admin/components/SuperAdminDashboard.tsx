@@ -102,6 +102,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
         // design. The header's "live" indicator is an operations concern.
         liveFiringCount={0}
         handleLogout={handleLogout}
+        isSuperAdmin
       />
 
       <div className="flex-1 flex flex-col md:flex-row relative min-h-0 admin-app-body-offset">
@@ -185,7 +186,9 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
               />
             )}
             {activeTab === "HELP" && (
-              <AdminHelp language={language} t={t} />
+              // SUPER_ADMIN gets the hardware commissioning/testing guide,
+              // not the range-officer session-ops one.
+              <AdminHelp language={language} t={t} variant="superAdmin" />
             )}
           </div>
 

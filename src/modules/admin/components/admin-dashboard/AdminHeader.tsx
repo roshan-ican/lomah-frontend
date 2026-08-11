@@ -24,6 +24,9 @@ interface Props {
   setNavOpen: React.Dispatch<React.SetStateAction<boolean>>;
   liveFiringCount: number;
   handleLogout: () => void;
+  /** True on the commissioning console. Swaps the header label so it's never
+   *  ambiguous which account — with full hardware access — is signed in. */
+  isSuperAdmin?: boolean;
 }
 
 export function AdminHeader({
@@ -37,6 +40,7 @@ export function AdminHeader({
   setNavOpen,
   liveFiringCount,
   handleLogout,
+  isSuperAdmin = false,
 }: Props) {
   return (
     <header className="fixed top-0 left-0 right-0 admin-app-header safe-area-inset-x border-b border-hud flex justify-between items-center z-40 bg-hud-rail">
@@ -63,7 +67,13 @@ export function AdminHeader({
           <span className="font-mono admin-text-2xs tracking-widest font-bold uppercase hud-accent truncate">
             {t.brand}
             <span className="hidden sm:inline">
-              {isAr ? "مركز التحكم بالمشرفين" : "ADMIN CONTROL CENTER"}
+              {isSuperAdmin
+                ? isAr
+                  ? "مركز تحكم المشرف الأعلى"
+                  : "SUPER ADMIN CONTROL CENTER"
+                : isAr
+                  ? "مركز التحكم بالمشرفين"
+                  : "ADMIN CONTROL CENTER"}
             </span>
           </span>
           <span className="hidden sm:block font-mono admin-text-2xs hud-text-subtle">
