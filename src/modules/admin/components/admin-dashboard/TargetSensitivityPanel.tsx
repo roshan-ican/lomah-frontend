@@ -64,6 +64,10 @@ export function TargetSensitivityPanel({
   const [page, setPage] = useState<WiperPage>("A");
   const [values, setValues] = useState<number[] | null>(null);
   const [loading, setLoading] = useState(false);
+  /** What the last failed read actually said. Kept so the panel can show the
+   *  board's own reason instead of a generic "unreachable" that hides which
+   *  target answered and how. */
+  const [readError, setReadError] = useState<string | null>(null);
   /** Uncommitted slider positions, keyed by wiper index (0-based). Kept apart
    *  from `values` so dragging never fires a request per pixel — see
    *  commitWiper, which is the only thing that actually writes. */
@@ -79,6 +83,7 @@ export function TargetSensitivityPanel({
   const load = async (forPage: WiperPage) => {
     setLoading(true);
     setDrafts(new Map());
+    setReadError(null);
     try {
       const result = await api.get<WiperPageValues>(
         `/targets/${target.id}/wipers?page=${forPage}`,
@@ -107,6 +112,7 @@ export function TargetSensitivityPanel({
     } catch (err) {
       setValues(null);
       const msg = err instanceof Error ? err.message : "Failed to read wipers";
+      setReadError(msg);
       onPacket?.(target.id, "G", "rx", "(no reply)", "—", "error", msg);
       onNotice(isAr ? `خطأ: ${msg}` : `Error: ${msg}`);
     } finally {
@@ -241,11 +247,18 @@ export function TargetSensitivityPanel({
       </div>
 
       {values === null && !loading ? (
-        <p className="admin-text-xs font-mono text-amber-500">
-          {isAr
-            ? "تعذّرت قراءة الحساسية — تحقّق من أن الهدف متصل."
-            : "Could not read sensitivity — check that the board is reachable."}
-        </p>
+        <div className="space-y-1">
+          <p className="admin-text-xs font-mono text-amber-500">
+            {isAr
+              ? "تعذّرت قراءة الحساسية — تحقّق من أن الهدف متصل."
+              : "Could not read sensitivity — check that the board is reachable."}
+          </p>
+          {readError && (
+            <p className="admin-text-2xs font-mono text-amber-500/70 break-words">
+              {readError}
+            </p>
+          )}
+        </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
           {Array.from({ length: WIPER_COUNT }, (_v, i) => i).map((i) => {

@@ -140,6 +140,8 @@ export function StationTerminal() {
             shotNumber: s.shotNumber,
             x: s.x,
             y: s.y,
+            sensorXmm: s.sensorXmm,
+            sensorYmm: s.sensorYmm,
             isMiss: s.isMiss,
             isLost: s.isLost,
             timestamp: s.firedAt,
@@ -540,6 +542,8 @@ export function StationTerminal() {
             shotNumber: data.shotNumber,
             x: data.x,
             y: data.y,
+            sensorXmm: data.sensorXmm,
+            sensorYmm: data.sensorYmm,
             isMiss: data.isMiss,
             isLost: data.isLost,
             timestamp: data.firedAt,
@@ -585,6 +589,11 @@ export function StationTerminal() {
             shotNumber: data.shotNumber,
             x: data.x,
             y: data.y,
+            // Survives the drag on purpose: x/y are now wherever the operator
+            // put them, and this is the only remaining record of what the
+            // board actually read for this bullet.
+            sensorXmm: data.sensorXmm,
+            sensorYmm: data.sensorYmm,
             isMiss: false,
           },
           data.shotNumber,

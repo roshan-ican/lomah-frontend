@@ -98,6 +98,11 @@ export function useCalibration({
           shotNumber: updated.shotNumber,
           x: updated.x,
           y: updated.y,
+          // The drag rewrote x/y; the board's own reading is untouched by the
+          // calibrate endpoint and is carried forward so the log can still show
+          // how far this shot was moved.
+          sensorXmm: updated.sensorXmm,
+          sensorYmm: updated.sensorYmm,
           isMiss: updated.isMiss,
         },
         undefined,

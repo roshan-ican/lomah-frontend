@@ -121,6 +121,8 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               shotNumber: number;
               x: number;
               y: number;
+              sensorXmm?: number | null;
+              sensorYmm?: number | null;
               isMiss?: boolean;
               isLost?: boolean;
               timestamp?: string;
@@ -132,6 +134,8 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 shotNumber: sh.shotNumber,
                 x: sh.x,
                 y: sh.y,
+                sensorXmm: sh.sensorXmm ?? undefined,
+                sensorYmm: sh.sensorYmm ?? undefined,
                 isMiss: sh.isMiss,
                 isLost: sh.isLost,
                 timestamp: sh.timestamp,

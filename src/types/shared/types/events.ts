@@ -14,6 +14,10 @@ export interface ShotEvent {
   /** Board-mm from centre, calibration already applied. */
   x: number;
   y: number;
+  /** The same millimetres before the calibration offset. Absent on misses and
+   *  lost placeholders, and on shots fired before the field existed. */
+  sensorXmm?: number;
+  sensorYmm?: number;
   score: number;
   isMiss: boolean;
   /** Frame never arrived — a placeholder holding the bullet's number. */
@@ -97,8 +101,13 @@ export interface ShotCalibratedEvent {
   sessionStageId: string;
   shotId: string;
   shotNumber: number;
+  /** Where the operator dragged the shot to. */
   x: number;
   y: number;
+  /** Where the board originally read it. Untouched by the drag — after a
+   *  calibrate this is the only surviving record of the sensor's own answer. */
+  sensorXmm?: number;
+  sensorYmm?: number;
   score: number;
 }
 

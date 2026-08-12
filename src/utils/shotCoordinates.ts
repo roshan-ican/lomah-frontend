@@ -147,6 +147,12 @@ export function mapRawShotToDisplay(
     status?: number;
     x: number;
     y: number;
+    /** Pre-calibration board-mm, when the payload carries it. Passed through
+     *  untouched and never derived: subtracting the target's current offset
+     *  from x would be wrong for any shot that has since been dragged
+     *  individually, which is exactly the shot worth inspecting. */
+    sensorXmm?: number;
+    sensorYmm?: number;
     isMiss?: boolean;
     isLost?: boolean;
     timestamp?: string | Date;
@@ -177,6 +183,10 @@ export function mapRawShotToDisplay(
       : (serverScore ?? scoreFromOffset(xVal, yVal, profileType)),
     x: xVal,
     y: yVal,
+    // Dropped on a miss along with x/y: a sentinel frame located nothing, so
+    // there is no sensor reading to preserve either.
+    sensorX: isMiss ? undefined : rawShot.sensorXmm,
+    sensorY: isMiss ? undefined : rawShot.sensorYmm,
     zone: zoneFromOffset(xVal, yVal, isMiss, profileType),
     isMiss,
     timestamp: new Date(rawShot.timestamp ?? Date.now()).toLocaleTimeString(

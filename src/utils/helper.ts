@@ -90,6 +90,8 @@ function applyApiSessionToChannel(
             shotNumber: sh.shotNumber,
             x: sh.x,
             y: sh.y,
+            sensorXmm: sh.sensorXmm,
+            sensorYmm: sh.sensorYmm,
             isMiss: sh.isMiss,
             isLost: sh.isLost,
             timestamp: sh.firedAt,

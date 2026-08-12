@@ -6,6 +6,12 @@ export interface Shot {
   shotNumber: number;
   x: number;
   y: number;
+  /** The same millimetres before the target's calibration offset — what the
+   *  board itself reported. Absent on misses, on lost placeholders, and on any
+   *  shot recorded before the column existed, so it must never be substituted
+   *  for x/y when missing. */
+  sensorXmm?: number;
+  sensorYmm?: number;
   score: number;
   /** True only for a sensor sentinel — "fired but resolved nothing". A real
    *  hit that landed outside every scoring ring is score 0, isMiss false. */

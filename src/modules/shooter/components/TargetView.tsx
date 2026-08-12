@@ -1,6 +1,11 @@
 import React, { useRef, useMemo, useEffect } from "react";
 import type { TargetViewProps } from "./target-view/types";
-import { mmToSvgPoint } from "@shared/coordinates";
+import {
+  mmToSvgPoint,
+  SVG_VIEW_SIZE,
+  TARGET_HALF_HEIGHT_MM,
+  TARGET_HALF_WIDTH_MM,
+} from "@shared/coordinates";
 import { CalibrationConfirmDialog } from "../../../components/common/CalibrationConfirmDialog";
 import { SVG_VIEW_BOX, EDGE_CLAMP_PAD } from "./target-view/constants";
 import { useBulkCalibrationDrag } from "./target-view/useBulkCalibrationDrag";
@@ -8,16 +13,46 @@ import { HudToolbar } from "./target-view/HudToolbar";
 import { BullseyeTarget } from "./target-view/BullseyeTarget";
 import { ShotMarker } from "./target-view/ShotMarker";
 import { ShotListHighlight } from "./target-view/ShotListHighlight";
-import { usePinchZoom } from "./target-view/usePinchZoom";
+import { usePanZoom } from "./target-view/usePanZoom";
+import { CLICK_TO_FIRE_ENABLED } from "../../../utils/featureFlags";
 
-// Clamp a shot to the visible edge of the CURRENT zoom, not the fixed 400-unit
-// viewBox. Zoom is a CSS `scale(zoomLevel)` on the whole board (see the
-// container style below) — the SVG's own coordinate space never changes, so a
-// fixed [15, 385] clamp always lands shots in the same spot on screen no
-// matter how far the admin has zoomed out. Dividing the allowed half-range by
-// zoomLevel keeps the on-screen padding constant while giving zoomed-out views
-// proportionally more room before an off-target shot hits the edge.
-function clampToEdge(cx: number, cy: number, zoomLevel: number) {
+/**
+ * Pull a shot that missed the paper in to the edge of the current view so it
+ * still reads as "it went that way", and leave every shot that actually hit
+ * the face exactly where it hit.
+ *
+ * The edge bound is the visible region of the current zoom —
+ * `(200 - PAD) / zoomLevel` — so an off-face marker stays in frame as the
+ * operator zooms rather than disappearing along with the metre of empty air it
+ * represents. That behaviour is the point of the badge and is unchanged.
+ *
+ * What changed is WHO it applies to. The bound used to be the only test, which
+ * made "clamped" mean "outside your current viewport" rather than "off the
+ * target", and swept up honest shots the moment anyone zoomed. A hit at
+ * (225, 493)mm is the top-right corner of a 450×1000mm face — a real, scoring
+ * impact. At 1.7x it fell outside the centred half-range, so it was dragged to
+ * (290, 91.2), badged OFF, and drawn ~220mm from where it landed — on the exact
+ * pixel as a shot at (225, 1414)mm, nearly a metre above the board. One painted
+ * over the other and the real one lost.
+ *
+ * The face maps onto the viewBox by construction (±500mm of board is the full
+ * 0–400 of SVG y), so an on-face shot is always somewhere in the board's own
+ * coordinate space and never needs moving. If it is off screen at the current
+ * zoom, panning to it is the answer — not dragging it into frame under a label
+ * that misstates where it hit.
+ */
+function clampToEdge(
+  cx: number,
+  cy: number,
+  xMm: number,
+  yMm: number,
+  zoomLevel: number,
+) {
+  const onFace =
+    Math.abs(xMm) <= TARGET_HALF_WIDTH_MM &&
+    Math.abs(yMm) <= TARGET_HALF_HEIGHT_MM;
+  if (onFace) return { cx, cy, wasClamped: false };
+
   const halfRange = (200 - EDGE_CLAMP_PAD) / (zoomLevel || 1);
   const min = 200 - halfRange;
   const max = 200 + halfRange;
@@ -85,7 +120,6 @@ export const TargetView: React.FC<TargetViewProps> = ({
   const previewDx = previewOffset ? previewOffset.x - boardOffset.x : 0;
   const previewDy = previewOffset ? previewOffset.y - boardOffset.y : 0;
   const zoomLabel = `${Number(zoomLevel).toFixed(1)}x`;
-  const resetZoom = () => changeZoom(1 - zoomLevel);
 
   const svgRef = useRef<SVGSVGElement>(null);
   const pinchAreaRef = useRef<HTMLDivElement>(null);
@@ -163,10 +197,10 @@ export const TargetView: React.FC<TargetViewProps> = ({
     svgRef,
   });
 
-  // Two-finger pinch (and trackpad ctrl+wheel) zoom. Disabled during a bulk
-  // calibration drag, where a second finger on the board means "drag with two
-  // fingers", not "zoom", and where hijacking the gesture would move shots.
-  usePinchZoom({
+  // Pinch, ctrl+wheel and drag-to-pan. Disabled during a bulk calibration
+  // drag, where a second finger on the board means "drag with two fingers",
+  // not "zoom", and where hijacking the gesture would move shots.
+  const { pan, isPanning, panHandlers, reset: resetView } = usePanZoom({
     targetRef: pinchAreaRef,
     zoomLevel,
     changeZoom,
@@ -177,13 +211,23 @@ export const TargetView: React.FC<TargetViewProps> = ({
   // shared selectedShotId), mirror it onto the drag candidate set so the
   // chosen bullet is highlighted on the board and ready to drag — no need to
   // precisely grab the small marker on touch.
+  //
+  // Deselecting has to mirror too. The log lets a second tap on the chosen
+  // shot clear the selection; if only the non-null case were handled, the
+  // board would keep the old bullet lit and draggable after the log had
+  // stopped showing anything as picked — two surfaces disagreeing about which
+  // shot a calibration is about to move.
   useEffect(() => {
-    if (calibrateMode === "pick" && selectedShotId != null) {
-      setSelectedShotIds(new Set([selectedShotId]));
-    }
+    if (calibrateMode !== "pick") return;
+    setSelectedShotIds(
+      selectedShotId != null ? new Set([selectedShotId]) : new Set(),
+    );
   }, [calibrateMode, selectedShotId, setSelectedShotIds]);
 
-  const canFire = !readOnly && !!handleTargetClick && !isBulkCalibrate;
+  // CLICK_TO_FIRE_ENABLED is off: a tap on the board no longer forges a shot.
+  // See featureFlags.ts for why, and flip it there to restore local testing.
+  const canFire =
+    CLICK_TO_FIRE_ENABLED && !readOnly && !!handleTargetClick && !isBulkCalibrate;
   // Selecting a shot only highlights it — it mutates nothing on the server and
   // nothing on the board. `readOnly` gates FIRING (see canFire above, which
   // checks it independently), so tying selection to it as well was what made
@@ -195,12 +239,27 @@ export const TargetView: React.FC<TargetViewProps> = ({
       ? Math.max(...calibratableShots.map((s) => s.id))
       : null;
 
+  /**
+   * Tap a bullet to select it; tap the selected one again to clear it.
+   *
+   * Same toggle the shot log uses, and it has to be here too or the two
+   * surfaces disagree about how selection works — a shot picked on the board
+   * could only be released from the list, which is not obvious and is awkward
+   * on a touch screen where the list may be scrolled somewhere else entirely.
+   */
   const selectShot = (sh: {
     id: number;
     score: number;
     x: number;
     y: number;
   }) => {
+    if (selectedShotId === sh.id) {
+      setSelectedShotId(null);
+      triggerSuccessBanner(
+        isAr ? `تم إلغاء تحديد الطلقة #${sh.id}` : `Cleared Shot #${sh.id}`,
+      );
+      return;
+    }
     setSelectedShotId(sh.id);
     triggerSuccessBanner(
       isAr
@@ -233,18 +292,38 @@ export const TargetView: React.FC<TargetViewProps> = ({
           lockProfileType={lockProfileType}
           zoomLabel={zoomLabel}
           changeZoom={changeZoom}
-          resetZoom={resetZoom}
+          // Resets the pan as well as the zoom. They are one view state, and
+          // returning to 1x while still offset would leave the board parked
+          // off-centre with the button that just "reset" it now doing nothing.
+          resetZoom={resetView}
           toolbarExtra={toolbarExtra}
         />
       )}
 
       <div
         ref={pinchAreaRef}
+        {...panHandlers}
         // pinch-zoom must be off at the CSS level too: touch-action is what
         // decides whether the browser consumes a two-finger gesture as its own
         // page zoom before any JS handler is consulted, and preventDefault()
         // in the listener cannot claw it back once that happens.
-        style={{ touchAction: isBulkCalibrate ? undefined : "pan-x pan-y" }}
+        //
+        // "none" once zoomed in, so a one-finger drag reaches the pan handlers
+        // instead of being eaten as a page scroll. At 1x there is nothing to
+        // pan to, so the page keeps its normal scrolling.
+        style={{
+          touchAction: isBulkCalibrate
+            ? undefined
+            : zoomLevel > 1
+              ? "none"
+              : "pan-x pan-y",
+          cursor:
+            !isBulkCalibrate && zoomLevel > 1
+              ? isPanning
+                ? "grabbing"
+                : "grab"
+              : undefined,
+        }}
         className={`relative flex items-center justify-center ${
           hasOffScreenShots
             ? "overflow-hidden"
@@ -278,11 +357,19 @@ export const TargetView: React.FC<TargetViewProps> = ({
         <div
           ref={targetContainerRef}
           onClick={canFire ? handleTargetClick : undefined}
-          className={`relative select-none flex items-center justify-center transition-transform duration-200 aspect-square shrink-0${
-            canFire ? " cursor-crosshair" : ""
-          }${isBulkCalibrate ? " touch-none" : ""}${isHud ? " mx-auto" : ""}`}
+          // No transition while the finger is down: a 200ms ease on every pan
+          // frame turns a drag into the board sliding after the pointer.
+          className={`relative select-none flex items-center justify-center aspect-square shrink-0${
+            isPanning ? "" : " transition-transform duration-200"
+          }${canFire ? " cursor-crosshair" : ""}${
+            isBulkCalibrate ? " touch-none" : ""
+          }${isHud ? " mx-auto" : ""}`}
           style={{
-            transform: `scale(${zoomLevel})`,
+            // Translate BEFORE scale. The pan is measured in screen pixels —
+            // it comes from pointer deltas — and putting it first keeps it in
+            // that space; after the scale it would be multiplied by the zoom
+            // and the board would bolt away from the cursor.
+            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoomLevel})`,
             transformOrigin: "center center",
             width: isFill
               ? "100%"
@@ -362,7 +449,13 @@ export const TargetView: React.FC<TargetViewProps> = ({
                 const xMm = (bulkPreview?.xMm ?? sh.x) + previewDx;
                 const yMm = (bulkPreview?.yMm ?? sh.y) + previewDy;
                 const { x: rawCx, y: rawCy } = mmToSvgPoint(xMm, yMm, profileType);
-                const { cx, cy, wasClamped } = clampToEdge(rawCx, rawCy, zoomLevel);
+                const { cx, cy, wasClamped } = clampToEdge(
+                  rawCx,
+                  rawCy,
+                  xMm,
+                  yMm,
+                  zoomLevel,
+                );
                 const isMiss = sh.isMiss ?? false;
                 const isDragging = draggingShotId === sh.id;
                 const isBulkSelected =
@@ -405,7 +498,15 @@ export const TargetView: React.FC<TargetViewProps> = ({
                 const xMm = (bulkPreview?.xMm ?? sh.x) + previewDx;
                 const yMm = (bulkPreview?.yMm ?? sh.y) + previewDy;
                 const { x: rawX, y: rawY } = mmToSvgPoint(xMm, yMm, profileType);
-                const { cx: x, cy: y } = clampToEdge(rawX, rawY, zoomLevel);
+                // Same rule as the marker, or the highlight ring and the shot
+                // it is meant to be circling end up in two different places.
+                const { cx: x, cy: y } = clampToEdge(
+                  rawX,
+                  rawY,
+                  xMm,
+                  yMm,
+                  zoomLevel,
+                );
                 return (
                   <ShotListHighlight cx={x} cy={y} shotId={selectedShotId} />
                 );

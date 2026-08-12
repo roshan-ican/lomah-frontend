@@ -360,14 +360,28 @@ export function useBulkCalibrationDrag({
     }
   };
 
-  const confirmPendingCalibration = () => {
+  /**
+   * @param referenceMm the true-centre position the operator TYPED in the
+   *   confirm dialog, when they measured it rather than eyeballing the drag.
+   *   A drag can only ever be as accurate as the pixel the finger landed on;
+   *   a tape measure against the face is better, and the dialog is the last
+   *   point at which that number can still be substituted.
+   *
+   *   Only the reference is overridable. `originMm` stays as recorded — it is
+   *   where the bullet actually is, which the operator is not in a position to
+   *   revise, and the backend derives the offset from the difference.
+   */
+  const confirmPendingCalibration = (referenceMm?: {
+    x: number;
+    y: number;
+  }) => {
     if (!pendingCalibration) return;
     if (pendingCalibration.kind === "lane" && onLaneCalibrate) {
       onLaneCalibrate(
         pendingCalibration.originMm.x,
         pendingCalibration.originMm.y,
-        pendingCalibration.xMm,
-        pendingCalibration.yMm,
+        referenceMm?.x ?? pendingCalibration.xMm,
+        referenceMm?.y ?? pendingCalibration.yMm,
         pendingCalibration.anchorShotId,
       );
     } else if (pendingCalibration.kind === "shots" && onShotsCalibrate) {

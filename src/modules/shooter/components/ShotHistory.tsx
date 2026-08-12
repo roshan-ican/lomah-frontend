@@ -25,6 +25,36 @@ function compactTime(timestamp: string): string {
   return timestamp.slice(0, 5);
 }
 
+/** Both pairs are whole millimetres end to end — the sensor reports integers
+ *  and the offsets are integer columns — so there is nothing here to round. */
+const coordText = (x: number, y: number) => `X:${x}mm Y:${y}mm`;
+
+/**
+ * The row is one dense line of numbers, so the three labels carry the weight
+ * rather than a larger size — bolding X, Y and SENSOR gives the eye somewhere
+ * to land without making the row any taller.
+ */
+const LABEL_WEIGHT = "font-bold";
+
+/** The sensor pair rides on the same line as everything else, so it drops the
+ *  axis letters and the units the scored pair beside it has already stated. */
+const sensorText = (x: number, y: number) => `${x}, ${y}`;
+
+/**
+ * The board's own reading for this shot, or null if there is nothing worth
+ * showing.
+ *
+ * Null in two cases, both of which mean "print the scored pair alone": the
+ * shot predates the column (older sessions never recorded it), or calibration
+ * did not move this shot at all, in which case repeating the same numbers
+ * would only teach the operator to ignore them.
+ */
+function sensorCoords(sh: DisplayShot): { x: number; y: number } | null {
+  if (sh.sensorX == null || sh.sensorY == null) return null;
+  const moved = sh.sensorX !== sh.x || sh.sensorY !== sh.y;
+  return moved ? { x: sh.sensorX, y: sh.sensorY } : null;
+}
+
 /**
  * Short and long labels for a round with no impact position.
  *
@@ -74,21 +104,11 @@ export const ShotHistory: React.FC<ShotHistoryProps> = ({
   const [hideMisses, setHideMisses] = useState(false);
   const hasCalibrationMarker = shots.some((sh) => sh.isCalibrationMarker);
   const hasMisses = shots.some((sh) => sh.isMiss ?? false);
-  // Misses are listed by default.
-  //
-  // They used to be filtered out unconditionally, which is what turned a
-  // thirteen-round string into a log reading "4, 5, 7, 13". Every one of those
-  // rounds was fired, scored and numbered by the server; hiding them made the
-  // shooter's own record look like it had lost data, and buried the fact that
-  // eight consecutive no-detections is a board fault worth stopping for. The
-  // filter stays available as a toggle for anyone who wants hits only.
   const visibleShots = shots.filter(
     (sh) =>
       sh.isCalibrationMarker || !hideMisses || !(sh.isMiss ?? false),
   );
-  // Counts and "newest shot" describe bullets, so divider rows are excluded —
-  // a marker's id is deliberately half-way past the last shot, so leaving it in
-  // made it win Math.max and stole the newest-shot highlight.
+ 
   const realVisibleShots = visibleShots.filter((sh) => !sh.isCalibrationMarker);
   const newestId =
     realVisibleShots.length > 0
@@ -129,6 +149,62 @@ export const ShotHistory: React.FC<ShotHistoryProps> = ({
             : "Hide misses"}
       </button>
     ) : null;
+
+  /**
+   * The scored position, followed by the board's own reading when the two
+   * differ — both on the row's single line, alongside the arrow and score.
+   *
+   * Order is deliberate: the calibrated pair reads first and at full contrast,
+   * because that is the one the score and the plotted hole come from. The
+   * sensor pair is dimmer and labelled, so it can never be mistaken for the
+   * position the shot was judged on.
+   */
+  const coordBlock = (
+    sh: DisplayShot,
+    cls: { primary: string; secondary: string },
+  ) => {
+    const s = sensorCoords(sh);
+    return (
+      <>
+        {/* Split so the axis letters can carry the weight while the numbers
+            stay regular — bolding the whole string would just make the row
+            heavier without making it any easier to scan. */}
+        <span className={cls.primary}>
+          <span className={LABEL_WEIGHT}>X:</span>
+          {sh.x}mm <span className={LABEL_WEIGHT}>Y:</span>
+          {sh.y}mm
+        </span>
+        {s && (
+          <span className={cls.secondary}>
+            <span className={LABEL_WEIGHT}>
+              {isAr ? "مستشعر" : "SENSOR"}
+            </span>{" "}
+            {sensorText(s.x, s.y)}
+          </span>
+        )}
+      </>
+    );
+  };
+
+  /**
+   * Tapping the selected shot again clears the selection.
+   *
+   * Selection is a spotlight, not a cursor: it dims every other shot on the
+   * board and pins a highlight ring on this one. Without a way out, the only
+   * way back to the whole group was to pick some other shot — which is not the
+   * same thing, and left the operator unable to see the plot unannotated.
+   * `setSelectedShotId` has always accepted null; nothing was calling it.
+   */
+  const toggleShot = (id: number) =>
+    setSelectedShotId(selectedShotId === id ? null : id);
+
+  /** Same two facts as coordBlock, flattened for a title attribute. */
+  const chipTitle = (sh: DisplayShot) => {
+    const s = sensorCoords(sh);
+    const scored = coordText(sh.x, sh.y);
+    if (!s) return scored;
+    return `${scored} · ${isAr ? "مستشعر" : "SENSOR"} ${sensorText(s.x, s.y)}`;
+  };
 
   if ((isHud || isSimulator) && isHorizontal) {
     const chipClass = (isSelected: boolean) =>
@@ -193,10 +269,6 @@ export const ShotHistory: React.FC<ShotHistoryProps> = ({
             const isSelected = selectedShotId === sh.id;
             const chip = chipClass(isSelected);
 
-            // No impact to point an arrow at or a score to show — the chip
-            // holds the round's number and says why it is blank. Not
-            // clickable: selecting a shot drives the target marker and the
-            // calibration tools, and there is no marker to drive.
             if (sh.isMiss) {
               const { short } = missLabel(sh, isAr);
               return (
@@ -225,7 +297,12 @@ export const ShotHistory: React.FC<ShotHistoryProps> = ({
                   if (el) rowRefs.current.set(sh.id, el);
                   else rowRefs.current.delete(sh.id);
                 }}
-                onClick={() => setSelectedShotId(sh.id)}
+                onClick={() => toggleShot(sh.id)}
+                // A tooltip rather than a third line of text: the chip strip is
+                // a scannable summary and already carries number, direction and
+                // score in the width of a thumb. Millimetres belong to whoever
+                // stops to ask for them.
+                title={chipTitle(sh)}
                 className={`shrink-0 flex flex-col items-center gap-0.5 ${chipSize} font-mono transition-all cursor-pointer rounded-lg border ${chip}`}
               >
                 <span
@@ -273,6 +350,26 @@ export const ShotHistory: React.FC<ShotHistoryProps> = ({
   }
 
   if (isHud) {
+    /**
+     * Shared column widths, so a MISS row and a hit row line up.
+     *
+     * They did not. A hit put a bare 18px arrow in the second slot while a miss
+     * put the word MISS there — roughly 38px — so every column after it started
+     * at a different x on the two kinds of row, and the log read as two
+     * interleaved tables. Fixing the slot to one width means the arrow and the
+     * label occupy the same box, and everything downstream inherits the
+     * alignment instead of each row negotiating its own.
+     *
+     * Sized for the LABEL, not the arrow: the label is the wider of the two,
+     * and Arabic "مفقودة" is wider still than "LOST".
+     */
+    const markSlot = compactRows ? "w-9" : "w-12";
+    const scoreSlot = isDistance
+      ? "shooter-shot-score ml-auto"
+      : compactRows
+        ? "w-6 range-rail-stat"
+        : "w-8 text-right";
+
     const rowList = (
       <div
         className={
@@ -335,14 +432,29 @@ export const ShotHistory: React.FC<ShotHistoryProps> = ({
                   >
                     {sh.id}
                   </span>
-                  <span className="font-mono tracking-wider hud-text-subtle text-xs font-bold">
+                  {/* Same box the arrow occupies on a hit row. */}
+                  <span
+                    className={`${markSlot} shrink-0 font-mono tracking-wider hud-text-subtle font-bold ${
+                      compactRows ? "text-[10px]" : "text-xs"
+                    }`}
+                  >
                     {short}
                   </span>
-                  {!compactRows && (
-                    <span className="font-mono text-[10px] hud-text-subtle normal-case">
+                  {/* Gated identically to the hit row's coordinates, so the
+                      third column either exists on both or on neither. */}
+                  {!compactRows && !isDistance && (
+                    <span className="flex items-baseline min-w-0 text-left whitespace-nowrap font-mono text-[10px] hud-text-subtle normal-case">
                       {detail}
                     </span>
                   )}
+                  {/* A held place, not a score. Without it the score column
+                      simply vanishes on miss rows and the eye loses the
+                      column edge it was tracking down the list. */}
+                  <span
+                    className={`tabular-nums shrink-0 font-bold hud-text-subtle ${scoreSlot}`}
+                  >
+                    —
+                  </span>
                   {!hideTimestamp && !isDistance && (
                     <span className="ml-auto tabular-nums shrink-0 text-xs hud-text-subtle">
                       {compactTime(sh.timestamp)}
@@ -359,7 +471,7 @@ export const ShotHistory: React.FC<ShotHistoryProps> = ({
                   if (el) rowRefs.current.set(sh.id, el);
                   else rowRefs.current.delete(sh.id);
                 }}
-                onClick={() => setSelectedShotId(sh.id)}
+                onClick={() => toggleShot(sh.id)}
                 className={`w-full flex items-center transition-all cursor-pointer border-l-4 ${
                   isDistance
                     ? "shooter-shot-row gap-4 px-3 py-3.5"
@@ -381,23 +493,36 @@ export const ShotHistory: React.FC<ShotHistoryProps> = ({
                 >
                   {sh.id}
                 </span>
-                <ShotDirectionArrow
-                  x={sh.x}
-                  y={sh.y}
-                  size={isDistance ? 26 : compactRows ? 14 : 18}
-                  language={language}
-                  className={
-                    isSelected ? "text-[var(--hud-accent)]" : "hud-text-muted"
-                  }
-                />
+                {/* Boxed to markSlot so the arrow and a MISS label start and
+                    end at the same x — see markSlot above. */}
                 <span
-                  className={`tabular-nums shrink-0 font-bold ${
-                    isDistance
-                      ? "shooter-shot-score ml-auto"
-                      : compactRows
-                        ? "w-6 range-rail-stat"
-                        : "w-8 text-right"
-                  } ${
+                  className={`${markSlot} shrink-0 flex items-center justify-start`}
+                >
+                  <ShotDirectionArrow
+                    x={sh.x}
+                    y={sh.y}
+                    size={isDistance ? 26 : compactRows ? 14 : 18}
+                    language={language}
+                    className={
+                      isSelected ? "text-[var(--hud-accent)]" : "hud-text-muted"
+                    }
+                  />
+                </span>
+                {/* Skipped on the compact rail and the distance layout: both
+                    are sized for a glance from the firing point, and neither
+                    has the width for two lines of millimetres. */}
+                {!compactRows && !isDistance && (
+                  <span className="flex items-baseline gap-2 min-w-0 text-left whitespace-nowrap">
+                    {coordBlock(sh, {
+                      primary:
+                        "font-mono text-[10px] hud-text-muted tabular-nums",
+                      secondary:
+                        "font-mono text-[9px] hud-text-subtle tabular-nums",
+                    })}
+                  </span>
+                )}
+                <span
+                  className={`tabular-nums shrink-0 font-bold ${scoreSlot} ${
                     sh.score >= 9
                       ? "hud-accent"
                       : sh.score === 0
@@ -548,7 +673,7 @@ export const ShotHistory: React.FC<ShotHistoryProps> = ({
                   if (el) rowRefs.current.set(sh.id, el);
                   else rowRefs.current.delete(sh.id);
                 }}
-                onClick={() => setSelectedShotId(sh.id)}
+                onClick={() => toggleShot(sh.id)}
                 className={`w-full text-left p-2.5 rounded-lg border transition-all flex items-center justify-between gap-2 cursor-pointer ${
                   isSelected
                     ? "bg-emerald-500/10 border-emerald-500/50 text-emerald-600 dark:text-emerald-400 font-bold"
@@ -572,8 +697,11 @@ export const ShotHistory: React.FC<ShotHistoryProps> = ({
                     <span className="block font-mono text-xs text-gray-400 mt-0.5">
                       {sh.timestamp}
                     </span>
-                    <span className="block font-mono text-[9px] text-gray-400 mt-0.5">
-                      x:{sh.x}mm y:{sh.y}mm
+                    <span className="flex items-baseline gap-2 mt-0.5 whitespace-nowrap">
+                      {coordBlock(sh, {
+                        primary: "font-mono text-[9px] text-gray-400",
+                        secondary: "font-mono text-[9px] text-gray-400/60",
+                      })}
                     </span>
                   </div>
                 </div>

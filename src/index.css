@@ -217,6 +217,39 @@ html.light {
    html.light. It used to, which left every --admin-font-* token undefined in
    dark mode (the default), so each .admin-text-* class resolved to an invalid
    var() and silently fell back to whatever size it inherited. */
+/**
+ * Global UI scale.
+ *
+ * The console is read at arm's length on a range, and 100% left the admin type
+ * scale (--admin-font-* below bottoms out at 0.5rem) smaller than it needs to
+ * be. `zoom` is used rather than a font-size bump because it scales everything
+ * uniformly — borders, the SVG board, fixed-px marker geometry — where a rem
+ * bump would move only the text and leave the rest behind.
+ *
+ * ONE KNOB. Change --ui-zoom and every compensation below follows. Set it to 1
+ * to turn the whole thing off.
+ *
+ * The catch, and why the rules further down exist: viewport units are resolved
+ * against the initial containing block, which is outside the zoomed subtree, so
+ * `100dvh` inside here paints 110% of the window rather than filling it. Every
+ * full-height rule therefore divides by --ui-zoom. Any NEW rule using vh/dvh
+ * must do the same or it will overflow by exactly this factor.
+ */
+:root {
+  --ui-zoom: 1.1;
+}
+
+html {
+  zoom: var(--ui-zoom);
+}
+
+/* Tailwind's min-h-screen is min-height: 100vh — same correction, applied here
+   because it is used directly in App.tsx, RoleSetup, ShooterWait,
+   StationTerminal and StationDashboardWrapper. */
+.min-h-screen {
+  min-height: calc(100vh / var(--ui-zoom));
+}
+
 :root {
   --admin-font-3xs: 0.5rem;
   --admin-font-2xs: 0.5625rem;
@@ -844,14 +877,14 @@ html[lang="ar"] .range-display-hero {
 
 /* ── Mobile / tablet: full viewport + safe areas ── */
 .h-dvh-screen {
-  height: 100dvh;
-  max-height: 100dvh;
+  height: calc(100dvh / var(--ui-zoom));
+  max-height: calc(100dvh / var(--ui-zoom));
 }
 
 @supports not (height: 100dvh) {
   .h-dvh-screen {
-    height: 100vh;
-    max-height: 100vh;
+    height: calc(100vh / var(--ui-zoom));
+    max-height: calc(100vh / var(--ui-zoom));
   }
 }
 
@@ -907,14 +940,21 @@ html[lang="ar"] .range-display-hero {
 
 .admin-active-lane-shell {
   top: calc(4rem + env(safe-area-inset-top, 0px));
-  height: calc(100dvh - 4rem - env(safe-area-inset-top, 0px));
-  max-height: calc(100dvh - 4rem - env(safe-area-inset-top, 0px));
+  /* Only the viewport term is divided. 4rem and the safe-area inset are already
+     inside the zoomed subtree and scale with it, so dividing them too would
+     subtract a header that is 10% shorter than the one actually drawn. */
+  height: calc(100dvh / var(--ui-zoom) - 4rem - env(safe-area-inset-top, 0px));
+  max-height: calc(
+    100dvh / var(--ui-zoom) - 4rem - env(safe-area-inset-top, 0px)
+  );
 }
 
 @supports not (height: 100dvh) {
   .admin-active-lane-shell {
-    height: calc(100vh - 4rem - env(safe-area-inset-top, 0px));
-    max-height: calc(100vh - 4rem - env(safe-area-inset-top, 0px));
+    height: calc(100vh / var(--ui-zoom) - 4rem - env(safe-area-inset-top, 0px));
+    max-height: calc(
+      100vh / var(--ui-zoom) - 4rem - env(safe-area-inset-top, 0px)
+    );
   }
 }
 

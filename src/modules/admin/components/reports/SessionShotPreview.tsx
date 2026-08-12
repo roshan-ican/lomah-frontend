@@ -183,6 +183,9 @@ export const SessionShotPreview: React.FC<SessionShotPreviewProps> = ({
                 <tr>
                   <th className="px-3 py-2.5">#</th>
                   <th className="px-3 py-2.5">{isAr ? "الاتجاه" : "Dir"}</th>
+                  <th className="px-3 py-2.5">
+                    {isAr ? "الموضع" : "Position"}
+                  </th>
                   <th className="px-3 py-2.5">{isAr ? "النقاط" : "Score"}</th>
                 </tr>
               </thead>
@@ -192,8 +195,10 @@ export const SessionShotPreview: React.FC<SessionShotPreviewProps> = ({
                   return (
                     <tr
                       key={sh.id}
+                      // Second tap clears it, same as the live shot log — this
+                      // table drives the same highlight on the plot beside it.
                       onClick={() => {
-                        setSelectedShotId(sh.id);
+                        setSelectedShotId(selectedShotId === sh.id ? null : sh.id);
                       }}
                       className={`border-t border-hud cursor-pointer hover:bg-[var(--hud-accent-bg-subtle)]
     ${selectedShotId === sh.id ? "bg-[var(--hud-accent-bg-subtle)]" : ""}
@@ -207,6 +212,28 @@ export const SessionShotPreview: React.FC<SessionShotPreviewProps> = ({
                           size={32}
                           language={language}
                         />
+                      </td>
+                      {/* Scored position, then the board's own reading when a
+                          calibration moved this shot. Once a session is closed
+                          the offset that produced x/y can no longer be read off
+                          the live header, so the pair is the only thing that
+                          still explains the difference. */}
+                      <td className="px-3 py-2 whitespace-nowrap tabular-nums">
+                        <span className="hud-text-secondary">
+                          <span className="font-bold">X:</span>
+                          {sh.x}mm <span className="font-bold">Y:</span>
+                          {sh.y}mm
+                        </span>
+                        {sh.sensorX != null &&
+                          sh.sensorY != null &&
+                          (sh.sensorX !== sh.x || sh.sensorY !== sh.y) && (
+                            <span className="hud-text-subtle ml-2">
+                              <span className="font-bold">
+                                {isAr ? "مستشعر" : "SENSOR"}
+                              </span>{" "}
+                              {sh.sensorX}, {sh.sensorY}
+                            </span>
+                          )}
                       </td>
                       <td className="px-3 py-2">
                         <span

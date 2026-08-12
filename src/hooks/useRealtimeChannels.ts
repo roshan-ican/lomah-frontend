@@ -362,11 +362,21 @@ export function useRealtimeChannels({
     };
 
     const connectWS = () => {
-      // The gateway VERIFIES THE JWT AT HANDSHAKE and disconnects immediately
-      // if it is missing or invalid — an unauthenticated socket is not merely
-      // roomless, it is refused. `auth.token` is the correct channel for this
-      // (the server also accepts an Authorization header, for native clients
-      // that cannot set handshake auth).
+      // The gateway verifies the JWT at handshake, but only an INVALID token is
+      // refused. A MISSING one is accepted as an anonymous, lane-only socket
+      // (see RealtimeGateway.handleConnection) so shooter tablets, which carry
+      // no credentials by design, can connect at all.
+      //
+      // Which means this call is silently wrong on a cold login: it runs from a
+      // mount effect with no deps, before the operator has signed in, so the
+      // token is "" and the resulting socket never joins ADMIN_ROOM. The
+      // authStage effect below re-handshakes once a real token exists — do not
+      // remove it on the assumption that a tokenless socket would have failed
+      // loudly here.
+      //
+      // `auth.token` is the correct channel for this (the server also accepts
+      // an Authorization header, for native clients that cannot set handshake
+      // auth).
       //
       // No `path` option: the gateway is mounted on socket.io's default
       // /socket.io. The old backend's custom "/ws" path would 404 the upgrade.
@@ -470,6 +480,45 @@ export function useRealtimeChannels({
     if (authStage !== "ADMIN_BOARD" && authStage !== "SHOOTER_BOARD") return;
     if (!getAuthToken()) return;
     void syncLanesFromApi();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authStage]);
+
+  /**
+   * Re-handshake the socket once a token exists.
+   *
+   * connectWS() runs in the mount effect above, whose dep array is `[]`, so on
+   * a cold login it hands socket.io `auth: { token: "" }` — the operator has
+   * not signed in yet. That used to be self-correcting: the gateway refused a
+   * tokenless socket outright, so the client saw a failed connection and the
+   * problem was visible. It is not refused any more. Shooter tablets carry no
+   * credentials by design, so RealtimeGateway.handleConnection now ACCEPTS a
+   * tokenless socket as anonymous and lane-scoped, and simply never joins it
+   * to ADMIN_ROOM.
+   *
+   * The result is an admin console holding a socket that is connected, silent
+   * and roomless. Every session:started / shot / target:calibrated goes to
+   * ADMIN_ROOM and this client is not in it, so the board sits on whatever the
+   * REST sync last painted — a session reads CREATED with the Start button
+   * still up while the server has it ACTIVE and the target armed. Pressing
+   * Start again then 400s on the `status !== 'CREATED'` guard, which is the
+   * "already ACTIVE" error in the activity log. A refresh appears to fix it
+   * only because by then the token is in storage when the hook mounts.
+   *
+   * Reconnecting rather than opening a second socket: onAny and the rest of
+   * the listeners are bound to this instance, and a fresh io() would leave the
+   * old one alive and double-handling every event.
+   */
+  useEffect(() => {
+    if (authStage !== "ADMIN_BOARD" && authStage !== "SHOOTER_BOARD") return;
+    const socket = socketRef.current;
+    const token = getAuthToken() ?? "";
+    if (!socket) return;
+    const current = (socket.auth as { token?: string } | undefined)?.token ?? "";
+    if (current === token) return;
+    socket.auth = { token };
+    // disconnect().connect() forces a new handshake; without it socket.io keeps
+    // the established session and the server never re-reads auth.
+    socket.disconnect().connect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authStage]);
 

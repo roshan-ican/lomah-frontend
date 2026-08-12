@@ -16,22 +16,30 @@ export interface Operator {
 export interface DisplayShot {
   id: number;
   score: number;
+  /** Board millimetres from centre, calibration applied. This is the pair that
+   *  is plotted and scored. */
   x: number;
   y: number;
+  /**
+   * The same pair before the target's calibration offset — the board's own
+   * reading, carried through from the server.
+   *
+   * Named for the sensor rather than "raw" on purpose: the backend already uses
+   * rawX/rawY for the uint16 wire values, which are a different quantity in
+   * different units (unsigned, and Y measured from the board's bottom edge).
+   * Two meanings of "raw" in one codebase is how a sign error survives review.
+   *
+   * Optional because it genuinely may not exist: misses have no reading, and
+   * shots fired before the column was added never recorded one. Absent means
+   * show nothing — never fall back to x/y.
+   */
+  sensorX?: number;
+  sensorY?: number;
   zone: "Chest" | "Body" | "Shoulder" | "Head" | "Off-Target";
   timestamp: string;
-  /** Sensor fired, resolved nothing. Kept in the list so the shooter sees the
-   *  round they fired, but never plotted — x/y are zero, not a centre hit. */
   isMiss?: boolean;
-  /** The stronger case: the frame never reached the server at all. Implies
-   *  isMiss. Shown differently because a MISS run means check the board's
-   *  sensor and a LOST run means check the wifi link. */
   isLost?: boolean;
   isCalibrationMarker?: boolean;
-  /** Which board reported this shot. Carried per-shot rather than read off the
-   *  lane's current target because a session spans stages, each against a
-   *  different target — the 'D' diagnostic for shot #3 must go to the board
-   *  that actually saw it, not to whatever is armed now. */
   targetId?: string;
 }
 

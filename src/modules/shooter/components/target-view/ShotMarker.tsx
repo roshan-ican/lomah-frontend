@@ -1,4 +1,16 @@
-import { TOUCH_HIT_RADIUS, TAP_HIT_RADIUS } from "./constants";
+import {
+  MARKER_CLAMP_R,
+  MARKER_CORE_FILL,
+  MARKER_CORE_R,
+  MARKER_CORE_R_DRAG,
+  MARKER_CORE_STROKE,
+  MARKER_EDGE_STROKE,
+  MARKER_MISS_ARM,
+  MARKER_PULSE_R,
+  MARKER_SELECTED_R,
+  TOUCH_HIT_RADIUS,
+  TAP_HIT_RADIUS,
+} from "./constants";
 import type { ShotDragHandlers } from "./useBulkCalibrationDrag";
 
 interface ShotMarkerProps {
@@ -45,6 +57,13 @@ export function ShotMarker({
         ? "cursor-grab active:cursor-grabbing group"
         : "cursor-pointer group"
       : "pointer-events-none";
+
+    // One size for the drawn hole, bumped only while calibrating — there the
+    // marker stops being a readout and becomes a drag handle under a fingertip.
+    // Selection no longer inflates it: the halo above is what marks the chosen
+    // shot, and growing the hole as well made a selected shot look like a
+    // bigger hit than its neighbours.
+    const coreR = canDragCalibrate ? MARKER_CORE_R_DRAG : MARKER_CORE_R;
 
     const ringStroke = isMiss
         ? isClamped
@@ -120,7 +139,7 @@ export function ShotMarker({
           <circle
             cx={cx}
             cy={cy}
-            r={18}
+            r={MARKER_PULSE_R}
             fill="none"
             stroke="#FF3355"
             strokeWidth={1}
@@ -129,21 +148,15 @@ export function ShotMarker({
             pointerEvents="none"
           />
         )}
-        {isHud && !isMiss && (
-          <circle
-            cx={cx}
-            cy={cy}
-            r={12}
-            fill="rgba(255, 51, 85, 0.15)"
-            filter="url(#impactGlow)"
-            pointerEvents="none"
-          />
-        )}
+        {/* The r=12 glow disc that used to sit here is gone. It was the widest
+            thing on the marker and its soft edge is what made a hit read as a
+            halo rather than a hole. The newest-shot pulse above already answers
+            "which one just landed", and it answers it without being permanent. */}
         {isSelected && !isListSelected && (
           <circle
             cx={cx}
             cy={cy}
-            r={14}
+            r={MARKER_SELECTED_R}
             fill={
               isDragging
                 ? "rgba(139, 92, 246, 0.35)"
@@ -156,23 +169,23 @@ export function ShotMarker({
         )}
         {isMiss && isClamped && (
           <line
-            x1={cx - 4}
-            y1={cy - 4}
-            x2={cx + 4}
-            y2={cy + 4}
+            x1={cx - MARKER_MISS_ARM}
+            y1={cy - MARKER_MISS_ARM}
+            x2={cx + MARKER_MISS_ARM}
+            y2={cy + MARKER_MISS_ARM}
             stroke={ringStroke}
-            strokeWidth={2}
+            strokeWidth={1.5}
             pointerEvents="none"
           />
         )}
         {isMiss && isClamped && (
           <line
-            x1={cx + 4}
-            y1={cy - 4}
-            x2={cx - 4}
-            y2={cy + 4}
+            x1={cx + MARKER_MISS_ARM}
+            y1={cy - MARKER_MISS_ARM}
+            x2={cx - MARKER_MISS_ARM}
+            y2={cy + MARKER_MISS_ARM}
             stroke={ringStroke}
-            strokeWidth={2}
+            strokeWidth={1.5}
             pointerEvents="none"
           />
         )}
@@ -181,16 +194,16 @@ export function ShotMarker({
             <circle
               cx={cx}
               cy={cy}
-              r={10}
+              r={MARKER_CLAMP_R}
               fill="none"
               stroke={ringStroke}
-              strokeWidth={2}
+              strokeWidth={1.4}
               strokeDasharray="3 2"
               pointerEvents="none"
             />
             <text
               x={cx}
-              y={cy + 16}
+              y={cy + MARKER_CLAMP_R + 6}
               textAnchor="middle"
               className="text-[8px] font-mono font-bold fill-amber-500 dark:fill-amber-400"
               pointerEvents="none"
@@ -199,37 +212,39 @@ export function ShotMarker({
             </text>
           </>
         )}
-        <circle
-          cx={cx}
-          cy={cy}
-          r={isListSelected ? 11 : canDragCalibrate ? 11 : isHud ? 8 : 7.5}
-          fill={
-            isMiss
-              ? "transparent"
-              : isHud
-                ? isDarkMode
-                  ? "#0B1220"
-                  : "#ffffff"
-                : "#1E293B"
-          }
-          stroke={ringStroke}
-          strokeWidth={isMiss ? 2 : isListSelected ? 2.4 : isHud ? 2 : 1.8}
-          strokeDasharray={isMiss && !isClamped ? "4 2" : "none"}
-          pointerEvents="none"
-        />
+        {/* A hairline of the background colour just outside the ring. Without
+            it the coloured edge sits directly on the tan of the face and the
+            two blend at small sizes; with it the hole keeps a hard outline on
+            any backdrop. Drawn first so the ring paints over its inner half. */}
         {!isMiss && (
           <circle
             cx={cx}
             cy={cy}
-            r={canDragCalibrate ? 3.5 : isHud ? 2.5 : 2}
-            fill={isHud ? (isDarkMode ? "#FF3355" : "#dc2626") : "#FFFFFF"}
+            r={coreR + MARKER_CORE_STROKE / 2 + MARKER_EDGE_STROKE / 2}
+            fill="none"
+            stroke={isDarkMode ? "#0B1220" : "#ffffff"}
+            strokeWidth={MARKER_EDGE_STROKE}
+            opacity={0.9}
             pointerEvents="none"
           />
         )}
+        {/* The marker itself: one filled circle with a hard ring. What used to
+            be here was this circle at r=8 PLUS a separate centre dot, which at
+            board scale drew a 40mm crater with a pupil in it. */}
+        <circle
+          cx={cx}
+          cy={cy}
+          r={coreR}
+          fill={isMiss ? "transparent" : MARKER_CORE_FILL}
+          stroke={ringStroke}
+          strokeWidth={isMiss ? 1.4 : MARKER_CORE_STROKE}
+          strokeDasharray={isMiss && !isClamped ? "2 1.5" : "none"}
+          pointerEvents="none"
+        />
         {!isHud && (
           <text
             x={cx}
-            y={cy - 12}
+            y={cy - coreR - 5}
             textAnchor="middle"
             dominantBaseline="central"
             className={`text-[9px] font-mono font-bold select-none pointer-events-none group-hover:scale-110 transition-transform ${isMiss ? "fill-amber-500 dark:fill-amber-400" : "fill-rose-500 dark:fill-rose-400"}`}

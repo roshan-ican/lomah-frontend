@@ -109,10 +109,14 @@ export const RangeControlRail: React.FC<RangeControlRailProps> = ({
         )
       : 0;
 
+  // realShots, not shots: the "Calibration Applied" marker is an activity-log
+  // entry sitting in the same array (see realShots above). Counting it here
+  // reported one more round than the log lists, and would have counted it
+  // against the stage's bullet limit.
   const roundsValue =
     channel.bulletLimit && channel.bulletLimit > 0
-      ? `${shots.length}/${channel.bulletLimit}`
-      : String(shots.length);
+      ? `${realShots.length}/${channel.bulletLimit}`
+      : String(realShots.length);
 
   const laneLabel = formatLaneLabel(channel.id, language);
 

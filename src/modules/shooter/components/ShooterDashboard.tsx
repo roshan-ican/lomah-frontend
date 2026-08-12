@@ -18,6 +18,7 @@ import { translations, TranslationSet } from "../../../translations";
 
 import type { ActiveShooterChannel as ActiveChannel } from "../../../types";
 import { Crosshair, User } from "lucide-react";
+import { CLICK_TO_FIRE_ENABLED } from "../../../utils/featureFlags";
 interface ShooterDashboardProps {
   activeChannel: ActiveChannel;
 
@@ -153,7 +154,10 @@ export const ShooterDashboard: React.FC<ShooterDashboardProps> = ({
             </div>
           )}
 
-          {canShoot && onSimulateShot && (
+          {/* Hidden while CLICK_TO_FIRE_ENABLED is off — this posts the same
+              /debug/simulate-shot a board tap used to, so it forges a real
+              round in the log too. */}
+          {CLICK_TO_FIRE_ENABLED && canShoot && onSimulateShot && (
             <button
               type="button"
               onClick={onSimulateShot}

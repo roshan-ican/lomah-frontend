@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { api, ApiError } from "../../../../utils/api";
 import { TargetFacePreview } from "../../../../components/common/TargetFacePreview";
+import { ConfirmDialog } from "../../../../components/common/ConfirmDialog";
 import { TargetSensitivityPanel } from "./TargetSensitivityPanel";
 import { TargetSensorConsole, type SensorPacket } from "./TargetSensorConsole";
 import type {
@@ -108,6 +109,22 @@ export function LaneHardwarePanel({
   const [selectedTargetId, setSelectedTargetId] = useState<string | null>(null);
   const [packetLogs, setPacketLogs] = useState<Map<string, SensorPacket[]>>(new Map());
   const [armedTargets, setArmedTargets] = useState<Set<string>>(new Set());
+
+  /**
+   * The destructive action waiting on the operator's answer.
+   *
+   * Both deletions used to go through window.confirm, which paints the browser
+   * chrome's own dialog — "localhost:3000 says" above the message, OS buttons,
+   * none of the console's styling, and no way to mark the confirm button as
+   * destructive. It also blocks the main thread, so nothing behind it can
+   * repaint while it is up. Held as one nullable union rather than two booleans
+   * so the two deletions cannot both be pending at once.
+   */
+  const [pendingDelete, setPendingDelete] = useState<
+    | { kind: "target"; lane: Lane; target: Target }
+    | { kind: "lane"; lane: Lane }
+    | null
+  >(null);
 
   const setIpDraft = (targetId: string, value: string) =>
     setIpDrafts((prev) => {
@@ -484,14 +501,7 @@ export function LaneHardwarePanel({
     }
   };
 
-  const removeTarget = async (lane: Lane, target: Target) => {
-    const ok = window.confirm(
-      isAr
-        ? `حذف الهدف ${slotCode(lane.id, target.positionIndex)}؟ ستُفقد معايرته.`
-        : `Remove the target at ${slotCode(lane.id, target.positionIndex)} (${target.ipAddress})? Its calibration goes with it.`,
-    );
-    if (!ok) return;
-
+  const deleteTargetNow = async (lane: Lane, target: Target) => {
     setBusyId(target.id);
     try {
       await api.delete(`/targets/${target.id}`);
@@ -547,15 +557,7 @@ export function LaneHardwarePanel({
    * reference the lane WITHOUT a cascade, so a lane that has ever been fired on
    * is refused by the server rather than silently taking history with it.
    */
-  const removeLane = async (lane: Lane) => {
-    const count = targetsOf(lane).length;
-    const ok = window.confirm(
-      isAr
-        ? `حذف "${lane.name}" وجميع أهدافه (${count})؟ لا يمكن التراجع.`
-        : `Delete "${lane.name}" and its ${count} commissioned target${count === 1 ? "" : "s"}? This cannot be undone.`,
-    );
-    if (!ok) return;
-
+  const deleteLaneNow = async (lane: Lane) => {
     setBusyId(`lane-${lane.id}`);
     try {
       await api.delete(`/lanes/${lane.id}`);
@@ -567,6 +569,60 @@ export function LaneHardwarePanel({
       fail(err, "Delete failed");
     } finally {
       setBusyId(null);
+    }
+  };
+
+  const removeTarget = (lane: Lane, target: Target) =>
+    setPendingDelete({ kind: "target", lane, target });
+
+  const removeLane = (lane: Lane) => setPendingDelete({ kind: "lane", lane });
+
+  /**
+   * Copy for the pending deletion.
+   *
+   * Both messages name the thing being destroyed and what goes with it. A
+   * commissioned target's calibration is minutes of a range officer's time
+   * against a live board, and a lane cascades to every target on it — neither
+   * is recoverable, and neither is obvious from a button labelled with a bin
+   * icon.
+   */
+  const deletePrompt = (() => {
+    if (!pendingDelete) return null;
+    if (pendingDelete.kind === "target") {
+      const { lane, target } = pendingDelete;
+      const code = slotCode(lane.id, target.positionIndex);
+      return {
+        title: isAr ? "حذف الهدف؟" : "Remove target?",
+        message: isAr
+          ? `سيتم حذف الهدف ${code} (${target.ipAddress}) وستُفقد معايرته. لا يمكن التراجع.`
+          : `The target at ${code} (${target.ipAddress}) will be removed and its calibration goes with it. This cannot be undone.`,
+        confirmLabel: isAr ? "حذف الهدف" : "Remove target",
+      };
+    }
+    const { lane } = pendingDelete;
+    const count = targetsOf(lane).length;
+    return {
+      title: isAr ? "حذف الحارة؟" : "Delete lane?",
+      message: isAr
+        ? `سيتم حذف "${lane.name}" و${count} من الأهداف المركّبة عليها، مع معايرتها. لا يمكن التراجع.`
+        : `"${lane.name}" and its ${count} commissioned target${
+            count === 1 ? "" : "s"
+          } will be deleted, along with their calibration. This cannot be undone.`,
+      confirmLabel: isAr ? "حذف الحارة" : "Delete lane",
+    };
+  })();
+
+  const confirmPendingDelete = () => {
+    const pending = pendingDelete;
+    if (!pending) return;
+    // Closed before the request, not after: the row is about to disappear and
+    // busyId already carries the in-flight state, so holding the dialog open
+    // over a spinner would only be a second thing to dismiss.
+    setPendingDelete(null);
+    if (pending.kind === "target") {
+      void deleteTargetNow(pending.lane, pending.target);
+    } else {
+      void deleteLaneNow(pending.lane);
     }
   };
 
@@ -1426,6 +1482,17 @@ export function LaneHardwarePanel({
           onDevData={(shot) => getSelectedTarget() && sendDevData(getSelectedTarget()!, shot)}
         />
       )}
+
+      <ConfirmDialog
+        open={deletePrompt != null}
+        title={deletePrompt?.title ?? ""}
+        message={deletePrompt?.message ?? ""}
+        confirmLabel={deletePrompt?.confirmLabel}
+        language={isAr ? "ar" : "en"}
+        variant="danger"
+        onConfirm={confirmPendingDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   );
 }
