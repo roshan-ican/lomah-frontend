@@ -174,16 +174,30 @@ async function cancelDiscovery() {
 }
 
 // ── Backend process management (admin mode) ───────────────────────────────────
-// lomah-nest (NestJS) replaced the old backend. It is compiled ahead of time
-// with `nest build` and run as `node dist/src/main.js` — unlike the old backend,
-// it cannot run directly under tsx: NestJS's DI resolves constructor
-// parameter types from emitDecoratorMetadata, which esbuild (tsx's
-// transpiler) does not emit. Only a real tsc build produces that metadata.
+// lomah-nest (NestJS) replaced the old backend. It is compiled ahead of time by
+// tsc and then collapsed into one file by esbuild — it cannot run directly
+// under tsx, and it cannot be bundled straight from TypeScript either: NestJS's
+// DI resolves constructor parameter types from emitDecoratorMetadata, which
+// esbuild does not emit. Only a real tsc build produces that metadata, so the
+// bundler is only ever pointed at tsc's output.
 function resolveBackendDir(): string {
   if (app.isPackaged) {
     return path.join(process.resourcesPath, "app", "backend");
   }
   return path.resolve(appDir, "..", "..", "lomah-nest");
+}
+
+/** The bundle, not the old dist/src/main.js entry. Packaged it sits at the root
+ *  of the backend resources directory; unpackaged it is wherever
+ *  `npm run build:bundle` left it.
+ *
+ *  The .cjs extension is load-bearing: this file ends up several levels below
+ *  frontend/package.json, which declares "type": "module", and Node would
+ *  otherwise load a CommonJS bundle as ESM. */
+function resolveBackendEntry(): string {
+  return app.isPackaged
+    ? path.join(BACKEND_DIR, "backend.cjs")
+    : path.join(BACKEND_DIR, "dist", "backend.cjs");
 }
 
 const BACKEND_DIR = resolveBackendDir();
@@ -317,29 +331,6 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/** Database lives in USER_DATA, never inside the install directory — an NSIS
- *  update replaces `resources/`, and Program Files is read-only for non-admin
- *  users. Runs on every launch: `migrate deploy` is a no-op once the schema is
- *  current, and this is what turns a brand-new %APPDATA% into a valid db on
- *  first run without shipping a pre-seeded database file. */
-async function runMigrations(): Promise<void> {
-  const prismaCli = path.join(BACKEND_DIR, "node_modules", "prisma", "build", "index.js");
-  const schemaPath = path.join(BACKEND_DIR, "prisma", "schema.prisma");
-  await execFileAsync(
-    process.execPath,
-    [prismaCli, "migrate", "deploy", "--schema", schemaPath],
-    {
-      cwd: BACKEND_DIR,
-      windowsHide: true,
-      env: {
-        ...process.env,
-        ELECTRON_RUN_AS_NODE: "1",
-        DATABASE_URL: BACKEND_DB_URL,
-      },
-    },
-  );
-}
-
 async function startBackend(): Promise<void> {
   if (backendProc && !backendProc.killed) return;
 
@@ -353,11 +344,12 @@ async function startBackend(): Promise<void> {
   // no longer costs every launch half a second.
   if (killedTcp || killedUdp) await sleep(500);
 
-  await runMigrations();
-
-  const distMain = path.join(BACKEND_DIR, "dist", "src", "main.js");
-
-  backendProc = spawn(process.execPath, [distMain], {
+  // No `prisma migrate deploy` step any more. The backend migrates itself
+  // before it creates the Nest application (lomah-nest/src/common/prisma/
+  // prepare-database.ts), which is what let the installer drop the 90 MB
+  // Prisma CLI and the 18 MB schema engine it needed. The guarantee is
+  // unchanged: the schema is current before anything serves a request.
+  backendProc = spawn(process.execPath, [resolveBackendEntry()], {
     cwd: BACKEND_DIR,
     stdio: ["ignore", "pipe", "pipe"],
     windowsHide: true,
@@ -368,6 +360,10 @@ async function startBackend(): Promise<void> {
       ELECTRON_RUN_AS_NODE: "1",
       DATABASE_URL: BACKEND_DB_URL,
       JWT_SECRET: getOrCreateJwtSecret(),
+      // The backend no longer guesses where the SPA is by probing cwd. It is
+      // told, because cwd is a property of how we spawned it rather than of
+      // where anything actually lives.
+      LOMAH_STATIC_DIR: FRONTEND_DIST,
     },
   });
   backendOwnedByElectron = true;
