@@ -1,4 +1,12 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap");
+/* Inter and JetBrains Mono are imported from @fontsource in main.tsx, not
+   fetched from Google.
+
+   This used to be an @import of fonts.googleapis.com, and it was the first
+   line of the app's only stylesheet — the most render-blocking position there
+   is. On a range with no internet the browser cannot paint until that request
+   gives up, which is the blank window that "fixes itself" on refresh: the
+   second load reuses the cached DNS failure and returns immediately. An
+   offline-first app must not reach the network to draw its first frame. */
 @import "tailwindcss";
 
 @custom-variant dark (&:where(.dark, .dark *));
