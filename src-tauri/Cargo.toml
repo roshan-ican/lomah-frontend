@@ -1,0 +1,30 @@
+[package]
+name = "lomah"
+version = "0.1.0"
+description = "LOMAH Range System"
+edition = "2021"
+rust-version = "1.77"
+
+[lib]
+# Tauri puts the app in a library so the same code can back a desktop binary
+# and a mobile entry point. main.rs is a three-line shim over run().
+name = "lomah_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+# This ships to tablets over a sneakernet, so the binary's size is worth more
+# than its last few percent of speed — the Rust side only supervises a process
+# and listens for a beacon, none of which is hot.
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

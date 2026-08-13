@@ -8,3 +8,8 @@ coverage/
 !.env.example
 dist-electron/
 releases/
+
+# Rust build output. target/ is gigabytes of intermediate artifacts; gen/
+# holds schemas the Tauri CLI regenerates from tauri.conf.json on every build.
+src-tauri/target/
+src-tauri/gen/
