@@ -696,7 +696,87 @@ function createWindow(url: string) {
   });
 
   win.setMenuBarVisibility(false);
-  win.loadURL(url);
+
+  // A blank window is otherwise completely silent: the renderer's console goes
+  // to devtools nobody has open, and loadURL's rejection is invisible because
+  // nothing awaits it. Everything that can leave the window empty is recorded
+  // here, so "it started blank" becomes a line in backend.log instead of a
+  // report with nothing behind it.
+  win.webContents.on("did-fail-load", (_e, code, description, failedUrl) => {
+    writeLog(ERROR_LOG, `[renderer] load failed ${code} ${description} :: ${failedUrl}`);
+  });
+  win.webContents.on("render-process-gone", (_e, details) => {
+    writeLog(ERROR_LOG, `[renderer] process gone: ${details.reason}`);
+  });
+  win.webContents.on("preload-error", (_e, preloadPath, error) => {
+    writeLog(ERROR_LOG, `[renderer] preload failed ${preloadPath}: ${error.message}`);
+  });
+  // Electron changed this event's shape: it used to be
+  // (event, level, message, line, sourceId) and is now (event, details). Both
+  // are handled because getting it wrong fails silently — the handler runs,
+  // reads undefined, and logs nothing, which looks exactly like "there were no
+  // errors".
+  win.webContents.on(
+    "console-message",
+    (
+      _e: unknown,
+      levelOrDetails: unknown,
+      message?: string,
+      line?: number,
+      sourceId?: string,
+    ) => {
+      if (levelOrDetails && typeof levelOrDetails === "object") {
+        const d = levelOrDetails as {
+          level?: string;
+          message?: string;
+          lineNumber?: number;
+          sourceId?: string;
+        };
+        if (d.level === "error" || d.level === "warning") {
+          writeLog(ERROR_LOG, `[renderer] ${d.level}: ${d.message} (${d.sourceId}:${d.lineNumber})`);
+        }
+        return;
+      }
+      if (typeof levelOrDetails === "number" && levelOrDetails >= 2) {
+        writeLog(ERROR_LOG, `[renderer] console: ${message} (${sourceId}:${line})`);
+      }
+    },
+  );
+
+  win.webContents.on("did-finish-load", () => {
+    writeLog(BACKEND_LOG, `[renderer] loaded ${url}`);
+
+    // "Loaded" only means the HTML arrived. A blank window is a page that
+    // loaded perfectly and then mounted nothing, so ask the document directly
+    // rather than inferring it from the absence of errors.
+    void win?.webContents
+      .executeJavaScript(
+        `(() => {
+           const root = document.getElementById("root");
+           return JSON.stringify({
+             mounted: root ? root.childElementCount : -1,
+             scripts: [...document.querySelectorAll("script[src]")].map((s) => s.src),
+             sheets: [...document.styleSheets].length,
+           });
+         })()`,
+        true,
+      )
+      .then((state: string) => {
+        const { mounted } = JSON.parse(state) as { mounted: number };
+        if (mounted > 0) {
+          writeLog(BACKEND_LOG, `[renderer] mounted ok (${mounted} root children)`);
+        } else {
+          writeLog(ERROR_LOG, `[renderer] BLANK - nothing mounted. ${state}`);
+        }
+      })
+      .catch((err: Error) => {
+        writeLog(ERROR_LOG, `[renderer] could not inspect the document: ${err.message}`);
+      });
+  });
+
+  win.loadURL(url).catch((err: Error) => {
+    writeLog(ERROR_LOG, `[renderer] loadURL rejected: ${err.message}`);
+  });
 
   win.webContents.on("before-input-event", (_e, input) => {
     if (input.key === "F12") {

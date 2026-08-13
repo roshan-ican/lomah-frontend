@@ -96,10 +96,15 @@ export function RoleSetup() {
           />
         )}
 
-        <div className="flex justify-center items-center gap-3 mt-4">
-          <LanguageSwitcher language={language} setLanguage={setLanguage} />
-          <ThemeSwitcher isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} />
-        </div>
+        {/* Only while the role is being set up. PortalSelector renders its own
+            pair, so showing these unconditionally put two identical rows of
+            language and theme buttons on the first screen anyone sees. */}
+        {choosing && (
+          <div className="flex justify-center items-center gap-3 mt-4">
+            <LanguageSwitcher language={language} setLanguage={setLanguage} />
+            <ThemeSwitcher isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} />
+          </div>
+        )}
 
         <p className="text-center admin-text-sm font-mono text-gray-500 mt-6">
           {isAr
