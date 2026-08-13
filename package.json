@@ -13,6 +13,7 @@
     "icon": "node scripts/generate-icon.mjs",
     "electron:dev": "cross-env NODE_ENV=development vite",
     "electron:build": "npm run build:backend && npm run build && electron-builder",
+    "electron:sync": "npm run build:backend && npm run build && node scripts/sync-unpacked.mjs",
     "electron:preview": "npm run build:backend && npm run build && cross-env NODE_ENV=production electron .",
     "clean": "rm -rf dist server.js dist-electron",
     "lint": "tsc --noEmit",

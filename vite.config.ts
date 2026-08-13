@@ -49,7 +49,14 @@ export default defineConfig(() => {
       rollupOptions: {
         output: {
           manualChunks: {
-            'vendor-charts': ['recharts'],
+            // recharts is intentionally NOT forced into its own vendor chunk:
+            // it's only ever reached through AdminDashboard's React.lazy()
+            // boundary (report charts), but a forced manualChunks entry made
+            // Rollup treat it as an entry-level dependency anyway, so every
+            // window — including the lightweight shooter/picker bootstrap
+            // screens that never render a chart — eagerly modulepreloaded
+            // all 384KB of it. Leaving it to automatic chunking keeps it
+            // scoped to the async boundary that actually needs it.
             'vendor-motion': ['motion'],
           },
         },

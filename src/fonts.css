@@ -1,0 +1,53 @@
+/* Self-hosted Inter + JetBrains Mono, woff2 only.
+ *
+ * @fontsource ships each weight as woff2 *and* woff in the same @font-face
+ * src list, but Electron's bundled Chromium has supported woff2 since long
+ * before any Electron version this app targets, so the browser never
+ * requests the woff fallback — it just sits on disk, doubling every font's
+ * footprint in the built app for a format that's never fetched. This
+ * reproduces the same @font-face rules @fontsource/inter and
+ * @fontsource/jetbrains-mono generate for latin-{400,500,600}.css, minus
+ * that dead weight.
+ */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url(../node_modules/@fontsource/inter/files/inter-latin-400-normal.woff2) format('woff2');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url(../node_modules/@fontsource/inter/files/inter-latin-500-normal.woff2) format('woff2');
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url(../node_modules/@fontsource/inter/files/inter-latin-600-normal.woff2) format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url(../node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-400-normal.woff2) format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url(../node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-500-normal.woff2) format('woff2');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url(../node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-600-normal.woff2) format('woff2');
+}

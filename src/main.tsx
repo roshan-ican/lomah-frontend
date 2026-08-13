@@ -10,13 +10,9 @@ import { RoleSetup } from "./components/RoleSetup.tsx";
 // stylesheet the browser cannot reach blocks the first paint entirely.
 // Only the weights index.css asks for (400/500/600), and only the latin
 // subset: neither family covers Arabic, so the ar UI falls through to the
-// system stack either way and the other subsets are dead weight.
-import "@fontsource/inter/latin-400.css";
-import "@fontsource/inter/latin-500.css";
-import "@fontsource/inter/latin-600.css";
-import "@fontsource/jetbrains-mono/latin-400.css";
-import "@fontsource/jetbrains-mono/latin-500.css";
-import "@fontsource/jetbrains-mono/latin-600.css";
+// system stack either way and the other subsets are dead weight. See
+// fonts.css for why this isn't a plain @fontsource import.
+import "./fonts.css";
 import "./index.css";
 import { HashRouter } from "react-router-dom";
 
