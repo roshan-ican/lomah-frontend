@@ -688,6 +688,15 @@ function createWindow(url: string) {
   win = new BrowserWindow({
     width: 1200,
     height: 800,
+    // Electron shows the window the instant it's constructed unless told
+    // otherwise, which paints the OS's default white background for however
+    // long loadURL takes — a real, visible "blank screen" on every launch,
+    // not just after a build. backgroundColor covers the gap in the app's
+    // own dark theme instead of stock white, and show:false + ready-to-show
+    // hold the window offscreen until the page has actually painted, so
+    // nothing blank is ever displayed at all.
+    show: false,
+    backgroundColor: "#0f1115",
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -695,7 +704,16 @@ function createWindow(url: string) {
     },
   });
 
+  win.once("ready-to-show", () => {
+    win?.show();
+  });
+
   win.setMenuBarVisibility(false);
+
+  // Bounded to one retry per window: the BLANK check below already logs
+  // every occurrence, so a second consecutive blank load is a real failure
+  // worth seeing, not something to paper over by reloading forever.
+  let blankReloadAttempted = false;
 
   // A blank window is otherwise completely silent: the renderer's console goes
   // to devtools nobody has open, and loadURL's rejection is invisible because
@@ -765,8 +783,25 @@ function createWindow(url: string) {
         const { mounted } = JSON.parse(state) as { mounted: number };
         if (mounted > 0) {
           writeLog(BACKEND_LOG, `[renderer] mounted ok (${mounted} root children)`);
+        } else if (!blankReloadAttempted) {
+          // This used to only be logged, so a blank first load just sat
+          // there until the operator noticed and pressed refresh — the exact
+          // "starts blank, refresh fixes it" report this file is meant to
+          // catch. Reproduced runs of this failure never recovered on their
+          // own but always recovered on a manual reload, so do that reload
+          // automatically instead of leaving a working fix sitting in the
+          // user's hands.
+          blankReloadAttempted = true;
+          writeLog(
+            ERROR_LOG,
+            `[renderer] BLANK - nothing mounted, reloading once. ${state}`,
+          );
+          win?.webContents.reload();
         } else {
-          writeLog(ERROR_LOG, `[renderer] BLANK - nothing mounted. ${state}`);
+          writeLog(
+            ERROR_LOG,
+            `[renderer] BLANK - still nothing mounted after auto-reload. ${state}`,
+          );
         }
       })
       .catch((err: Error) => {
