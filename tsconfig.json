@@ -22,5 +22,9 @@
   // backend source that `extraResources` copies into releases/win-unpacked/.
   // That copy is checked against the *frontend's* config and deps, so it fails
   // on backend-only types (express-serve-static-core) that were never missing.
-  "exclude": ["node_modules", "dist", "dist-electron", "releases"]
+  //
+  // src-tauri is the same problem from the other side: cargo writes the SPA's
+  // own minified bundles into target/ as codegen assets, and tsc then tries to
+  // parse them as source.
+  "exclude": ["node_modules", "dist", "dist-electron", "releases", "src-tauri"]
 }

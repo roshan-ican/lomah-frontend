@@ -1,4 +1,25 @@
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? "";
+/**
+ * Where the backend lives, as a URL prefix. Empty means "relative to this
+ * page", which is correct whenever the backend served the page itself.
+ *
+ * Mutable, because under Tauri it cannot be known at build time. The Electron
+ * admin window was served BY NestJS at 127.0.0.1:3001, so every relative
+ * "/api" path resolved against it for free. Tauri serves the boot and
+ * shooter-wait screens from tauri://localhost, where a relative path resolves
+ * against a custom scheme that answers nothing — so the shell has to say.
+ */
+let BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? "";
+
+/** Called once at startup, before anything fetches. Trailing slashes are
+ *  trimmed so `${BACKEND_URL}/api/...` never doubles up. */
+export function setBackendUrl(origin: string): void {
+  BACKEND_URL = origin.replace(/\/+$/, "");
+}
+
+/** For call sites that build their own URLs, e.g. the socket.io clients. */
+export function getBackendUrl(): string {
+  return BACKEND_URL;
+}
 
 /** Every route lives under /api except /health, which main.ts excludes from
  *  the global prefix. */
@@ -185,4 +206,4 @@ export function formatTimeRemaining(
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-export { BACKEND_URL, API_PREFIX };
+export { API_PREFIX };

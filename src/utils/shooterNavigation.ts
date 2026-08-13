@@ -1,9 +1,10 @@
 import { DEFAULT_ADMIN_PORT } from "./adminConnection";
+import { platform } from "./platform";
 
 /** Open the shooter discovery flow (scan / manual connect to admin). */
 export function goToShooterScan(): void {
-  if (window.electronAPI?.isElectron) {
-    void window.electronAPI.setMode("shooter");
+  if (platform.isDesktop) {
+    void platform.setMode("shooter");
     return;
   }
   window.location.href = "/station/unassigned";

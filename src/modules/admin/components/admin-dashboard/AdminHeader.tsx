@@ -12,6 +12,7 @@ import { LanguageSwitcher } from "../../../../components/common/LanguageSwitcher
 import { ThemeSwitcher } from "../../../../components/common/ThemeSwitcher";
 import type { TranslationSet } from "../../../../translations";
 import type { LanguageCode } from "./types";
+import { platform } from "@/src/utils/platform";
 
 interface Props {
   t: TranslationSet;
@@ -96,9 +97,9 @@ export function AdminHeader({
             {liveFiringCount} {isAr ? "حارة نشطة" : "LIVE"}
           </span>
         )}
-        {window.electronAPI?.isElectron && (
+        {platform.isDesktop && (
           <button
-            onClick={() => window.electronAPI!.setMode("shooter")}
+            onClick={() => platform.setMode("shooter")}
             className="touch-target inline-flex items-center justify-center rounded admin-text-xs font-mono font-bold hud-text-subtle hover:hud-accent hover:bg-[var(--hud-accent-bg-subtle)] border border-transparent hover:border-[var(--hud-accent-border)] cursor-pointer gap-1"
             title={isAr ? "التبديل إلى وضع الرامي" : "Switch to Shooter Mode"}
           >
@@ -108,9 +109,9 @@ export function AdminHeader({
             </span>
           </button>
         )}
-        {window.electronAPI?.isElectron && (
+        {platform.isDesktop && (
           <button
-            onClick={() => window.electronAPI!.openLogsFolder()}
+            onClick={() => platform.openLogsFolder()}
             className="touch-target inline-flex items-center justify-center rounded admin-text-xs font-mono font-bold hud-text-subtle hover:hud-warning hover:bg-[var(--hud-warning-bg)] border border-transparent hover:border-[var(--hud-warning-border)] cursor-pointer gap-1"
             title="Open Backend Logs"
           >

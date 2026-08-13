@@ -12,6 +12,7 @@ import {
   probeLocalAdmin,
 } from "../utils/adminConnection";
 import { stationUrl } from "../utils/shooterNavigation";
+import { platform } from "@/src/utils/platform";
 
 type Status =
   | "idle"
@@ -43,7 +44,7 @@ export function ShooterWait() {
 
   const isAr = language === "ar";
   const t = translations[language];
-  const isElectron = !!window.electronAPI?.isElectron;
+  const isElectron = platform.isDesktop;
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", isDarkMode);
@@ -202,7 +203,7 @@ export function ShooterWait() {
   const resolveAdminEndpoint =
     useCallback(async (): Promise<AdminEndpoint | null> => {
       if (isElectron) {
-        const discovered = await window.electronAPI!.startDiscovery();
+        const discovered = await platform.startDiscovery();
         if (discovered?.host) {
           return {
             host: normalizeHost(discovered.host),
@@ -240,7 +241,7 @@ export function ShooterWait() {
 
   const stopScan = async () => {
     try {
-      await window.electronAPI?.cancelDiscovery();
+      await platform.cancelDiscovery();
     } catch {
       /* ignore */
     }
@@ -250,11 +251,11 @@ export function ShooterWait() {
 
   const backToAdmin = async () => {
     try {
-      await window.electronAPI?.cancelDiscovery();
+      await platform.cancelDiscovery();
     } catch {
       /* ignore */
     }
-    await window.electronAPI!.setMode("admin");
+    await platform.setMode("admin");
   };
 
   const handleManualConnect = async () => {
@@ -262,7 +263,7 @@ export function ShooterWait() {
     const host = manualIp.trim();
     if (!host) return;
     if (isElectron) {
-      await window.electronAPI!.manualConnect(host);
+      await platform.manualConnect(host);
     }
     await connectToAdmin(host, DEFAULT_ADMIN_PORT);
   };
@@ -271,12 +272,12 @@ export function ShooterWait() {
     const init = async () => {
       try {
         if (isElectron) {
-          const mode = await window.electronAPI!.getCurrentMode?.();
+          const mode = await platform.getCurrentMode();
           if (mode === "admin") {
             setIsAdmin(true);
             return;
           }
-          const savedAdminHost = await window.electronAPI!.getAdminIp?.();
+          const savedAdminHost = await platform.getAdminIp();
           if (savedAdminHost) {
             setManualIp(savedAdminHost);
             await connectToAdmin(savedAdminHost, DEFAULT_ADMIN_PORT);
@@ -491,7 +492,7 @@ export function ShooterWait() {
             </button>
             <button
               type="button"
-              onClick={() => window.electronAPI!.quitApp()}
+              onClick={() => platform.quitApp()}
               className="px-4 py-2 rounded-lg admin-admin-text-lg font-mono font-bold text-rose-500 border border-rose-500/20 hover:bg-rose-500/10"
             >
               {isAr ? "✕ خروج" : "✕ Exit"}

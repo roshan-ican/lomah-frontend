@@ -12,6 +12,7 @@ import { PortalSelector } from "./auth/PortalSelector";
 import { LanguageSwitcher } from "./common/LanguageSwitcher";
 import { ThemeSwitcher } from "./common/ThemeSwitcher";
 import { translations } from "../translations";
+import { platform } from "@/src/utils/platform";
 
 export function RoleSetup() {
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
@@ -31,7 +32,7 @@ export function RoleSetup() {
     // role switch (e.g. the shooter's "Admin Mode" button) already goes
     // through, so this first choice isn't a special case for main.ts to keep
     // in sync.
-    await window.electronAPI!.setMode(mode);
+    await platform.setMode(mode);
   };
 
   // PortalSelector's shooter button ignores its onShooterSelect prop and always

@@ -11,7 +11,7 @@
     "build:web": "cross-env VITE_WEB_ONLY=true vite build",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "npm run build:backend && tauri build",
+    "tauri:build": "npm run build:backend && npm run build:web && npm run tauri:resources && tauri build",
     "preview": "vite preview",
     "build:backend": "cd ../lomah-nest && npm run build:dist",
     "icon": "node scripts/generate-icon.mjs",
@@ -22,7 +22,8 @@
     "lint": "tsc --noEmit",
     "lint:es": "eslint src electron-app",
     "format": "prettier --write src electron-app",
-    "format:check": "prettier --check src electron-app"
+    "format:check": "prettier --check src electron-app",
+    "tauri:resources": "node scripts/collect-tauri-resources.mjs"
   },
   "dependencies": {
     "idb": "^8.0.3",

@@ -15,7 +15,7 @@ import type { CalibrateMode } from "./types";
 import { AuthStage, AUTH_STAGE_PATH, authStageFromPath } from "./types";
 import { translations, TranslationSet } from "./translations";
 import { clickToSensorCoords } from "./utils/shotCoordinates";
-import { apiFetchJson, ApiError, BACKEND_URL, getAuthRole, api } from "./utils/api";
+import { apiFetchJson, ApiError, getAuthRole, api } from "./utils/api";
 import { useNotifications } from "./hooks/useNotifications";
 import { useLaneOffsets } from "./hooks/useLaneOffsets";
 import { useSessionStore } from "./store/sessionStore";
