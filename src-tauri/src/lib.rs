@@ -10,6 +10,9 @@
 //! a backend exists: the persisted mode, and the UDP election that decides
 //! whether starting one is even allowed.
 
+pub mod discovery;
+pub mod mode;
+
 pub fn run() {
     tauri::Builder::default()
         .run(tauri::generate_context!())
