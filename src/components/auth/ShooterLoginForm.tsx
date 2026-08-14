@@ -39,7 +39,7 @@ export function ShooterLoginForm({
       <div className="flex items-center gap-2 mb-4 select-none">
         <button
           onClick={onBack}
-          className="p-1 rounded bg-transparent hover:bg-gray-100 dark:hover:bg-[#1C1F26] text-gray-400 cursor-pointer"
+          className="p-1 rounded bg-transparent hover:bg-gray-100 dark:hover:bg-[#1C1F26] text-gray-500 dark:text-gray-400 cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
         </button>
@@ -50,11 +50,11 @@ export function ShooterLoginForm({
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block font-mono admin-text-2xs uppercase text-gray-400 mb-1 font-bold select-none">
+          <label className="block font-mono admin-text-2xs uppercase text-gray-500 dark:text-gray-400 mb-1 font-bold select-none">
             {t.username}
           </label>
           <div className="relative">
-            <User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 pointer-events-none" />
             <input
               type="text"
               value={username}

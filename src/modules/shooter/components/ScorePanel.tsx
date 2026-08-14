@@ -165,7 +165,7 @@ export const ScorePanel: React.FC<ScorePanelProps> = ({
           <Activity className="w-5 h-5" />
         </div>
         <div>
-          <span className="block text-xs uppercase font-mono text-gray-400 font-bold select-none">
+          <span className="block text-xs uppercase font-mono text-gray-500 dark:text-gray-400 font-bold select-none">
             {t.shotsFired}
           </span>
           <span className="text-xl font-mono font-bold block mt-0.5">
@@ -179,12 +179,12 @@ export const ScorePanel: React.FC<ScorePanelProps> = ({
           <Award className="w-5 h-5" />
         </div>
         <div>
-          <span className="block text-xs uppercase font-mono text-gray-400 font-bold select-none">
+          <span className="block text-xs uppercase font-mono text-gray-500 dark:text-gray-400 font-bold select-none">
             {t.totalScore}
           </span>
           <span className="text-xl font-mono font-bold block mt-0.5">
             {totalScore}{" "}
-            <span className="text-xs text-gray-400">/ {shots.length * 10}</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">/ {shots.length * 10}</span>
           </span>
         </div>
       </div>
@@ -194,7 +194,7 @@ export const ScorePanel: React.FC<ScorePanelProps> = ({
           <Target className="w-5 h-5" />
         </div>
         <div>
-          <span className="block text-xs uppercase font-mono text-gray-400 font-bold select-none">
+          <span className="block text-xs uppercase font-mono text-gray-500 dark:text-gray-400 font-bold select-none">
             {t.avgDeviation}
           </span>
           <span className="text-xl font-mono font-bold block mt-0.5">
@@ -205,7 +205,7 @@ export const ScorePanel: React.FC<ScorePanelProps> = ({
 
       <div className="md:col-span-3 bg-emerald-500/5 dark:bg-emerald-success/10 border border-emerald-500/20 dark:border-emerald-success/20 p-3.5 rounded-xl flex items-start gap-2.5">
         <div>
-          <span className="block text-xs font-mono uppercase font-bold text-gray-400">
+          <span className="block text-xs font-mono uppercase font-bold text-gray-500 dark:text-gray-400">
             {isAr ? "تحديث وتوجيهات الرماية" : "Tactical Range Feedback"}
           </span>
           <p className="text-xs font-semibold text-gray-700 dark:text-emerald-400 mt-1 leading-relaxed">

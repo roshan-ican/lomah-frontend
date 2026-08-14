@@ -27,8 +27,14 @@ function touchMidpoint(touches: TouchList): { x: number; y: number } {
   return { x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 };
 }
 
-/** Movement in px before a press becomes a pan rather than a tap. */
-const PAN_THRESHOLD_PX = 6;
+/**
+ * Movement in px before a press becomes a pan rather than a tap.
+ *
+ * Exported because a caller that also does something on click has to draw the
+ * line in the same place — see CalibrationFaceDialog, where a press past this
+ * distance must not additionally re-mark the bullet's true position.
+ */
+export const PAN_THRESHOLD_PX = 6;
 
 /**
  * Pan and zoom for the target board.

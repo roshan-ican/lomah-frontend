@@ -162,7 +162,7 @@ export const ShooterDashboard: React.FC<ShooterDashboardProps> = ({
               type="button"
               onClick={onSimulateShot}
               disabled={isSimulatingShot}
-              className="touch-target inline-flex items-center justify-center rounded text-xs font-mono font-bold text-gray-400 hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/20 disabled:opacity-45 disabled:cursor-wait cursor-pointer gap-1"
+              className="touch-target inline-flex items-center justify-center rounded text-xs font-mono font-bold text-gray-500 dark:text-gray-400 hover:text-emerald-400 hover:bg-emerald-500/10 border border-transparent hover:border-emerald-500/20 disabled:opacity-45 disabled:cursor-wait cursor-pointer gap-1"
               title={isAr ? "إرسال طلقة اختبار" : "Send simulated shot"}
             >
               <Crosshair className="w-3.5 h-3.5" />

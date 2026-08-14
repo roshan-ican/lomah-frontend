@@ -65,7 +65,7 @@ export const BulletCounter: React.FC<BulletCounterProps> = ({
 
   return (
     <div className="p-4 rounded-xl border border-gray-200 dark:border-glass-border bg-white dark:bg-[#1C1F26] shadow-sm">
-      <span className="text-xs font-mono uppercase text-gray-400 block mb-2">
+      <span className="text-xs font-mono uppercase text-gray-500 dark:text-gray-400 block mb-2">
         {isAr ? "الرصاص المتبقي" : "Bullets Remaining"}
       </span>
 
@@ -80,7 +80,7 @@ export const BulletCounter: React.FC<BulletCounterProps> = ({
           <span className="text-4xl font-mono font-bold text-emerald-500 tabular-nums">
             {remaining}
           </span>
-          <span className="text-lg font-mono text-gray-400">
+          <span className="text-lg font-mono text-gray-500 dark:text-gray-400">
             / {bulletLimit}
           </span>
         </motion.div>

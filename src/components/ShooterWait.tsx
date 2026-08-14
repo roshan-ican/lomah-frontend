@@ -343,7 +343,7 @@ export function ShooterWait() {
           <div className={cardClass}>
             <div className="flex flex-col items-center gap-4 py-6">
               <Loader2 className="w-10 h-10 text-emerald-500 animate-spin" />
-              <p className="admin-text-lg font-mono text-gray-400">
+              <p className="admin-text-lg font-mono text-gray-500 dark:text-gray-400">
                 {isAr ? "جاري التهيئة..." : "Initializing..."}
               </p>
             </div>
@@ -356,7 +356,7 @@ export function ShooterWait() {
           >
             {status === "idle" && (
               <div className="space-y-4">
-                <p className="text-center admin-admin-text-lg font-mono text-gray-400">
+                <p className="text-center admin-admin-text-lg font-mono text-gray-500 dark:text-gray-400">
                   {isElectron
                     ? isAr
                       ? "ابحث عن حاسوب المشرف على الشبكة"
@@ -386,7 +386,7 @@ export function ShooterWait() {
                 <button
                   type="button"
                   onClick={() => setStatus("manual")}
-                  className="admin-admin-text-lg font-mono text-gray-400 hover:text-emerald-500 underline block w-full text-center"
+                  className="admin-admin-text-lg font-mono text-gray-500 dark:text-gray-400 hover:text-emerald-500 underline block w-full text-center"
                 >
                   {isAr ? "إدخال IP يدوياً" : "Enter IP manually"}
                 </button>
@@ -396,7 +396,7 @@ export function ShooterWait() {
             {(status === "scanning" || status === "connecting") && (
               <div className="flex flex-col items-center gap-4 py-4">
                 <Loader2 className="w-10 h-10 text-emerald-500 animate-spin" />
-              <p className="admin-text-lg font-mono text-gray-400">
+              <p className="admin-text-lg font-mono text-gray-500 dark:text-gray-400">
                   {status === "scanning"
                     ? isAr
                       ? "جاري البحث عن المشرف..."
@@ -419,7 +419,7 @@ export function ShooterWait() {
 
             {status === "manual" && (
               <div className="space-y-4">
-                <p className="text-center admin-admin-text-lg font-mono text-gray-400">
+                <p className="text-center admin-admin-text-lg font-mono text-gray-500 dark:text-gray-400">
                   {isAr
                     ? "أدخل عنوان IP لحاسوب المشرف"
                     : "ENTER THE ADMIN PC IP ADDRESS"}
@@ -446,7 +446,7 @@ export function ShooterWait() {
                     setStatus("idle");
                     setError("");
                   }}
-                  className="admin-admin-text-lg font-mono text-gray-400 hover:text-emerald-500 underline block w-full text-center"
+                  className="admin-admin-text-lg font-mono text-gray-500 dark:text-gray-400 hover:text-emerald-500 underline block w-full text-center"
                 >
                   {isAr ? "← رجوع" : "← Back"}
                 </button>
@@ -460,7 +460,7 @@ export function ShooterWait() {
                   <p className="admin-text-lg font-bold text-emerald-500">
                     {isAr ? "متصل بالمشرف" : "Connected to Admin"}
                   </p>
-                  <p className="admin-admin-text-lg font-mono text-gray-400">
+                  <p className="admin-admin-text-lg font-mono text-gray-500 dark:text-gray-400">
                     {isAr
                       ? "بانتظار تعيين الحارة من المشرف..."
                       : "Awaiting lane assignment from the range officer..."}

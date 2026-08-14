@@ -25,7 +25,7 @@ export const PasswordInput: React.FC<PasswordInputProps> = ({
   return (
     <div className="relative">
       {showLockIcon && (
-        <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+        <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 pointer-events-none" />
       )}
       <input
         type={visible ? "text" : "password"}
@@ -38,7 +38,7 @@ export const PasswordInput: React.FC<PasswordInputProps> = ({
       <button
         type="button"
         onClick={() => setVisible((v) => !v)}
-        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
+        className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer"
         aria-label={visible ? "Hide password" : "Show password"}
         tabIndex={-1}
       >

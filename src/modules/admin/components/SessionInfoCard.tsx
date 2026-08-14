@@ -59,7 +59,7 @@ const SessionInfoCard = ({
     {channel.notes && (
       <div>
         {isAr ? "ملاحظات:" : "Notes:"}{" "}
-        <span className="text-gray-400 italic">{channel.notes}</span>
+        <span className="text-gray-500 dark:text-gray-400 italic">{channel.notes}</span>
       </div>
     )}
     <div>

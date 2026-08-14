@@ -143,7 +143,7 @@ export const SessionTimer: React.FC<SessionTimerProps> = ({
       <span
         className={`font-mono text-xs font-bold tabular-nums ${
           sessionStatus === "COMPLETED" || sessionStatus === "REVIEWED"
-            ? "text-gray-400"
+            ? "text-gray-500 dark:text-gray-400"
             : "text-amber-500"
         }`}
       >
@@ -171,7 +171,7 @@ export const SessionTimer: React.FC<SessionTimerProps> = ({
     <div className="flex items-center gap-3 p-4 rounded-xl border border-gray-200 dark:border-glass-border bg-white dark:bg-[#1C1F26]">
       <Clock className="w-5 h-5 text-amber-500" />
       <div>
-        <span className="text-xs font-mono uppercase text-gray-400 block">
+        <span className="text-xs font-mono uppercase text-gray-500 dark:text-gray-400 block">
           {label}
         </span>
         <span className="text-2xl font-mono font-bold text-amber-500 tabular-nums">

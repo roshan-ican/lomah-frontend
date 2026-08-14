@@ -13,6 +13,7 @@ import {
   ChevronUp,
 } from "lucide-react";
 import type { Target } from "../../../../types";
+import { getLabelColor, getStatusColor } from "../logTones";
 
 export interface SensorPacket {
   id: string;
@@ -56,22 +57,6 @@ const COMMAND_NAMES: Record<string, string> = {
   O: "OFFSET",
   R: "READ PARAMS",
 };
-
-const getStatusColor = (
-  status: "pending" | "success" | "error" | "info",
-): string => {
-  switch (status) {
-    case "success":
-      return "text-emerald-500 bg-emerald-500/10 border-emerald-500/30";
-    case "error":
-      return "text-rose-500 bg-rose-500/10 border-rose-500/30";
-    case "pending":
-      return "text-amber-500 bg-amber-500/10 border-amber-500/30";
-    case "info":
-      return "text-blue-500 bg-blue-500/10 border-blue-500/30";
-  }
-};
-
 const formatTime = (date: Date): string => {
   return date.toLocaleTimeString("en-US", {
     hour: "2-digit",
@@ -314,43 +299,48 @@ export function TargetSensorConsole({
             </p>
           </div>
         ) : (
-          packets.map((packet) => (
-            <div
-              key={packet.id}
-              className={`border rounded p-1.5 space-y-0.5 font-mono ${getStatusColor(packet.status)}`}
-            >
-              <div className="flex items-center justify-between gap-1">
-                <span className="text-2xs opacity-75">
-                  {formatTime(packet.timestamp)}
-                </span>
-                <span className="font-bold uppercase text-xs">
-                  {COMMAND_NAMES[packet.command] || packet.command}
-                </span>
-                <span
-                  className={`text-2xs px-1 rounded ${
-                    packet.direction === "tx"
-                      ? "bg-current/20 opacity-70"
-                      : "bg-current/30"
-                  }`}
-                >
-                  {packet.direction === "tx" ? "→" : "←"}
-                </span>
-              </div>
-              <div className="space-y-0.5">
-                <div className="text-2xs opacity-80 break-all">
-                  <span className="opacity-60">HEX: </span>
-                  {packet.hex}
+          packets.map((packet) => {
+            const labelColor = getLabelColor(packet.status);
+            return (
+              <div
+                key={packet.id}
+                className={`border rounded p-1.5 space-y-0.5 font-mono ${getStatusColor(packet.status)}`}
+              >
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-2xs hud-text-subtle">
+                    {formatTime(packet.timestamp)}
+                  </span>
+                  <span className={`font-bold uppercase text-xs ${labelColor}`}>
+                    {COMMAND_NAMES[packet.command] || packet.command}
+                  </span>
+                  <span
+                    className={`text-2xs px-1 rounded font-bold ${labelColor} ${
+                      packet.direction === "tx" ? "bg-current/15" : "bg-current/25"
+                    }`}
+                  >
+                    {packet.direction === "tx" ? "→" : "←"}
+                  </span>
                 </div>
-                <div className="text-2xs opacity-70 break-all">
-                  <span className="opacity-60">ASCII: </span>
-                  {packet.ascii}
+                <div className="space-y-0.5">
+                  <div className="text-2xs break-all">
+                    <span className="hud-text-subtle">HEX: </span>
+                    <span className="font-bold text-amber-700 dark:text-amber-300">
+                      {packet.hex}
+                    </span>
+                  </div>
+                  <div className="text-2xs break-all">
+                    <span className="hud-text-subtle">ASCII: </span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">
+                      {packet.ascii}
+                    </span>
+                  </div>
+                </div>
+                <div className="text-2xs font-medium text-slate-900 dark:text-slate-100">
+                  {packet.description}
                 </div>
               </div>
-              <div className="text-2xs opacity-75">
-                {packet.description}
-              </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>

@@ -82,6 +82,15 @@ export function handleRealtimeEvent(
     return;
   }
 
+  // A commissioning bullet. Range-wide like sensor:gate — it has a laneId but
+  // no channel and no session, so it is dispatched to whichever panel is
+  // currently calibrating rather than merged into lane state.
+  if (event === "target:bench-hit") {
+    if (authStageRef.current !== "ADMIN_BOARD") return;
+    window.dispatchEvent(new CustomEvent("lomah:bench-hit", { detail: data }));
+    return;
+  }
+
   if (event === "server:log") {
     // Admin-room only at the gateway, but guard here too: a shooter tablet
     // must never render backend internals even if the room scoping changes.

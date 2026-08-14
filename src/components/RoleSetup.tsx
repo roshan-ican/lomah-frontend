@@ -73,7 +73,7 @@ export function RoleSetup() {
                 : "bg-white border-gray-200"
             }`}
           >
-            <p className="admin-text-lg font-mono text-gray-400">
+            <p className="admin-text-lg font-mono text-gray-500 dark:text-gray-400">
               {choosing === "admin"
                 ? isAr
                   ? "جاري إعداد وضع المشرف..."

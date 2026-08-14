@@ -11,11 +11,13 @@ import {
   AlertCircle,
   AlertTriangle,
   SlidersHorizontal,
+  Target as TargetIcon,
 } from "lucide-react";
 import { api, ApiError } from "../../../../utils/api";
 import { TargetFacePreview } from "../../../../components/common/TargetFacePreview";
 import { ConfirmDialog } from "../../../../components/common/ConfirmDialog";
 import { TargetSensitivityPanel } from "./TargetSensitivityPanel";
+import { TargetCalibrationPanel } from "./TargetCalibrationPanel";
 import { TargetSensorConsole, type SensorPacket } from "./TargetSensorConsole";
 import type {
   Lane,
@@ -134,10 +136,10 @@ export function LaneHardwarePanel({
       return next;
     });
 
+  /** In-flight edits to a target's command host/port override. The row is
+   *  only reachable on a target that already carries one — see the override
+   *  row below for why there is no longer a control that opens it. */
   const [cmdDrafts, setCmdDrafts] = useState<Map<string, { host: string; port: string }>>(new Map());
-
-
-  const [cmdOpen, setCmdOpen] = useState<Set<string>>(new Set());
 
   /** Rows with the sensitivity (wiper) panel expanded. Defaults hidden — every
    *  open/refresh is a live UDP round trip, not something to show by default
@@ -154,6 +156,25 @@ export function LaneHardwarePanel({
       return next;
     });
   };
+
+  /** Rows with the calibration panel expanded. Same default-hidden reasoning
+   *  as the sensitivity panel: it arms live hardware on demand. */
+  const [calOpen, setCalOpen] = useState<Set<string>>(new Set());
+  const toggleCal = (targetId: string) => {
+    if (!calOpen.has(targetId)) setSelectedTargetId(targetId);
+    setCalOpen((prev) => {
+      const next = new Set(prev);
+      if (next.has(targetId)) next.delete(targetId);
+      else next.add(targetId);
+      return next;
+    });
+  };
+
+  /** Every commissioned target except this one — the "apply the same offset
+   *  here too" list. Flattened across lanes: a mounting correction is a
+   *  property of how the boards are hung, not of one lane. */
+  const otherTargets = (targetId: string): Target[] =>
+    lanes.flatMap((l) => (l.targets ?? []).filter((t) => t.id !== targetId));
 
   const setCmdDraft = (target: Target, field: "host" | "port", value: string) =>
     setCmdDrafts((prev) => {
@@ -1291,6 +1312,22 @@ export function LaneHardwarePanel({
                           </button>
                           <button
                             type="button"
+                            onClick={() => toggleCal(target.id)}
+                            title={
+                              isAr
+                                ? "المعايرة — أطلق طلقة واضبط الإزاحة"
+                                : "Calibration — fire a shot and set the offset"
+                            }
+                            className={`p-1.5 rounded cursor-pointer transition-colors ${
+                              calOpen.has(target.id)
+                                ? "hud-accent bg-[var(--hud-accent-bg-subtle)]"
+                                : "hud-text-subtle hover:bg-hud-elevated"
+                            }`}
+                          >
+                            <TargetIcon className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => toggleSens(target.id)}
                             title={
                               isAr
@@ -1324,8 +1361,14 @@ export function LaneHardwarePanel({
 
                       {/* Command unicast override — Docker/simulated targets
                           only. Full row width, block-level: see the comment
-                          on the outer wrapper for why this is not a grid cell. */}
-                      {!readOnly && (cmdOpen.has(target.id) || target.commandHost || target.commandPort) && (
+                          on the outer wrapper for why this is not a grid cell.
+                          Shown only for a target that already has an override:
+                          the "+cmd" control that used to add one to any target
+                          is gone, so this is an editor for existing overrides,
+                          not a way to create them. Clearing both fields drops
+                          the target back to its IP and the default port, and
+                          the row goes with it. */}
+                      {!readOnly && (target.commandHost || target.commandPort) && (
                         <div className="flex items-center gap-1 admin-text-2xs hud-text-subtle">
                           <span className="font-mono" title={isAr ? "عنوان الأوامر" : "Command host/port (PLAY/STOP)"}>
                             cmd
@@ -1348,11 +1391,6 @@ export function LaneHardwarePanel({
                               } else if (e.key === "Escape") {
                                 setCmdDrafts((prev) => {
                                   const next = new Map(prev);
-                                  next.delete(target.id);
-                                  return next;
-                                });
-                                setCmdOpen((prev) => {
-                                  const next = new Set(prev);
                                   next.delete(target.id);
                                   return next;
                                 });
@@ -1382,40 +1420,31 @@ export function LaneHardwarePanel({
                                   next.delete(target.id);
                                   return next;
                                 });
-                                setCmdOpen((prev) => {
-                                  const next = new Set(prev);
-                                  next.delete(target.id);
-                                  return next;
-                                });
                               }
                             }}
                             className="w-16 min-w-0 bg-transparent font-mono px-1 py-0.5 rounded border border-hud/40 hover:border-hud focus:border-[var(--hud-accent-border)] focus:bg-[var(--hud-elevated)] outline-none transition-colors disabled:opacity-50"
                             title={isAr ? "منفذ الأوامر — فارغ يعني 14550" : "Command port — empty means 14550"}
                           />
-                          {!target.commandHost && !target.commandPort && (
-                            <button
-                              type="button"
-                              onClick={() => setCmdOpen((prev) => new Set([...prev].filter((id) => id !== target.id)))}
-                              disabled={busy}
-                              title={isAr ? "إخفاء" : "Hide"}
-                              className="shrink-0 p-0.5 rounded hud-text-subtle hover:bg-hud-elevated cursor-pointer disabled:opacity-50 transition-colors"
-                            >
-                              <X className="w-2.5 h-2.5" />
-                            </button>
-                          )}
                         </div>
                       )}
 
-                      {!readOnly && !cmdOpen.has(target.id) && !target.commandHost && !target.commandPort && (
-                        <button
-                          type="button"
-                          onClick={() => setCmdOpen((prev) => new Set(prev).add(target.id))}
-                          disabled={busy}
-                          title={isAr ? "تجاوز عنوان الأوامر (أهداف المحاكاة)" : "Command address override (simulated targets)"}
-                          className="admin-text-2xs font-mono hud-text-subtle hover:text-[var(--hud-accent)] hover:bg-[var(--hud-accent-bg)] px-1 py-0.5 rounded transition-colors disabled:opacity-50"
-                        >
-                          +cmd
-                        </button>
+                      {/* Calibration — fire one at a known point and derive
+                          the mounting offset from where the board saw it.
+                          Commissioning's counterpart to the ADMIN board's
+                          drag-to-calibrate, which needs a live relay. */}
+                      {!readOnly && calOpen.has(target.id) && (
+                        <TargetCalibrationPanel
+                          target={target}
+                          siblings={otherTargets(target.id)}
+                          isAr={isAr}
+                          onNotice={triggerSuccessBanner}
+                          onError={triggerErrorBanner}
+                          addAdminLog={addAdminLog}
+                          onPacket={logPacket}
+                          onCalibrated={(saved) =>
+                            mergeTarget(saved.laneId, saved)
+                          }
+                        />
                       )}
 
                       {/* Sensitivity — SUPER_ADMIN only, live off the board.

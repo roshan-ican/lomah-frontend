@@ -84,7 +84,7 @@ export const PortalScreen = (props: Props) => {
                   : "bg-white border-gray-200"
               }`}
             >
-              <p className="text-center admin-text-sm font-mono text-gray-400 mb-4 select-none">
+              <p className="text-center admin-text-sm font-mono text-gray-500 dark:text-gray-400 mb-4 select-none">
                 {isAr
                   ? "يرجى تحديد قناة تسجيل الدخول المخصصة للولوج للمنظومة"
                   : "SELECT ACCESS ROAD TO INITIALIZE CONNECTION"}
@@ -108,7 +108,7 @@ export const PortalScreen = (props: Props) => {
                           ? "مركز التحكم بالميدان (إدارة)"
                           : "Range Control Center"}
                       </span>
-                      <span className="block font-mono admin-text-2xs text-gray-400 mt-0.5">
+                      <span className="block font-mono admin-text-2xs text-gray-500 dark:text-gray-400 mt-0.5">
                         {isAr
                           ? "دخول برتبة مشرف أو معلم رماية (أدوات كاملة وسييطرة)"
                           : "Instructor and Range Officers panel with reports"}
@@ -131,7 +131,7 @@ export const PortalScreen = (props: Props) => {
                           ? "جهاز الرماة اللوحي (رامٍ)"
                           : "Shooter Terminal"}
                       </span>
-                      <span className="block font-mono admin-text-2xs text-gray-400 mt-0.5">
+                      <span className="block font-mono admin-text-2xs text-gray-500 dark:text-gray-400 mt-0.5">
                         {isAr
                           ? "خاص بأجهزة الحارات واللوحات مقاس ١٠ بوصة للرماة"
                           : "Simplified target view, score records & logs"}
@@ -168,7 +168,7 @@ export const PortalScreen = (props: Props) => {
             <div className="flex items-center gap-2 mb-4 select-none">
               <button
                 onClick={() => props.setAuthStage("PORTAL")}
-                className="p-1 rounded bg-transparent hover:bg-gray-100 dark:hover:bg-[#1C1F26] text-gray-400 cursor-pointer"
+                className="p-1 rounded bg-transparent hover:bg-gray-100 dark:hover:bg-[#1C1F26] text-gray-500 dark:text-gray-400 cursor-pointer"
               >
                 <ArrowLeft className="w-4 h-4" />
               </button>
@@ -181,11 +181,11 @@ export const PortalScreen = (props: Props) => {
 
             <form onSubmit={props.handleAdminLogin} className="space-y-4">
               <div>
-                <label className="block font-mono admin-text-2xs uppercase text-gray-400 mb-1 font-bold select-none">
+                <label className="block font-mono admin-text-2xs uppercase text-gray-500 dark:text-gray-400 mb-1 font-bold select-none">
                   {isAr ? "معرف الضابط / المشرف" : "Officer Command Code"}
                 </label>
                 <div className="relative">
-                  <Shield className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                  <Shield className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 pointer-events-none" />
                   <input
                     type="text"
                     value={props.adminFieldId}
@@ -197,7 +197,7 @@ export const PortalScreen = (props: Props) => {
               </div>
 
               <div>
-                <label className="block font-mono admin-text-2xs uppercase text-gray-400 mb-1 font-bold select-none">
+                <label className="block font-mono admin-text-2xs uppercase text-gray-500 dark:text-gray-400 mb-1 font-bold select-none">
                   {isAr ? "رمز الولوج السري" : "Instruction Passkey"}
                 </label>
                 <div className="relative">
@@ -231,7 +231,7 @@ export const PortalScreen = (props: Props) => {
             <div className="flex items-center gap-2 mb-4 select-none">
               <button
                 onClick={() => props.setAuthStage("PORTAL")}
-                className="p-1 rounded bg-transparent hover:bg-gray-100 dark:hover:bg-[#1C1F26] text-gray-400 cursor-pointer"
+                className="p-1 rounded bg-transparent hover:bg-gray-100 dark:hover:bg-[#1C1F26] text-gray-500 dark:text-gray-400 cursor-pointer"
               >
                 <ArrowLeft className="w-4 h-4" />
               </button>
@@ -242,11 +242,11 @@ export const PortalScreen = (props: Props) => {
 
             <form onSubmit={props.handleShooterLogin} className="space-y-4">
               <div>
-                <label className="block font-mono admin-text-2xs uppercase text-gray-400 mb-1 font-bold select-none">
+                <label className="block font-mono admin-text-2xs uppercase text-gray-500 dark:text-gray-400 mb-1 font-bold select-none">
                   {props.t.username}
                 </label>
                 <div className="relative">
-                  <User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                  <User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 pointer-events-none" />
                   <input
                     type="text"
                     value={props.shooterFieldId}
@@ -258,7 +258,7 @@ export const PortalScreen = (props: Props) => {
               </div>
 
               <div>
-                <label className="block font-mono admin-text-2xs uppercase text-gray-400 mb-1 font-bold select-none">
+                <label className="block font-mono admin-text-2xs uppercase text-gray-500 dark:text-gray-400 mb-1 font-bold select-none">
                   {props.t.password}
                 </label>
                 <div className="relative">
@@ -280,7 +280,7 @@ export const PortalScreen = (props: Props) => {
                 <button
                   type="button"
                   onClick={() => props.setAuthStage("REGISTER_SHOOTER")}
-                  className="admin-text-xs font-mono font-bold text-gray-400 hover:text-emerald-500 cursor-pointer"
+                  className="admin-text-xs font-mono font-bold text-gray-500 dark:text-gray-400 hover:text-emerald-500 cursor-pointer"
                 >
                   {props.t.regTacticalProfile}
                 </button>
@@ -302,7 +302,7 @@ export const PortalScreen = (props: Props) => {
             <div className="flex items-center gap-2 mb-4 select-none">
               <button
                 onClick={() => props.setAuthStage("LOGIN_SHOOTER")}
-                className="p-1 rounded bg-transparent hover:bg-gray-100 dark:hover:bg-[#1C1F26] text-gray-400 cursor-pointer"
+                className="p-1 rounded bg-transparent hover:bg-gray-100 dark:hover:bg-[#1C1F26] text-gray-500 dark:text-gray-400 cursor-pointer"
               >
                 <ArrowLeft className="w-4 h-4" />
               </button>
@@ -322,7 +322,7 @@ export const PortalScreen = (props: Props) => {
               className="space-y-4"
             >
               <div>
-                <label className="block admin-text-2xs font-mono uppercase text-gray-400 mb-1 font-bold select-none">
+                <label className="block admin-text-2xs font-mono uppercase text-gray-500 dark:text-gray-400 mb-1 font-bold select-none">
                   {props.t.username}
                 </label>
                 <input
@@ -336,7 +336,7 @@ export const PortalScreen = (props: Props) => {
               </div>
 
               <div>
-                <label className="block admin-text-2xs font-mono uppercase text-gray-400 mb-1 font-bold select-none">
+                <label className="block admin-text-2xs font-mono uppercase text-gray-500 dark:text-gray-400 mb-1 font-bold select-none">
                   {props.t.regUnitAssignment}
                 </label>
                 <select
@@ -352,7 +352,7 @@ export const PortalScreen = (props: Props) => {
               </div>
 
               <div>
-                <label className="block admin-text-2xs font-mono uppercase text-gray-400 mb-1 font-bold select-none">
+                <label className="block admin-text-2xs font-mono uppercase text-gray-500 dark:text-gray-400 mb-1 font-bold select-none">
                   {props.t.password}
                 </label>
                 <PasswordInput
@@ -363,7 +363,7 @@ export const PortalScreen = (props: Props) => {
                 />
               </div>
 
-              <p className="admin-text-sm text-gray-400 font-mono select-none leading-normal">
+              <p className="admin-text-sm text-gray-500 dark:text-gray-400 font-mono select-none leading-normal">
                 {props.t.acknowledgedText}
               </p>
 

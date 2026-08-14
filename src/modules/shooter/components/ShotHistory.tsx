@@ -603,9 +603,9 @@ export const ShotHistory: React.FC<ShotHistoryProps> = ({
             </button>
           )}
           {missToggle(
-            "flex items-center gap-1 text-xs px-2 py-0.5 rounded text-gray-400 hover:bg-gray-500/10",
+            "flex items-center gap-1 text-xs px-2 py-0.5 rounded text-gray-500 dark:text-gray-400 hover:bg-gray-500/10",
           )}
-          <span className="font-mono text-xs bg-gray-100 dark:bg-[#121417] px-2 py-0.5 rounded text-gray-400">
+          <span className="font-mono text-xs bg-gray-100 dark:bg-[#121417] px-2 py-0.5 rounded text-gray-500 dark:text-gray-400">
             {realVisibleShots.length} {isAr ? "إطلاقات" : "Total"}
           </span>
         </div>
@@ -613,7 +613,7 @@ export const ShotHistory: React.FC<ShotHistoryProps> = ({
 
       <div className="flex-1 overflow-y-auto space-y-2 max-h-[380px] pr-1">
         {realVisibleShots.length === 0 ? (
-          <div className="text-center py-12 text-gray-400 dark:text-on-surface-variant/45 font-mono text-xs">
+          <div className="text-center py-12 text-gray-500 dark:text-gray-400 dark:text-on-surface-variant/45 font-mono text-xs">
             {isAr ? "لا توجد طلقات مسجلة بعد" : "No shots detected on matrix."}
           </div>
         ) : (
@@ -642,24 +642,24 @@ export const ShotHistory: React.FC<ShotHistoryProps> = ({
                   className="w-full text-left p-2.5 rounded-lg border border-dashed border-gray-200 dark:border-glass-border flex items-center justify-between gap-2 opacity-70"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-6 h-6 rounded-full flex items-center justify-center font-mono text-xs font-bold shrink-0 bg-gray-100 dark:bg-[#121417] text-gray-400">
+                    <div className="w-6 h-6 rounded-full flex items-center justify-center font-mono text-xs font-bold shrink-0 bg-gray-100 dark:bg-[#121417] text-gray-500 dark:text-gray-400">
                       {sh.id}
                     </div>
                     <div className="min-w-0">
                       <span className="text-xs font-mono font-bold block text-gray-500 dark:text-gray-400">
                         {isAr ? "طلقة" : "Shot"} #{sh.id}
                       </span>
-                      <span className="block font-mono text-xs text-gray-400 mt-0.5">
+                      <span className="block font-mono text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                         {sh.timestamp}
                       </span>
                       {/* Deliberately no x/y line: both are zero, and printing
                           "x:0mm y:0mm" reads as a dead-centre hit. */}
-                      <span className="block font-mono text-[9px] text-gray-400 mt-0.5">
+                      <span className="block font-mono text-[9px] text-gray-500 dark:text-gray-400 mt-0.5">
                         {detail}
                       </span>
                     </div>
                   </div>
-                  <span className="font-mono text-xs font-bold tracking-wider text-gray-400 shrink-0">
+                  <span className="font-mono text-xs font-bold tracking-wider text-gray-500 dark:text-gray-400 shrink-0">
                     {short}
                   </span>
                 </div>
@@ -685,7 +685,7 @@ export const ShotHistory: React.FC<ShotHistoryProps> = ({
                     className={`w-6 h-6 rounded-full flex items-center justify-center font-mono text-xs font-bold shrink-0 ${
                       isSelected
                         ? "bg-emerald-500 text-white"
-                        : "bg-gray-100 dark:bg-[#121417] text-gray-400"
+                        : "bg-gray-100 dark:bg-[#121417] text-gray-500 dark:text-gray-400"
                     }`}
                   >
                     {sh.id}
@@ -694,13 +694,13 @@ export const ShotHistory: React.FC<ShotHistoryProps> = ({
                     <span className="text-xs font-mono font-bold block">
                       {isAr ? "طلقة" : "Shot"} #{sh.id}
                     </span>
-                    <span className="block font-mono text-xs text-gray-400 mt-0.5">
+                    <span className="block font-mono text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                       {sh.timestamp}
                     </span>
                     <span className="flex items-baseline gap-2 mt-0.5 whitespace-nowrap">
                       {coordBlock(sh, {
-                        primary: "font-mono text-[9px] text-gray-400",
-                        secondary: "font-mono text-[9px] text-gray-400/60",
+                        primary: "font-mono text-[9px] text-gray-500 dark:text-gray-400",
+                        secondary: "font-mono text-[9px] text-gray-500 dark:text-gray-400/60",
                       })}
                     </span>
                   </div>

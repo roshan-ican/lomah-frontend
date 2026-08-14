@@ -160,6 +160,7 @@ export type {
   TargetStopResult,
   TargetHeartbeatResult,
   TargetDevDataResult,
+  TargetReadShotResult,
   SelfTestOutcome,
   WiperPage,
   WiperPageValues,

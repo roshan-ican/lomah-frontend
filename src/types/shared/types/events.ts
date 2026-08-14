@@ -127,6 +127,35 @@ export interface TargetCalibratedEvent {
   sessionPickUsed: boolean | null;
 }
 
+/**
+ * A bullet the board pushed with no session behind it.
+ *
+ * The commissioning flow arms a target outside any session, so every bullet
+ * fired at it reaches the backend and is deliberately not recorded — it belongs
+ * to no stage, gets no shot number in any log and appears in no report. This
+ * event is that frame announced rather than discarded, so the calibration panel
+ * can plot the bullet as it lands instead of asking for it back by number.
+ *
+ * Admin room only, and named apart from 'shot' on purpose: anything listening
+ * for session shots must never mistake one of these for one.
+ */
+export interface TargetBenchHitEvent {
+  event: "target:bench-hit";
+  targetId: string;
+  laneId: number;
+  targetLabel: string;
+  /** The board's own bullet counter — what the panel's "Shot #" box means. */
+  shot: number;
+  /** Face millimetres, this target's offset already applied. */
+  xMm: number;
+  yMm: number;
+  score: number;
+  /** The board triangulated nothing; xMm/yMm carry no position. */
+  isMiss: boolean;
+  /** ISO-8601. */
+  firedAt: string;
+}
+
 export interface SensorGateEvent extends SensorGateStatus {
   event: "sensor:gate";
 }
@@ -164,6 +193,7 @@ export type WebSocketEvent =
   | SessionLifecycleEvent
   | TargetCalibratedEvent
   | SensorGateEvent
+  | TargetBenchHitEvent
   | ServerLogEvent
   | UnauthorizedEvent;
 

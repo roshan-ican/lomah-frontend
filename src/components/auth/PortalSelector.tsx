@@ -40,7 +40,7 @@ export function PortalSelector({
             : "bg-white border-gray-200"
         }`}
       >
-        <p className="text-center admin-text-sm font-mono text-gray-400 mb-4 select-none">
+        <p className="text-center admin-text-sm font-mono text-gray-500 dark:text-gray-400 mb-4 select-none">
           {isAr
             ? "يرجى تحديد قناة تسجيل الدخول المخصصة للولوج للمنظومة"
             : "SELECT ACCESS ROAD TO INITIALIZE CONNECTION"}
@@ -61,7 +61,7 @@ export function PortalSelector({
                     ? "مركز التحكم بالميدان (إدارة)"
                     : "Range Control Center"}
                 </span>
-                <span className="block font-mono admin-text-2xs text-gray-400 mt-0.5">
+                <span className="block font-mono admin-text-2xs text-gray-500 dark:text-gray-400 mt-0.5">
                   {isAr
                     ? "دخول برتبة مشرف أو معلم رماية (أدوات كاملة وسييطرة)"
                     : "Instructor and Range Officers panel with reports"}
@@ -82,7 +82,7 @@ export function PortalSelector({
                 <span className="block font-sans admin-text-lg font-bold text-gray-800 dark:text-white">
                   {isAr ? "جهاز الرماة اللوحي (رامٍ)" : "Shooter Terminal"}
                 </span>
-                <span className="block font-mono admin-text-2xs text-gray-400 mt-0.5">
+                <span className="block font-mono admin-text-2xs text-gray-500 dark:text-gray-400 mt-0.5">
                   {isAr
                     ? "خاص بأجهزة الحارات واللوحات مقاس ١٠ بوصة للرماة"
                     : "Simplified target view, score records & logs"}

@@ -110,6 +110,19 @@ export interface TargetDevDataResult extends TargetFrameExchange {
   sensors: number | null;
 }
 
+
+export interface TargetReadShotResult extends TargetFrameExchange {
+  shot: number;
+  echoed: boolean;
+  noDetection: boolean;
+  elapsedMs: number | null;
+  rawX: number | null;
+  rawY: number | null;
+  xMm: number | null;
+  yMm: number | null;
+  score: number | null;
+}
+
 export type WiperPage = "A" | "B";
 
 /**

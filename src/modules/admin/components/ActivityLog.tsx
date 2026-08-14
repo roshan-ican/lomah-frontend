@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Activity, ChevronDown, ChevronUp } from "lucide-react";
+import { getLabelColor, getStatusColor, type LogTone } from "./logTones";
 
 interface ActivityLogProps {
   logs: string[];
@@ -25,6 +26,66 @@ interface ActivityLogProps {
  *  the target view. Both are enforced on every drag frame, not just at rest. */
 const MIN_HEIGHT = 72;
 const maxHeight = () => Math.round(window.innerHeight * 0.8);
+
+/** Same four-way tone→colour mapping the sensor console's packet log uses, so
+ *  both logs read with the same vocabulary: emerald = confirmed, rose = failed,
+ *  amber = in-between, light green = plain information. */
+type ActivityTone = "success" | "error" | "warn" | "info";
+
+/** The messages are plain strings, so the tone is inferred from the first
+ *  keyword after the timestamp (and any ✖/⚠/emoji marker the server attached).
+ *  Everything unclassified reads as info — it genuinely is, most of the time. */
+const getTone = (rest: string): ActivityTone => {
+  const t = rest.replace(/^[^\w:]*/, "");
+  if (rest.startsWith("✖") || /^FAILED\b/i.test(t)) return "error";
+  if (rest.startsWith("⚠") || /^(PAUSE|ADVANCE|RESET)\b/i.test(t)) return "warn";
+  if (/^(START|RESUME|REVIEW|RANGE_CONTROL)\b/i.test(t)) return "success";
+  return "info";
+};
+
+/** The coloured chip shown in each card's header — the message's own keyword
+ *  (FAILED, RESET, SENSITIVITY, TARGET CAL, …), capped at two words so an
+ *  over-verbose prefix like "CALIBRATION CARRIED into bulk start" stays short. */
+const categoryOf = (rest: string): string => {
+  const seg = rest.split(":")[0].trim();
+  const words = seg.split(/\s+/).filter(Boolean).slice(0, 2).join(" ");
+  return (words || "LOG").toUpperCase();
+};
+
+/** Split `[HH:MM:SS]` (stamped by addAdminLog) off the front so it can render
+ *  subtle like the packet log's clock, with the payload left to the body. */
+const parseTime = (text: string): { time: string | null; rest: string } => {
+  const m = text.match(/^\[(\d{2}:\d{2}:\d{2})\]\s?(.*)$/s);
+  return m ? { time: m[1], rest: m[2] } : { time: null, rest: text };
+};
+
+/** Highlight the hex the backend embeds in sensor messages — `cmd=0x57(P)`,
+ *  `x=0x04D2`, and whole frames like `frame=[24 57 41 02 1E 00 00 DC 23]` — in
+ *  the same amber the packet log uses for its HEX line. Timestamps and decimal
+ *  numbers are deliberately left alone. */
+const HEX_TOKEN = /0x[0-9A-Fa-f]{1,}|\[[0-9A-Fa-f]{2}(?:\s+[0-9A-Fa-f]{2})*\]/g;
+
+const renderHex = (text: string): React.ReactNode[] => {
+  const parts: React.ReactNode[] = [];
+  let last = 0;
+  let key = 0;
+  let m: RegExpExecArray | null;
+  while ((m = HEX_TOKEN.exec(text))) {
+    if (m.index > last) {
+      parts.push(<span key={key++}>{text.slice(last, m.index)}</span>);
+    }
+    parts.push(
+      <span key={key++} className="font-bold text-amber-700 dark:text-amber-300">
+        {m[0]}
+      </span>,
+    );
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) {
+    parts.push(<span key={key++}>{text.slice(last)}</span>);
+  }
+  return parts;
+};
 
 export const ActivityLog: React.FC<ActivityLogProps> = ({
   logs,
@@ -154,23 +215,33 @@ export const ActivityLog: React.FC<ActivityLogProps> = ({
           // Explicit height, not min/max: the log shares a flex column with a
           // greedy flex-1 sibling, and a content-sized list renders as a
           // sliver there no matter how much room is free.
-          style={{ height }}
+          style={{ height, fontSize: "10px" }}
         >
           {rows.length === 0 ? (
             <p className="font-mono admin-text-3xs hud-text-muted italic">
               {isAr ? "لا توجد أنشطة مسجلة" : "No activity recorded"}
             </p>
           ) : (
-            rows.map((log, idx) => (
-              <div key={idx} className="flex items-start gap-2 px-1.5 py-0.5">
-                <span className="hud-accent opacity-60 shrink-0 font-mono admin-text-3xs">
-                  ›
-                </span>
-                <span className="break-all font-mono admin-text-3xs hud-text-subtle">
-                  {log}
-                </span>
-              </div>
-            ))
+            rows.map((log, idx) => {
+              const { time, rest } = parseTime(log);
+              const tone = getTone(rest);
+              return (
+                <div
+                  key={idx}
+                  className={`flex items-start gap-1.5 px-1.5 py-1 rounded border font-mono ${getStatusColor(tone)}`}
+                >
+                  <span className={`text-2xs px-1 rounded font-bold shrink-0 ${getLabelColor(tone)}`}>
+                    {categoryOf(rest)}
+                  </span>
+                  <span className="text-2xs break-all leading-snug">
+                    {time && (
+                      <span className="hud-text-subtle">[{time}] </span>
+                    )}
+                    {renderHex(rest)}
+                  </span>
+                </div>
+              );
+            })
           )}
         </div>
       )}
