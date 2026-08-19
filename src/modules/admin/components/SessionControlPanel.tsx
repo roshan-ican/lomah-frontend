@@ -16,7 +16,11 @@ import {
 import { Reorder, useDragControls } from "motion/react";
 import type { ActiveShooterChannel } from "../../../types";
 import type { Session } from "../../../types";
-import { formatLaneLabel, laneNeedsReview } from "../../../utils/laneSession";
+import {
+  formatLaneLabel,
+  laneBlocksNewSession,
+  laneNeedsReview,
+} from "../../../utils/laneSession";
 import {
   targetProfileFromTargetId,
   targetProfileLabel,
@@ -98,7 +102,10 @@ function toStagePlan(draft: StageDraft): StagePlanConfig {
   };
 }
 
-function findShooterPendingReviewLane(
+/** A shooter can occupy only one live/prepared lane at a time. Keep the
+ * current lane out of the lookup so editing its existing plan does not disable
+ * its own shooter. */
+function findShooterOccupiedLane(
   shooterName: string,
   channels: ActiveShooterChannel[],
   excludeChannelId?: string,
@@ -109,7 +116,7 @@ function findShooterPendingReviewLane(
   return channels.find(
     (ch) =>
       ch.id !== excludeChannelId &&
-      ch.sessionStatus === "COMPLETED" &&
+      laneBlocksNewSession(ch.sessionStatus) &&
       (ch.name.toLowerCase() === normalized ||
         ch.opId.toLowerCase() === normalized),
   );
@@ -542,13 +549,13 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
   }
 
   const status = channel.sessionStatus;
-  const shooterPendingLane = shooterName.trim()
-    ? findShooterPendingReviewLane(shooterName, channels, channel.id)
+  const shooterOccupiedLane = shooterName.trim()
+    ? findShooterOccupiedLane(shooterName, channels, channel.id)
     : undefined;
-  const createBlockedReason = shooterPendingLane
+  const createBlockedReason = shooterOccupiedLane
     ? isAr
-      ? `الرامي ${shooterName} لديه جولة مكتملة (لم يتم حفظها) على ${formatLaneLabel(shooterPendingLane.id, "ar")}. قم بحفظ التقييم أو تجاهل الجلسة أولاً.`
-      : `${shooterName} has a completed session (not saved yet) on ${formatLaneLabel(shooterPendingLane.id)}. Save feedback or discard it first before assigning this shooter.`
+      ? `الرامي ${shooterName} معيّن بالفعل إلى ${formatLaneLabel(shooterOccupiedLane.id, "ar")}. قم بإنهاء أو إغلاق تلك الجلسة أولاً.`
+      : `${shooterName} is already assigned to ${formatLaneLabel(shooterOccupiedLane.id)}. End or close that session before assigning this shooter again.`
     : null;
 
   const targetById = new Map(laneTargets.map((tgt) => [tgt.id, tgt]));
@@ -666,11 +673,27 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
                 <option value="">
                   {isAr ? "— اختر رامياً —" : "— Select shooter —"}
                 </option>
-                {availableShooters.map((s) => (
-                  <option key={s.id} value={s.name}>
-                    {s.name}
-                  </option>
-                ))}
+                {availableShooters.map((s) => {
+                  const occupiedLane = findShooterOccupiedLane(
+                    s.name,
+                    channels,
+                    channel.id,
+                  );
+                  return (
+                    <option
+                      key={s.id}
+                      value={s.name}
+                      disabled={!!occupiedLane}
+                    >
+                      {s.name}
+                      {occupiedLane
+                        ? isAr
+                          ? ` (في ${formatLaneLabel(occupiedLane.id, "ar")})`
+                          : ` (in ${formatLaneLabel(occupiedLane.id)})`
+                        : ""}
+                    </option>
+                  );
+                })}
               </select>
             ) : (
               <input
@@ -796,7 +819,7 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
                   isSubmitting ||
                   !shooterName.trim() ||
                   !planIsValid ||
-                  !!shooterPendingLane
+                  !!shooterOccupiedLane
                 }
                 className={`flex-1 admin-text-xs ${btnPrimary}`}
               >
@@ -816,7 +839,7 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
                 isSubmitting ||
                 !shooterName.trim() ||
                 !planIsValid ||
-                !!shooterPendingLane
+                !!shooterOccupiedLane
               }
               className={`w-full mt-2 ${btnPrimary}`}
             >

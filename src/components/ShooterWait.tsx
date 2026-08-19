@@ -12,6 +12,7 @@ import {
   probeLocalAdmin,
 } from "../utils/adminConnection";
 import { stationUrl } from "../utils/shooterNavigation";
+import { getOrCreateDeviceId } from "../utils/deviceIdentity";
 
 type Status =
   | "idle"
@@ -44,6 +45,7 @@ export function ShooterWait() {
   const isAr = language === "ar";
   const t = translations[language];
   const isElectron = !!window.electronAPI?.isElectron;
+  const deviceIdRef = useRef(getOrCreateDeviceId());
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", isDarkMode);
@@ -74,6 +76,8 @@ export function ShooterWait() {
           `http://${cleanHost}:${port}/api/auth/connect`,
           {
             method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ deviceId: deviceIdRef.current }),
             signal: AbortSignal.timeout(5000),
           },
         );
@@ -130,7 +134,12 @@ export function ShooterWait() {
       try {
         const res = await fetch(
           `http://${adminHost}:${adminPort}/api/auth/connect`,
-          { method: "POST", signal: AbortSignal.timeout(3000) },
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ deviceId: deviceIdRef.current }),
+            signal: AbortSignal.timeout(3000),
+          },
         );
         if (!res.ok) return;
         const body = await res.json();

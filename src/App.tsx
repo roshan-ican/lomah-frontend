@@ -25,6 +25,7 @@ import { useRealtimeChannels } from "./hooks/useRealtimeChannels";
 import { useAuthFlow } from "./hooks/useAuthFlow";
 import { createUnassignedShooterChannel } from "./utils/helper";
 import { noLaneChannel } from "./store/channelMutations";
+import { clampTargetZoom } from "./utils/targetZoom";
 
 const ShooterDashboard = React.lazy(() =>
   import("./modules/shooter/components/ShooterDashboard").then((m) => ({
@@ -242,7 +243,7 @@ function App() {
   const changeZoom = (factor: number) => {
     setZoomLevel((prev) => {
       const target = Math.round((prev + factor) * 100) / 100;
-      return Math.min(2, Math.max(0.1, target));
+      return clampTargetZoom(target);
     });
   };
 

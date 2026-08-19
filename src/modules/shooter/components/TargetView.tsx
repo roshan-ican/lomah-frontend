@@ -234,10 +234,6 @@ export const TargetView: React.FC<TargetViewProps> = ({
   // the admin lane board — which is always readOnly — refuse taps on bullets
   // and force the shot log to be the only way in.
   const canSelectShots = true;
-  const newestShotId =
-    calibratableShots.length > 0
-      ? Math.max(...calibratableShots.map((s) => s.id))
-      : null;
 
   /**
    * Tap a bullet to select it; tap the selected one again to clear it.
@@ -457,13 +453,8 @@ export const TargetView: React.FC<TargetViewProps> = ({
                   zoomLevel,
                 );
                 const isMiss = sh.isMiss ?? false;
-                const isDragging = draggingShotId === sh.id;
                 const isBulkSelected =
                   isBulkCalibrate && selectedShotIds.has(sh.id);
-                const isListSelected = selectedShotId === sh.id;
-                const isSelected = isBulkCalibrate
-                  ? isBulkSelected || isDragging
-                  : isListSelected || isDragging;
 
                 return (
                   <ShotMarker
@@ -474,12 +465,7 @@ export const TargetView: React.FC<TargetViewProps> = ({
                     isMiss={isMiss}
                     isClamped={wasClamped}
                     isHud={isHud}
-                    isDarkMode={isDarkMode}
-                    isDragging={isDragging}
                     isBulkSelected={isBulkSelected}
-                    isListSelected={isListSelected}
-                    isSelected={isSelected}
-                    isNewest={sh.id === newestShotId}
                     canSelectShots={canSelectShots}
                     canDragCalibrate={canDragCalibrate}
                     dragHandlers={getShotDragHandlers(sh.id)}

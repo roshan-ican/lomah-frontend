@@ -1,5 +1,8 @@
-import React from "react";
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
+import React, { useMemo } from "react";
+import { defineChart } from "@tanstack/charts";
+import { pie, polar, radialArc } from "@tanstack/charts/polar";
+import { Chart } from "@tanstack/charts/react";
+import { tooltip } from "@tanstack/charts/tooltip";
 import type { ShooterReportPayload } from "../../../../types/reports";
 
 const RING_COLORS: Record<string, string> = {
@@ -36,13 +39,64 @@ export const RingDistributionChart: React.FC<RingDistributionChartProps> = ({
   const tooltipBorder = isDarkMode ? "rgba(0, 255, 209, 0.15)" : "#cbd5e1";
   const legendColor = isDarkMode ? "rgba(213, 226, 255, 0.55)" : "#64748b";
 
-  const data = Object.entries(ringDistribution).map(([name, value]) => ({
-    name: name === "miss" ? "Miss" : `${name} ring`,
-    value,
-    key: name,
-  }));
+  const { data, total, definition } = useMemo(() => {
+    const chartData = Object.entries(ringDistribution).map(([name, value]) => ({
+      name: name === "miss" ? "Miss" : `${name} ring`,
+      value,
+      key: name,
+    }));
+    const chartTotal = chartData.reduce((sum, point) => sum + point.value, 0);
+    const slices = pie(chartData, {
+      value: "value",
+      gapAngle: (Math.PI / 180) * 2,
+    });
 
-  const total = data.reduce((s, d) => s + d.value, 0);
+    return {
+      data: chartData,
+      total: chartTotal,
+      definition: defineChart({
+        marks: [
+          polar({
+            inset: 4,
+            radiusRatio: 0.9,
+            marks: [
+              radialArc(slices, {
+                key: "key",
+                innerRadius: ({ radius }) => radius * 0.57,
+                cornerRadius: 2,
+                fill: (slice) => palette[slice.key] ?? "#888",
+              }),
+            ],
+          }),
+        ],
+        guides: false,
+        theme: {
+          foreground: legendColor,
+          muted: legendColor,
+          background: "transparent",
+          palette: Object.values(palette),
+        },
+        svgAnimation: true,
+        tooltip: {
+          use: tooltip,
+          className: "lomah-chart-tooltip",
+          format: (point) => {
+            const count = point.datum.value;
+            return `${point.datum.name}: ${count} (${Math.round(point.datum.fraction * 100)}%)`;
+          },
+        },
+      }),
+    };
+  }, [legendColor, palette, ringDistribution]);
+
+  const chartStyle = {
+    height: "100%",
+    "--ts-chart-tooltip-background": tooltipBg,
+    "--ts-chart-tooltip-color": isDarkMode ? "#d5e2ff" : "#1e293b",
+    "--ts-chart-tooltip-border": `1px solid ${tooltipBorder}`,
+    "--ts-chart-tooltip-font":
+      '11px "Helvetica Neue", Helvetica, Arial, sans-serif',
+  } as React.CSSProperties;
 
   return (
     <div
@@ -59,41 +113,11 @@ export const RingDistributionChart: React.FC<RingDistributionChartProps> = ({
       ) : (
         <>
           <div className="h-28 shrink-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={data}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={26}
-                  outerRadius={46}
-                  paddingAngle={2}
-                >
-                  {data.map((entry) => (
-                    <Cell key={entry.key} fill={palette[entry.key] ?? "#888"} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    background: tooltipBg,
-                    border: `1px solid ${tooltipBorder}`,
-                    fontSize: 11,
-                    fontFamily:
-                      '"Helvetica Neue", Helvetica, Arial, sans-serif',
-                    color: isDarkMode ? "#d5e2ff" : "#1e293b",
-                  }}
-                  formatter={(value, name) => {
-                    const n = Number(value) || 0;
-                    return [
-                      `${n} (${total > 0 ? Math.round((n / total) * 100) : 0}%)`,
-                      String(name),
-                    ];
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+            <Chart
+              definition={definition}
+              ariaLabel={isAr ? "توزيع الحلقات" : "Shots by ring"}
+              style={chartStyle}
+            />
           </div>
 
           <div

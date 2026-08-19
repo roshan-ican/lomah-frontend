@@ -38,43 +38,22 @@ export const TAP_HIT_RADIUS = 16;
  * What it replaced: a core of r=8 (a 40mm crater), a glow disc at r=12 and a
  * separate centre dot at r=2.5, stacked. Three concentric shapes per shot is
  * why a group of three read as a set of rings rather than three holes. One
- * filled circle with a hard edge is the whole marker now; MARKER_EDGE_R is a
- * dark hairline just outside the coloured ring so the shot stays crisp against
- * the light tan of the face instead of dissolving into it.
+ * solid circle per shot is the whole marker now.
  *
  * These are visual only. The tap target is TAP_HIT_RADIUS above and is
  * deliberately much larger — shrinking what is drawn must not shrink what can
  * be hit.
  */
 export const MARKER_CORE_R = 2.6;
-/** Slightly larger while calibrating: the marker is a drag handle then. */
-export const MARKER_CORE_R_DRAG = 3.4;
 
 /**
- * The ring is an accent, not the body of the marker.
- *
- * At 1.1 on a 2.2 core the coloured stroke covered roughly 40% of the marker's
- * area, so the eye read a red annulus with a dark middle — an outline, not a
- * hole. Thinning it to 0.7 and letting MARKER_CORE_FILL own the interior gives
- * the dense punched look a real hit has, with the colour doing only the job it
- * needs to: separating hit from miss, selected from not.
+ * Fill and stroke use the same red. Keeping the stroke width explicit lets
+ * miss markers retain their dashed outline without changing hit geometry.
  */
 export const MARKER_CORE_STROKE = 0.7;
-export const MARKER_EDGE_STROKE = 0.6;
 
-/**
- * A bullet hole is a hole — near-black in every theme, not a tinted disc.
- *
- * Deliberately not theme-derived. The old fill followed the surface (#ffffff
- * in HUD light, slate in the default skin), which made the marker read as a
- * bubble sitting on the face rather than a puncture through it. Contrast
- * against a dark backdrop is handled by MARKER_EDGE_STROKE, which draws the
- * background colour as a hairline around the ring.
- */
-export const MARKER_CORE_FILL = "#08090C";
-export const MARKER_SELECTED_R = 6.5;
-export const MARKER_PULSE_R = 7.5;
-export const MARKER_CLAMP_R = 5;
+/** Every recorded impact is one solid red mark, independent of score. */
+export const MARKER_CORE_FILL = "#E11D48";
 /** Half-length of each stroke of the X drawn for an off-face miss. */
 export const MARKER_MISS_ARM = 3;
 

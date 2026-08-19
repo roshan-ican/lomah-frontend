@@ -223,15 +223,19 @@ export function LaneAssignmentPanel({ isAr, triggerSuccessBanner, triggerErrorBa
                       {isAr ? "— غير معيَّن —" : "— Unassigned —"}
                     </option>
                     {lanes.map((lane) => {
-                      // Flagged, not blocked: swapping the tablet on a lane
-                      // mid-relay is normal. A lane holds at most one device,
-                      // so the server releases the previous holder — see
-                      // ConnectedShootersService.releaseLane.
+                      // An occupied lane cannot be taken by another tablet
+                      // accidentally. The current holder keeps its own option
+                      // enabled; release it first when a deliberate swap is
+                      // needed.
                       const holder = deviceOnLane(lane.id);
                       const takenByOther =
                         !!holder && holder.key !== device.key;
                       return (
-                        <option key={lane.id} value={lane.id}>
+                        <option
+                          key={lane.id}
+                          value={lane.id}
+                          disabled={takenByOther}
+                        >
                           {isAr ? `حارة ${lane.id}` : `Lane ${lane.id}`}
                           {takenByOther ? (isAr ? " (مشغولة)" : " (in use)") : ""}
                         </option>

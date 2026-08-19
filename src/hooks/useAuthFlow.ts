@@ -21,6 +21,7 @@ import type { Dispatch, SetStateAction } from "react";
 import type { AuthStage, ConnectedShooter, LoginResponse, Shooter } from "../types";
 import { AUTH_STAGE_PATH } from "../types";
 import { api, ApiError, clearAuthSession, setAuthSession } from "../utils/api";
+import { getOrCreateDeviceId } from "../utils/deviceIdentity";
 
 type NavigateFn = (to: string, opts?: { replace?: boolean }) => void;
 
@@ -32,19 +33,6 @@ interface AuthFlowDeps {
   setShooterAssignedLaneId: Dispatch<SetStateAction<number | null>>;
   triggerSuccessBanner: (msg: string) => void;
   syncShooterAssignmentFromApi: (username: string) => Promise<void>;
-}
-
-/** Stable per-browser id so a tablet keeps its lane assignment across reloads
- *  and DHCP changes. Without one the backend can only track it by IP, which
- *  it forgets the moment the address changes. */
-function getOrCreateDeviceId(): string {
-  const KEY = "lomah_device_id";
-  let id = localStorage.getItem(KEY);
-  if (!id) {
-    id = `tablet-${Math.random().toString(36).slice(2, 10)}`;
-    localStorage.setItem(KEY, id);
-  }
-  return id;
 }
 
 export function useAuthFlow({

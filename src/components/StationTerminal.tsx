@@ -9,18 +9,18 @@ import {
   boardMmToSensorCoords,
   mapRawShotToDisplay,
   mergeDisplayShots,
-  setLaneError,
-  sortShotsNewestFirst,
-  zoneFromOffset,
+
 } from "../utils/shotCoordinates";
 import { applyCalibratedShots } from "../store/channelMutations";
 import { targetProfileFromTargetId } from "../utils/targetProfile";
 import { clickToSensorCoords } from "../utils/shotCoordinates";
 import { api, getAuthToken, syncServerClock } from "../utils/api";
 import { stationUrl } from "../utils/shooterNavigation";
+import { getOrCreateDeviceId } from "../utils/deviceIdentity";
 import { ShooterDashboard } from "../modules/shooter/components/ShooterDashboard";
 import { useSessionStore } from "../store/sessionStore";
 import { useLaneOffsets } from "../hooks/useLaneOffsets";
+import { clampTargetZoom } from "../utils/targetZoom";
 
 /**
  * There is no `session:sync` event any more — the gateway pushes lifecycle
@@ -291,9 +291,8 @@ export function StationTerminal() {
 
   const changeZoom = useCallback((factor: number) => {
     setZoomLevel((prev) => {
-      const next = prev + factor;
-      if (next >= 0.1 && next <= 2) return parseFloat(next.toFixed(1));
-      return prev;
+      const target = Math.round((prev + factor) * 100) / 100;
+      return clampTargetZoom(target);
     });
   }, []);
 
@@ -350,7 +349,7 @@ export function StationTerminal() {
           const identity = await api.post<{
             key?: string;
             laneId?: number | null;
-          }>("/auth/connect", {});
+          }>("/auth/connect", { deviceId: getOrCreateDeviceId() });
           if (identity?.key) {
             deviceKeyRef.current = identity.key;
             socket.emit(

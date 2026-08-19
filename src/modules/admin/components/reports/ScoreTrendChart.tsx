@@ -1,13 +1,9 @@
-import React from "react";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+import React, { useMemo } from "react";
+import { defineChart, dot, lineY } from "@tanstack/charts";
+import { Chart } from "@tanstack/charts/react";
+import { scaleLinear } from "@tanstack/charts/scales/linear";
+import { scalePoint } from "@tanstack/charts/scales/point";
+import { tooltip } from "@tanstack/charts/tooltip";
 import type { ShooterTrendPoint } from "../../../../types/reports";
 
 interface ScoreTrendChartProps {
@@ -31,13 +27,82 @@ export const ScoreTrendChart: React.FC<ScoreTrendChartProps> = ({
   const tooltipBg = isDarkMode ? "#0b1220" : "#ffffff";
   const tooltipBorder = isDarkMode ? "rgba(0, 255, 209, 0.15)" : "#cbd5e1";
 
-  const data = trend.map((t) => ({
-    label: new Date(t.date).toLocaleDateString(undefined, {
-      month: "short",
-      day: "numeric",
-    }),
-    avgScore: t.avgScore,
-  }));
+  const { data, definition } = useMemo(() => {
+    const chartData = trend.map((point, index) => ({
+      id: `${point.date}-${index}`,
+      label: new Date(point.date).toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+      }),
+      avgScore: point.avgScore,
+    }));
+    const labelsById = new Map(
+      chartData.map((point) => [point.id, point.label] as const),
+    );
+
+    return {
+      data: chartData,
+      definition: defineChart({
+        marks: [
+          lineY(chartData, {
+            x: "id",
+            y: "avgScore",
+            key: "id",
+            stroke: lineColor,
+            strokeWidth: 2,
+          }),
+          dot(chartData, {
+            x: "id",
+            y: "avgScore",
+            key: "id",
+            fill: lineColor,
+            r: 4,
+          }),
+        ],
+        x: {
+          scale: () => scalePoint<string>().padding(0.35),
+          axis: {
+            ticks: {
+              format: (value) => labelsById.get(value) ?? value,
+            },
+            tickLabels: { fontSize: 10, thin: { priority: "ends" } },
+          },
+        },
+        y: {
+          scale: scaleLinear().domain([0, 11]),
+          grid: true,
+          axis: {
+            ticks: { count: 6 },
+            tickLabels: { fontSize: 10 },
+          },
+        },
+        theme: {
+          foreground: textColor,
+          muted: textColor,
+          grid: gridColor,
+          background: "transparent",
+          palette: [lineColor],
+        },
+        clip: true,
+        svgAnimation: true,
+        tooltip: {
+          use: tooltip,
+          className: "lomah-chart-tooltip",
+          format: (point) =>
+            `${point.datum.label}: ${point.datum.avgScore.toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+        },
+      }),
+    };
+  }, [gridColor, lineColor, textColor, trend]);
+
+  const chartStyle = {
+    height: "100%",
+    "--ts-chart-tooltip-background": tooltipBg,
+    "--ts-chart-tooltip-color": isDarkMode ? "#d5e2ff" : "#1e293b",
+    "--ts-chart-tooltip-border": `1px solid ${tooltipBorder}`,
+    "--ts-chart-tooltip-font":
+      '11px "Helvetica Neue", Helvetica, Arial, sans-serif',
+  } as React.CSSProperties;
 
   return (
     <div
@@ -52,32 +117,11 @@ export const ScoreTrendChart: React.FC<ScoreTrendChartProps> = ({
         </p>
       ) : (
         <div className="flex-1 min-h-0">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" stroke={gridColor} />
-              <XAxis dataKey="label" tick={{ fill: textColor, fontSize: 10 }} />
-              <YAxis
-                domain={[0, 11]}
-                tick={{ fill: textColor, fontSize: 10 }}
-              />
-              <Tooltip
-                contentStyle={{
-                  background: tooltipBg,
-                  border: `1px solid ${tooltipBorder}`,
-                  fontSize: 11,
-                  fontFamily: '"Helvetica Neue", Helvetica, Arial, sans-serif',
-                  color: isDarkMode ? "#d5e2ff" : "#1e293b",
-                }}
-              />
-              <Line
-                type="monotone"
-                dataKey="avgScore"
-                stroke={lineColor}
-                strokeWidth={2}
-                dot={{ fill: lineColor, r: 3 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          <Chart
+            definition={definition}
+            ariaLabel={isAr ? "اتجاه النتيجة" : "Score trend"}
+            style={chartStyle}
+          />
         </div>
       )}
     </div>
