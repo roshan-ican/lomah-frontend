@@ -5,7 +5,7 @@
 // `npm run electron:build` takes ~50s end-to-end, and roughly 30s of that is
 // electron-builder repacking the asar, stamping the exe, building the NSIS
 // installer and its block map — none of which changes when the only edits
-// are in src/ or lomah-nest/. That work only matters for a real release
+// are in src/, lomah-nest/ or lomah-core/. That work only matters for a real release
 // artifact, or when electron-app/main.ts or preload.ts changed (those are
 // packed into app.asar itself, which this script does not touch — a real
 // `npm run electron:build` is still required for those).
@@ -45,6 +45,10 @@ const copies = [
     join(REPO_ROOT, "lomah-nest", ".env.production"),
     join(APP_DIR, "backend", ".env"),
   ],
+  // The Rust addon. It is NOT inside app.asar (a .node binary cannot be loaded
+  // from an asar), so unlike main.ts this script can refresh it — which means a
+  // change to lomah-core/src does reach the unpacked install through here.
+  [join(ROOT, "lomah-core", "artifacts"), join(APP_DIR, "native")],
 ];
 
 for (const [from, to] of copies) {

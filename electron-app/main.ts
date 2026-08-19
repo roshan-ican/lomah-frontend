@@ -1,12 +1,11 @@
 import { app, BrowserWindow, ipcMain, shell } from "electron";
 import path from "node:path";
 import fs from "node:fs";
-import dgram from "node:dgram";
-import os from "node:os";
 import crypto from "node:crypto";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { spawn, type ChildProcess, execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { core, type DiscoveryResult } from "./native";
 
 const appDir = path.dirname(fileURLToPath(import.meta.url));
 const BACKEND_PORT = Number(process.env.BACKEND_PORT) || 3001;
@@ -23,155 +22,31 @@ const BACKEND_PORT = Number(process.env.BACKEND_PORT) || 3001;
 app.setName("LOMAH");
 
 // ── Mode management ───────────────────────────────────────────────────────────
+// The role, the admin host and the UDP election all live in lomah-core (Rust)
+// now — see electron-app/native.ts. They used to be duplicated here in fs and
+// dgram, and the two copies had already diverged: this file's admin-host writer
+// did `host.replace(/^.*:/, "")`, which keeps everything after the LAST colon,
+// so "192.168.1.51:3001" typed into manual-connect was stored as the host
+// "3001". mode.rs::normalize_host only splits on a trailing colon when what
+// follows it actually parses as a port.
+//
+// The file paths and JSON shapes are unchanged (%APPDATA%\LOMAH\lomah-mode.json
+// and admin-host.json), so an existing install keeps its role across this
+// upgrade. See app.setName above for why that folder name is load-bearing.
 const USER_DATA = app.getPath("userData");
-const MODE_FILE = path.join(USER_DATA, "lomah-mode.json");
-const ADMIN_HOST_FILE = path.join(USER_DATA, "admin-host.json");
 
-function getStoredMode(): "admin" | "shooter" | null {
-  try {
-    if (fs.existsSync(MODE_FILE)) {
-      return JSON.parse(fs.readFileSync(MODE_FILE, "utf-8")).mode;
-    }
-  } catch (e) {
-    console.error(e);
-  }
-  return null;
-}
+let adminIp: string | null = core.getStoredAdminHost();
 
-function getStoredAdminHost(): string | null {
-  try {
-    if (fs.existsSync(ADMIN_HOST_FILE)) {
-      const parsed = JSON.parse(fs.readFileSync(ADMIN_HOST_FILE, "utf-8"));
-      return typeof parsed.host === "string" ? parsed.host : null;
-    }
-  } catch (e) {
-    console.error(e);
-  }
-  return null;
-}
-
-function getLaunchMode(): "admin" | "shooter" | null {
-  const arg = process.argv.find((value) => value.startsWith("--role="));
-  const mode = arg?.split("=")[1]?.toLowerCase();
-  return mode === "admin" || mode === "shooter" ? mode : null;
-}
-
-function setStoredAdminHost(host: string): void {
-  const cleanHost = host.replace(/^.*:/, "").trim();
-  if (!cleanHost) return;
-  const dir = path.dirname(ADMIN_HOST_FILE);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(ADMIN_HOST_FILE, JSON.stringify({ host: cleanHost }));
-}
-
-let adminIp: string | null = getStoredAdminHost();
-
-// ── UDP beacon listener (shooter mode) ───────────────────────────────────────
+// ── UDP admin election ────────────────────────────────────────────────────────
+// Implemented in lomah-core/src/discovery.rs. It runs on napi's worker pool, so
+// a listen that blocks for seconds on a UDP socket no longer sits on the main
+// process's event loop — the same class of stall that synchronous PowerShell
+// caused in ensureFirewallRules below.
+//
+// Only the port constant is still needed here, for the firewall rule.
 const DISCOVERY_PORT = 5002;
 /** How long to listen for an existing admin before claiming the role (backend beacons every 2s). */
 const ADMIN_CONFLICT_TIMEOUT_MS = 4500;
-let discoverySocket: dgram.Socket | null = null;
-let discoveryTimeout: ReturnType<typeof setTimeout> | null = null;
-
-function closeDiscoverySocket(): Promise<void> {
-  return new Promise((resolve) => {
-    if (!discoverySocket) return resolve();
-    const sock = discoverySocket;
-    discoverySocket = null;
-    const done = () => resolve();
-    sock.once("close", done);
-    try {
-      sock.close();
-    } catch {
-      done();
-      return;
-    }
-    setTimeout(done, 250);
-  });
-}
-
-interface DiscoveryResult {
-  host: string;
-  port: number;
-}
-
-function parseBeacon(msg: Buffer): number {
-  const text = msg.toString();
-  if (!text.startsWith("LOMAH-ADMIN")) return 0;
-  const port = Number(text.split("|")[1]);
-  return Number.isFinite(port) && port > 0 ? port : BACKEND_PORT;
-}
-
-function normalizeDiscoveryHost(address: string): string {
-  const host = address.replace(/^.*:/, "").trim();
-  if (!host || host === "0.0.0.0") return "";
-  return host;
-}
-
-/** Every IPv4 address this machine owns — used to distinguish our own beacon from a different admin. */
-function getLocalIPv4Addresses(): Set<string> {
-  const addresses = new Set<string>(["127.0.0.1"]);
-  for (const entries of Object.values(os.networkInterfaces())) {
-    for (const entry of entries ?? []) {
-      if (entry.family === "IPv4") addresses.add(entry.address);
-    }
-  }
-  return addresses;
-}
-
-/** Listen for an admin beacon. ignoreSelf skips our own beacons so a leftover backend doesn't lock us out of admin mode. */
-function listenForBeacon(
-  timeoutMs = 10000,
-  opts: { ignoreSelf?: boolean } = {},
-): Promise<DiscoveryResult | null> {
-  const localAddresses = opts.ignoreSelf ? getLocalIPv4Addresses() : null;
-  return new Promise((resolve) => {
-    let settled = false;
-    const finish = (result: DiscoveryResult | null) => {
-      if (settled) return;
-      settled = true;
-      if (discoveryTimeout) {
-        clearTimeout(discoveryTimeout);
-        discoveryTimeout = null;
-      }
-      void closeDiscoverySocket().then(() => resolve(result));
-    };
-
-    void (async () => {
-      await closeDiscoverySocket();
-
-      discoverySocket = dgram.createSocket({ type: "udp4", reuseAddr: true });
-
-      discoverySocket.on("error", (err) => {
-        console.error("[discovery] socket error:", err.message);
-        finish(null);
-      });
-
-      discoverySocket.on("message", (msg, rinfo) => {
-        const port = parseBeacon(msg);
-        if (!port) return;
-        const host = normalizeDiscoveryHost(rinfo.address);
-        if (!host) return;
-        if (localAddresses?.has(host)) return;
-        finish({ host, port });
-      });
-
-      discoveryTimeout = setTimeout(() => finish(null), timeoutMs);
-
-      discoverySocket.bind(DISCOVERY_PORT, "0.0.0.0", () => {
-        // bind errors are caught by the socket "error" handler above
-      });
-    })();
-  });
-}
-
-async function cancelDiscovery() {
-  if (discoveryTimeout) {
-    clearTimeout(discoveryTimeout);
-    discoveryTimeout = null;
-  }
-  await closeDiscoverySocket();
-}
 
 // ── Backend process management (admin mode) ───────────────────────────────────
 // lomah-nest (NestJS) replaced the old backend. It is compiled ahead of time by
@@ -451,7 +326,7 @@ function pollHealth(url: string, timeoutMs = 30000): Promise<boolean> {
 // %APPDATA% database) before either operator got a say. Now an undecided
 // device is routed to the role picker below instead of guessing.
 let currentMode: "admin" | "shooter" | null =
-  getLaunchMode() || getStoredMode() || null;
+  core.getLaunchMode() ?? core.getStoredMode() ?? null;
 
 function urlForMode(targetMode: "admin" | "shooter"): string {
   const devUrl = process.env.VITE_DEV_SERVER_URL;
@@ -502,7 +377,7 @@ function createStaticBootstrapUrl(mode: "shooter" | "picker"): string {
 
 /** Persist the active mode and keep `currentMode` in step with it. */
 function setStoredMode(mode: "admin" | "shooter"): void {
-  fs.writeFileSync(MODE_FILE, JSON.stringify({ mode }));
+  core.setStoredMode(mode);
   currentMode = mode;
 }
 
@@ -534,10 +409,12 @@ async function yieldToRivalAdmin(existing: DiscoveryResult): Promise<boolean> {
   if (response !== 0) return false;
 
   // Point this machine at the admin we just found, so shooter mode connects
-  // straight away instead of re-running discovery. setStoredAdminHost only
-  // touches the file — adminIp is in-memory and must be set alongside it.
-  setStoredAdminHost(existing.host);
-  adminIp = existing.host;
+  // straight away instead of re-running discovery. Read the host back out
+  // rather than reusing `existing.host`: the Rust writer normalises what it
+  // stores, and assigning the raw input is how the in-memory copy and the file
+  // end up disagreeing.
+  core.setStoredAdminHost(existing.host);
+  adminIp = core.getStoredAdminHost();
   setStoredMode("shooter");
   await stopBackend();
   return true;
@@ -557,8 +434,10 @@ async function yieldToRivalAdmin(existing: DiscoveryResult): Promise<boolean> {
  *     common case (one device clearly first) resolve without starting a
  *     backend at all. */
 async function claimAdminRole(): Promise<boolean> {
-  const jitteredWait = ADMIN_CONFLICT_TIMEOUT_MS + Math.random() * 2000;
-  const existing = await listenForBeacon(jitteredWait, { ignoreSelf: true });
+  const jitteredWait = Math.round(
+    ADMIN_CONFLICT_TIMEOUT_MS + Math.random() * 2000,
+  );
+  const existing = await core.startDiscovery(jitteredWait, true);
   if (existing) return yieldToRivalAdmin(existing);
   return true;
 }
@@ -567,7 +446,7 @@ async function claimAdminRole(): Promise<boolean> {
  *  window — by this point a genuine rival has had this device's whole backend
  *  startup time to have started beaconing, so a long wait isn't needed. */
 async function recheckForRivalAdminAfterStart(): Promise<boolean> {
-  const existing = await listenForBeacon(1500, { ignoreSelf: true });
+  const existing = await core.startDiscovery(1500, true);
   if (!existing) return true;
   return yieldToRivalAdmin(existing);
 }
@@ -575,7 +454,7 @@ async function recheckForRivalAdminAfterStart(): Promise<boolean> {
 async function prepareMode(targetMode: "admin" | "shooter"): Promise<boolean> {
   const devUrl = process.env.VITE_DEV_SERVER_URL;
   if (targetMode === "shooter") {
-    await cancelDiscovery();
+    core.cancelDiscovery();
     // Switching to shooter should feel instant. Shutting the backend down can
     // take seconds (SIGTERM, then a SIGKILL fallback), and blocking the role
     // switch on it is what made this feel unresponsive — nothing about loading
@@ -628,7 +507,7 @@ async function prepareMode(targetMode: "admin" | "shooter"): Promise<boolean> {
 }
 
 ipcMain.handle("set-mode", async (_e, newMode: "admin" | "shooter") => {
-  await cancelDiscovery();
+  core.cancelDiscovery();
   setStoredMode(newMode);
   const ready = await prepareMode(newMode);
   if (!ready) {
@@ -649,23 +528,27 @@ ipcMain.handle("get-current-mode", () => currentMode);
 
 ipcMain.handle("get-admin-ip", () => adminIp);
 
-ipcMain.handle("start-discovery", async () => {
-  const result = await listenForBeacon();
+ipcMain.handle("start-discovery", async (): Promise<DiscoveryResult | null> => {
+  const result = await core.startDiscovery(10000, false);
   if (result) {
-    adminIp = result.host;
-    setStoredAdminHost(result.host);
+    core.setStoredAdminHost(result.host);
+    adminIp = core.getStoredAdminHost();
   }
   return result;
 });
 
 ipcMain.handle("cancel-discovery", async () => {
-  await cancelDiscovery();
+  // Synchronous now: the Rust listener polls a cancel flag every 250ms rather
+  // than being torn down by closing its socket from here.
+  core.cancelDiscovery();
 });
 
 ipcMain.handle("manual-connect", async (_e, ip: string) => {
-  await cancelDiscovery();
-  adminIp = ip;
-  setStoredAdminHost(ip);
+  core.cancelDiscovery();
+  // Normalised on the way in, so an address typed with its port
+  // ("192.168.1.51:3001") is stored and used as the bare host.
+  core.setStoredAdminHost(ip);
+  adminIp = core.getStoredAdminHost();
   return true;
 });
 

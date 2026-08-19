@@ -1,0 +1,24 @@
+{
+  "name": "lomah-core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Native bridge for the LOMAH desktop shell: persisted role + UDP admin election.",
+  "main": "artifacts/index.js",
+  "types": "artifacts/index.d.ts",
+  "napi": {
+    "name": "lomah_core",
+    "triples": {
+      "defaults": true,
+      "additional": [
+        "x86_64-pc-windows-msvc"
+      ]
+    }
+  },
+  "scripts": {
+    "build": "napi build --platform --release artifacts && node scripts/stamp-cjs.mjs",
+    "clean": "rm -rf artifacts target"
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "^2.18.4"
+  }
+}
