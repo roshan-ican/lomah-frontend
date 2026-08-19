@@ -7,14 +7,29 @@ export type LogTone = "success" | "error" | "warn" | "pending" | "info";
 export const getStatusColor = (tone: LogTone): string => {
   switch (tone) {
     case "success":
-      return "bg-emerald-500/10 border-emerald-500/30";
+      return `bg-emerald-500/10 ${getBorderColor(tone)}`;
     case "error":
-      return "bg-rose-500/10 border-rose-500/30";
+      return `bg-rose-500/10 ${getBorderColor(tone)}`;
     case "warn":
     case "pending":
-      return "bg-amber-500/10 border-amber-500/30";
+      return `bg-amber-500/10 ${getBorderColor(tone)}`;
     case "info":
-      return "bg-[#05927A]/10 border-[#05927A]/30 dark:bg-[#06B699]/10 dark:border-[#06B699]/30";
+      return `bg-[#05927A]/10 dark:bg-[#06B699]/10 ${getBorderColor(tone)}`;
+  }
+};
+
+/** Border-only variant for surfaces that want the tint without the fill. */
+export const getBorderColor = (tone: LogTone): string => {
+  switch (tone) {
+    case "success":
+      return "border-emerald-500/30";
+    case "error":
+      return "border-rose-500/30";
+    case "warn":
+    case "pending":
+      return "border-amber-500/30";
+    case "info":
+      return "border-[#05927A]/30 dark:border-[#06B699]/30";
   }
 };
 

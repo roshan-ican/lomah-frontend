@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Activity, ChevronDown, ChevronUp } from "lucide-react";
-import { getLabelColor, getStatusColor, type LogTone } from "./logTones";
+import { getBorderColor, getLabelColor, type LogTone } from "./logTones";
 
 interface ActivityLogProps {
   logs: string[];
@@ -228,7 +228,7 @@ export const ActivityLog: React.FC<ActivityLogProps> = ({
               return (
                 <div
                   key={idx}
-                  className={`flex items-start gap-1.5 px-1.5 py-1 rounded border font-mono ${getStatusColor(tone)}`}
+                  className={`flex items-start gap-1.5 px-1.5 py-1 rounded border font-mono ${getBorderColor(tone)}`}
                 >
                   <span className={`text-2xs px-1 rounded font-bold shrink-0 ${getLabelColor(tone)}`}>
                     {categoryOf(rest)}
