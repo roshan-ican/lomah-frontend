@@ -409,6 +409,13 @@ export function useRealtimeChannels({
         );
       });
 
+      // The server broadcasts only an invalidation hint—never schedule owner
+      // or attendee data. The Schedule tab refetches through its authenticated,
+      // privacy-filtered REST endpoint.
+      socket.on("lane-schedule:changed", () => {
+        window.dispatchEvent(new Event("lomah:lane-schedule-changed"));
+      });
+
       socket.onAny((eventName: string, payload: any) => {
         try {
           handleRealtimeEvent(

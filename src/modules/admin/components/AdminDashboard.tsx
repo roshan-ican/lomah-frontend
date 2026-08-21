@@ -17,6 +17,8 @@ import { AdminHeader } from "./admin-dashboard/AdminHeader";
 import { AdminSidebar } from "./admin-dashboard/AdminSidebar";
 import { ShooterDevicesTab } from "./admin-dashboard/ShooterDevicesTab";
 import { LaneHardwarePanel } from "./admin-dashboard/LaneHardwarePanel";
+import { LaneScheduleView } from "./LaneScheduleView";
+import { useActiveLaneSchedules } from "../../../hooks/useActiveLaneSchedules";
 
 declare global {
   namespace JSX {
@@ -72,6 +74,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 }: AdminDashboardProps) => {
   const t: TranslationSet = translations[language];
   const isAr = language === "ar";
+  const activeLaneSchedules = useActiveLaneSchedules();
 
   const [activeTab, setActiveTab] = useState<AdminTab>("CONTROL");
   const { navOpen, setNavOpen, selectTab } = useResponsiveNav(setActiveTab);
@@ -166,6 +169,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             activeTab === "HELP" ||
             activeTab === "SESSIONS" ||
             activeTab === "SHOOTERS" ||
+            activeTab === "SCHEDULE" ||
             activeTab === "LANE_HARDWARE"
               ? ""
               : "p-4 md:p-6 overflow-y-auto max-w-7xl mx-auto"
@@ -230,6 +234,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 onShotsCalibrate={onShotsCalibrate}
                 triggerSuccessBanner={triggerSuccessBanner}
                 availableShooters={availableShooters}
+                activeLaneSchedules={activeLaneSchedules}
                 selectedChannelId={selectedChannelId}
                 onDiscardReadySession={onDiscardReadySession}
                 liveBoardMode={liveBoardMode}
@@ -284,6 +289,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 triggerErrorBanner={triggerErrorBanner}
               />
             </div>
+          )}
+
+          {activeTab === "SCHEDULE" && (
+            <LaneScheduleView
+              isAr={isAr}
+              availableShooters={availableShooters}
+              triggerSuccessBanner={triggerSuccessBanner}
+              triggerErrorBanner={triggerErrorBanner}
+            />
           )}
 
           {/* Read-only commissioning view, styled exactly like the SUPER_ADMIN's

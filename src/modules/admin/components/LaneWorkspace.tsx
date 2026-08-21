@@ -5,6 +5,7 @@ import { ArrowLeft, Crosshair, Radio, X } from "lucide-react";
 import type {
   ActiveShooterChannel,
   CalibrateMode,
+  LaneScheduleView,
   Shooter,
 } from "../../../types";
 
@@ -96,6 +97,7 @@ interface LaneWorkspaceProps {
   ) => void;
   triggerSuccessBanner: (msg: string) => void;
   availableShooters: Shooter[];
+  activeLaneSchedules: LaneScheduleView[];
   selectedChannelId: string;
   liveBoardMode: boolean;
   calibrationLaneId: number | null;
@@ -291,6 +293,8 @@ export const LaneWorkspace: React.FC<LaneWorkspaceProps> = ({
   triggerSuccessBanner,
 
   availableShooters,
+
+  activeLaneSchedules,
 
   selectedChannelId,
   liveBoardMode,
@@ -585,6 +589,7 @@ export const LaneWorkspace: React.FC<LaneWorkspaceProps> = ({
           language={language}
           t={t}
           availableShooters={availableShooters}
+          activeLaneSchedules={activeLaneSchedules}
         />
       </div>
     </aside>
@@ -816,6 +821,7 @@ export const LaneWorkspace: React.FC<LaneWorkspaceProps> = ({
             <div className="flex-1 min-h-0 overflow-y-auto admin-lane-grid-panel bg-hud-elevated">
               <ActiveLanes
                 channels={channels}
+                activeLaneSchedules={activeLaneSchedules}
                 selectedChannelId={selectedChannelId}
                 setSelectedChannelId={setSelectedChannelId}
                 onEnterLane={onFocusLane}

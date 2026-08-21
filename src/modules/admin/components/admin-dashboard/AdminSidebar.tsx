@@ -8,6 +8,7 @@ import {
   LayoutGrid,
   FileSpreadsheet,
   Users,
+  CalendarClock,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { TranslationSet } from "../../../../translations";
@@ -67,6 +68,11 @@ export function AdminSidebar({
       // Roster AND lane assignment: moving people between lanes is range
       // operation, so it belongs to the admin, not the commissioning console.
       label: isAr ? "الرُماة والأجهزة" : "Shooters & Devices",
+    },
+    {
+      tab: "SCHEDULE" as const,
+      icon: <CalendarClock className="w-4 h-4 shrink-0" />,
+      label: isAr ? "جدول الحارات" : "Lane Schedule",
     },
     {
       tab: "SESSIONS" as const,

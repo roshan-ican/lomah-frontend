@@ -23,6 +23,7 @@ export type AdminTab =
   | "HELP"
   | "SESSIONS"
   | "SHOOTERS"
+  | "SCHEDULE"
   /** SUPER_ADMIN commissioning: lanes and the targets mounted on them. */
   | "LANE_HARDWARE";
 

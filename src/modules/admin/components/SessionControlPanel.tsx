@@ -37,6 +37,7 @@ import { api, apiFetchJson } from "../../../utils/api";
 import { slotCode } from "../../../utils/rangeAddressing";
 import { TargetFacePreview } from "../../../components/common/TargetFacePreview";
 import type { Lane, Target } from "../../../types";
+import { getLaneIdFromChannelId } from "../../../utils/helper";
 
 
 /** 0 is "no clock" — see StageMonitorService, which skips those stages. */
@@ -120,6 +121,14 @@ function findShooterOccupiedLane(
       (ch.name.toLowerCase() === normalized ||
         ch.opId.toLowerCase() === normalized),
   );
+}
+
+function scheduleTimeRange(startsAt: string, endsAt: string, isAr: boolean) {
+  const formatter = new Intl.DateTimeFormat(isAr ? "ar" : "en", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  return `${formatter.format(new Date(startsAt))}–${formatter.format(new Date(endsAt))}`;
 }
 
 /** Shape comes from the backend's ConnectedShootersService — a DEVICE that
@@ -332,6 +341,7 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
   language,
   t,
   availableShooters,
+  activeLaneSchedules,
   variant = "default",
 }) => {
   const isAr = language === "ar";
@@ -341,6 +351,12 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
   const channels = storeChannels;
   const channel = channelProp
     ? (storeChannels.find((ch) => ch.id === channelProp.id) ?? channelProp)
+    : undefined;
+  const activeSchedule = channel
+    ? activeLaneSchedules.find(
+        (schedule) =>
+          schedule.laneId === getLaneIdFromChannelId(channel.id),
+      )
     : undefined;
   const btnPrimary = isHud
     ? "hud-btn-primary py-2.5 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors"
@@ -483,6 +499,15 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
 
     if (channel.sessionStatus !== "NONE" && channel.name !== "Vacant Lane") {
       setShooterName(channel.name);
+    } else if (activeSchedule?.access === "OWNER") {
+      setShooterName((current) => {
+        const names = activeSchedule.attendees.map((item) => item.displayName);
+        return names.some(
+          (name) => name.trim().toLowerCase() === current.trim().toLowerCase(),
+        )
+          ? current
+          : (names[0] ?? "");
+      });
     } else {
       setShooterName("");
     }
@@ -536,7 +561,7 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
         },
       ]);
     }
-  }, [channel, isEditing, availableShooters]);
+  }, [channel, isEditing, availableShooters, activeSchedule]);
 
   if (!channel) {
     return (
@@ -549,6 +574,20 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
   }
 
   const status = channel.sessionStatus;
+  if (status === "NONE" && activeSchedule?.access === "BUSY") {
+    return (
+      <div className="p-4 rounded-lg border border-hud hud-warning-bg space-y-2">
+        <p className="font-mono admin-text-xs font-bold hud-warning uppercase tracking-wider">
+          {isAr ? "الحارة محجوزة" : "Lane reserved"}
+        </p>
+        <p className="admin-text-2xs font-mono hud-text-muted leading-relaxed">
+          {isAr
+            ? `هذه الحارة مشغولة من ${scheduleTimeRange(activeSchedule.startsAt, activeSchedule.endsAt, true)}. تفاصيل المجموعة خاصة بالمشرف الذي أنشأ الحجز.`
+            : `This lane is busy from ${scheduleTimeRange(activeSchedule.startsAt, activeSchedule.endsAt, false)}. Group details remain private to the admin who made the reservation.`}
+        </p>
+      </div>
+    );
+  }
   const shooterOccupiedLane = shooterName.trim()
     ? findShooterOccupiedLane(shooterName, channels, channel.id)
     : undefined;
@@ -610,6 +649,23 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
               : "Configure Shooting Session"}
         </h4>
 
+        {activeSchedule?.access === "OWNER" && status === "NONE" && (
+          <div className="p-3 hud-accent-bg-subtle border border-hud rounded-xl space-y-1">
+            <p className="font-mono admin-text-2xs hud-accent uppercase tracking-wider">
+              {isAr ? "الحجز النشط" : "Active reservation"}
+            </p>
+            <p className="font-mono admin-text-xs hud-text-secondary">
+              {scheduleTimeRange(
+                activeSchedule.startsAt,
+                activeSchedule.endsAt,
+                isAr,
+              )}{" "}
+              • {activeSchedule.attendees.length}{" "}
+              {isAr ? "رامٍ مجدول" : activeSchedule.attendees.length === 1 ? "scheduled shooter" : "scheduled shooters"}
+            </p>
+          </div>
+        )}
+
         {laneConnectedShooters.length > 0 && (
           <div className="p-3 hud-accent-bg-subtle border border-hud rounded-xl space-y-2">
             <p className="font-mono admin-text-2xs hud-accent uppercase tracking-wider flex items-center gap-1.5">
@@ -642,29 +698,66 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
                 onChange={(e) => setSelectedChannelId(e.target.value)}
                 className="w-full px-2 py-1.5 border rounded-lg hud-form-input"
               >
-              {channels.map((ch, idx) => (
-                <option key={ch.id} value={ch.id}>
-                  {isAr ? `حارة ${idx + 1}` : `Lane 0${idx + 1}`} (
-                  {laneNeedsReview(ch.sessionStatus)
+              {channels.map((ch, idx) => {
+                const schedule = activeLaneSchedules.find(
+                  (item) =>
+                    item.laneId === getLaneIdFromChannelId(ch.id),
+                );
+                const emptyLaneLabel = schedule
+                  ? schedule.access === "OWNER"
                     ? isAr
-                      ? "بانتظار المراجعة"
-                      : "Awaiting review"
-                    : ch.sessionStatus === "NONE"
+                      ? "مجدولة لك"
+                      : "Scheduled for you"
+                    : isAr
+                      ? "مشغولة"
+                      : "Busy"
+                  : isAr
+                    ? "شاغرة"
+                    : "Vacant";
+                return (
+                  <option
+                    key={ch.id}
+                    value={ch.id}
+                    disabled={ch.sessionStatus === "NONE" && schedule?.access === "BUSY"}
+                  >
+                    {isAr ? `حارة ${idx + 1}` : `Lane 0${idx + 1}`} (
+                    {laneNeedsReview(ch.sessionStatus)
                       ? isAr
-                        ? "شاغرة"
-                        : "Vacant"
-                      : ch.name}
-                  )
-                </option>
-              ))}
+                        ? "بانتظار المراجعة"
+                        : "Awaiting review"
+                      : ch.sessionStatus === "NONE"
+                        ? emptyLaneLabel
+                        : ch.name}
+                    )
+                  </option>
+                );
+              })}
             </select>
           </div>
 
           <div>
             <label className="block hud-text-subtle mb-1 font-mono uppercase admin-text-2xs">
-              {isAr ? "اسم المستخدم" : "Username"}
+              {activeSchedule?.access === "OWNER"
+                ? isAr
+                  ? "الرامي المجدول"
+                  : "Scheduled Shooter"
+                : isAr
+                  ? "اسم المستخدم"
+                  : "Username"}
             </label>
-            {availableShooters.length > 0 ? (
+            {activeSchedule?.access === "OWNER" ? (
+              <select
+                value={shooterName}
+                onChange={(e) => setShooterName(e.target.value)}
+                className="w-full px-3 py-1.5 border rounded-lg hud-form-input"
+              >
+                {activeSchedule.attendees.map((attendee) => (
+                  <option key={attendee.id} value={attendee.displayName}>
+                    {attendee.displayName}
+                  </option>
+                ))}
+              </select>
+            ) : availableShooters.length > 0 ? (
               <select
                 value={shooterName}
                 onChange={(e) => setShooterName(e.target.value)}

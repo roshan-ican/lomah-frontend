@@ -1,7 +1,10 @@
 import React from "react";
 import { Radio, Activity } from "lucide-react";
 import { TranslationSet } from "../../../translations";
-import { ActiveShooterChannel as ActiveChannel } from "../../../types";
+import {
+  ActiveShooterChannel as ActiveChannel,
+  LaneScheduleView,
+} from "../../../types";
 import {
   laneHasSession,
   shotsForLaneDisplay,
@@ -12,9 +15,11 @@ import {
 } from "../../../utils/targetProfile";
 import { useSessionStore } from "../../../store/sessionStore";
 import { SessionTimer } from "../../shooter/components/SessionTimer";
+import { getLaneIdFromChannelId } from "../../../utils/helper";
 
 interface ActiveLanesProps {
   channels: ActiveChannel[];
+  activeLaneSchedules: LaneScheduleView[];
   selectedChannelId: string;
   setSelectedChannelId: (id: string) => void;
   onEnterLane?: (channelId: string) => void;
@@ -27,6 +32,21 @@ interface ActiveLanesProps {
   language: "en" | "ar";
   t: TranslationSet;
   variant?: "default" | "command";
+}
+
+function reservationBadge(isAr: boolean): { label: string; className: string } {
+  return {
+    label: isAr ? "محجوزة" : "SCHEDULED",
+    className: "hud-status-paused",
+  };
+}
+
+function reservationTime(schedule: LaneScheduleView, isAr: boolean): string {
+  const formatter = new Intl.DateTimeFormat(isAr ? "ar" : "en", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  return `${formatter.format(new Date(schedule.startsAt))}–${formatter.format(new Date(schedule.endsAt))}`;
 }
 
 function statusMeta(
@@ -103,6 +123,7 @@ function laneStatusBadge(
 
 export const ActiveLanes: React.FC<ActiveLanesProps> = ({
   channels: channelsProp,
+  activeLaneSchedules,
   selectedChannelId,
   setSelectedChannelId,
   onEnterLane,
@@ -119,12 +140,32 @@ export const ActiveLanes: React.FC<ActiveLanesProps> = ({
   const storeChannels = useSessionStore((s) => s.channels);
   const channels = storeChannels;
 
-  const shooterLabel = (ch: ActiveChannel) => {
+  const activeScheduleFor = (ch: ActiveChannel) =>
+    activeLaneSchedules.find(
+      (schedule) => schedule.laneId === getLaneIdFromChannelId(ch.id),
+    );
+
+  const shooterLabel = (
+    ch: ActiveChannel,
+    schedule?: LaneScheduleView,
+  ) => {
     if (ch.name && ch.name !== "Vacant Lane" && ch.name !== "Guest Shooter") {
       return ch.name;
     }
     if (ch.opId && ch.opId !== "VACANT" && ch.opId !== "GUEST") {
       return ch.opId;
+    }
+    if (schedule?.access === "OWNER") {
+      const [first, ...rest] = schedule.attendees;
+      if (first) {
+        return rest.length > 0
+          ? `${first.displayName} +${rest.length}`
+          : first.displayName;
+      }
+      return isAr ? "مجموعة مجدولة" : "Scheduled group";
+    }
+    if (schedule?.access === "BUSY") {
+      return isAr ? "حجز خاص" : "Reserved";
     }
     return isAr ? "غير معيّن" : "Unassigned";
   };
@@ -174,6 +215,10 @@ export const ActiveLanes: React.FC<ActiveLanesProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-2 md:gap-3">
           {channels.map((ch, idx) => {
             const hasSession = laneHasSession(ch.sessionStatus);
+            const reservation = hasSession ? undefined : activeScheduleFor(ch);
+            const laneBadge = reservation
+              ? reservationBadge(isAr)
+              : laneStatusBadge(ch.laneStatus, isAr);
             const visibleShots = shotsForLaneDisplay(
               ch.sessionStatus,
               ch.shots,
@@ -209,7 +254,7 @@ export const ActiveLanes: React.FC<ActiveLanesProps> = ({
                       {isAr ? `حارة ${laneNum}` : `LANE ${laneNum}`}
                     </div>
                     <div className="range-rail-meta truncate">
-                      {shooterLabel(ch)}
+                      {shooterLabel(ch, reservation)}
                     </div>
                   </div>
                   <div className="text-right font-mono admin-text-2xs shrink-0">
@@ -222,9 +267,9 @@ export const ActiveLanes: React.FC<ActiveLanesProps> = ({
                       {bulletsLabel} · {hasSession ? totalLaneScore : "—"}
                     </div>
                     <div
-                      className={`mt-1 inline-block px-1.5 py-0.5 rounded admin-text-2xs font-bold border ${laneStatusBadge(ch.laneStatus, isAr).className}`}
+                      className={`mt-1 inline-block px-1.5 py-0.5 rounded admin-text-2xs font-bold border ${laneBadge.className}`}
                     >
-                      {laneStatusBadge(ch.laneStatus, isAr).label}
+                      {laneBadge.label}
                     </div>
                   </div>
                 </div>
@@ -270,11 +315,12 @@ export const ActiveLanes: React.FC<ActiveLanesProps> = ({
 
                   <div className="flex items-center justify-between admin-text-2xs font-mono hud-text-subtle">
                     <span>
-                      {targetProfileLabel(
-                        targetProfileFromTargetId(ch.targetName),
-                        language,
-                      )}{" "}
-                      • {ch.distance}
+                      {reservation
+                        ? `${reservationTime(reservation, isAr)} • ${isAr ? "حجز نشط" : "Active reservation"}`
+                        : `${targetProfileLabel(
+                            targetProfileFromTargetId(ch.targetName),
+                            language,
+                          )} • ${ch.distance}`}
                     </span>
                     {isLive && (
                       <span className="hud-success uppercase tracking-wider">
@@ -325,6 +371,10 @@ export const ActiveLanes: React.FC<ActiveLanesProps> = ({
           const isSelected = selectedChannelId === ch.id;
           const isLiveFiring = ch.sessionStatus === "ACTIVE";
           const hasSession = laneHasSession(ch.sessionStatus);
+          const reservation = hasSession ? undefined : activeScheduleFor(ch);
+          const laneBadge = reservation
+            ? reservationBadge(isAr)
+            : laneStatusBadge(ch.laneStatus, isAr);
           const visibleShots = shotsForLaneDisplay(ch.sessionStatus, ch.shots);
           const totalLaneScore = hasSession
             ? visibleShots.reduce((sum, s) => sum + s.score, 0)
@@ -357,14 +407,14 @@ className={`p-4 rounded-xl border transition-all cursor-pointer relative overflo
                      {isAr ? `حارة ${idx + 1}` : `LANE 0${idx + 1}`}
                    </span>
                    <h3 className="font-sans admin-text-base font-bold truncate max-w-[140px] hud-text">
-                     {shooterLabel(ch)}
+                     {shooterLabel(ch, reservation)}
                    </h3>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span
-                    className={`px-1.5 py-0.5 rounded admin-text-2xs font-mono font-bold uppercase border ${laneStatusBadge(ch.laneStatus, isAr).className}`}
+                    className={`px-1.5 py-0.5 rounded admin-text-2xs font-mono font-bold uppercase border ${laneBadge.className}`}
                   >
-                    {laneStatusBadge(ch.laneStatus, isAr).label}
+                    {laneBadge.label}
                   </span>
                 </div>
               </div>

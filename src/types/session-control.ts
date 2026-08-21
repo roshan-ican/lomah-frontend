@@ -1,5 +1,5 @@
 import { TranslationSet } from "../translations";
-import { ActiveShooterChannel, Shooter } from "../types";
+import { ActiveShooterChannel, LaneScheduleView, Shooter } from "../types";
 
 /**
  * One target engaged for one bullet count and one clock.
@@ -53,5 +53,6 @@ export interface SessionControlPanelProps {
     language: "en" | "ar";
     t: TranslationSet;
     availableShooters: Shooter[];
+    activeLaneSchedules: LaneScheduleView[];
     variant?: "default" | "hud";
 }

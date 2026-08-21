@@ -44,6 +44,15 @@ export interface DisplayShot {
 }
 
 export type { SessionStatus };
+export type {
+  BusyLaneSchedule,
+  LaneScheduleAttendee,
+  LaneScheduleAttendeeInput,
+  LaneScheduleInput,
+  LaneScheduleView,
+  OwnedLaneSchedule,
+  ScheduleIdentitySource,
+} from "@shared/types/lane-schedule";
 
 /** Frontend lane UI includes NONE when no session is configured. */
 export type LaneSessionStatus = SessionStatus | "NONE";
