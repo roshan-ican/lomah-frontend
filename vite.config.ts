@@ -1,5 +1,6 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
+import fs from 'node:fs';
 import path from 'path';
 import { defineConfig } from 'vite';
 import electron from 'vite-plugin-electron/simple';
@@ -9,6 +10,10 @@ export default defineConfig(() => {
   const devBackendPort = process.env.DEV_BACKEND_PORT ?? '3001';
   const devBackend = `http://127.0.0.1:${devBackendPort}`;
   const webOnly = process.env.VITE_WEB_ONLY === 'true';
+  const certificatePath = path.resolve(__dirname, '.cert/lumah-dev-cert.crt');
+  const certificateKeyPath = path.resolve(__dirname, '.cert/lumah-dev-key.pem');
+  const hasLocalCertificate =
+    fs.existsSync(certificatePath) && fs.existsSync(certificateKeyPath);
 
   return {
     base: '/',
@@ -39,7 +44,7 @@ export default defineConfig(() => {
                 ? addr.port
                 : '?';
             console.log(
-              `[vite] Dev UI on port ${port} — proxy /api /health /socket.io → ${devBackend}`,
+              `[vite] Dev UI on ${hasLocalCertificate ? 'https' : 'http'}://0.0.0.0:${port} — proxy /api /health /socket.io → ${devBackend}`,
             );
           });
         },
@@ -69,6 +74,14 @@ export default defineConfig(() => {
       },
     },
     server: {
+      ...(hasLocalCertificate
+        ? {
+            https: {
+              cert: fs.readFileSync(certificatePath),
+              key: fs.readFileSync(certificateKeyPath),
+            },
+          }
+        : {}),
       hmr: process.env.DISABLE_HMR !== 'true',
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
       fs: {

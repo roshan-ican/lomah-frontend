@@ -1,5 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Target, MonitorSmartphone } from "lucide-react";
+import {
+  AlertTriangle,
+  Camera,
+  LoaderCircle,
+  MonitorSmartphone,
+  ScanLine,
+  ShieldCheck,
+  Target,
+} from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { io, Socket } from "socket.io-client";
 import type { ActiveShooterChannel, Session } from "../types";
@@ -14,7 +22,7 @@ import {
 import { applyCalibratedShots } from "../store/channelMutations";
 import { targetProfileFromTargetId } from "../utils/targetProfile";
 import { clickToSensorCoords } from "../utils/shotCoordinates";
-import { api, getAuthToken, syncServerClock } from "../utils/api";
+import { api, apiFetchJson, getAuthToken, syncServerClock } from "../utils/api";
 import { stationUrl } from "../utils/shooterNavigation";
 import { getOrCreateDeviceId } from "../utils/deviceIdentity";
 import { ShooterDashboard } from "../modules/shooter/components/ShooterDashboard";
@@ -42,6 +50,175 @@ interface StationSession {
   startedAt?: string;
   totalPausedMs?: number;
   notes?: string;
+}
+
+type RecognitionStatus =
+  | "matched"
+  | "unknown"
+  | "no_face"
+  | "camera_error"
+  | "processing_error";
+
+interface FaceRecognitionResult {
+  approved: boolean;
+  status: RecognitionStatus;
+  person: string | null;
+  distance: number | null;
+  cameraIndex: number;
+  framesScanned: number;
+  message: string;
+}
+
+type VerificationState = "idle" | "scanning" | "approved" | "rejected";
+type CameraState = "connecting" | "ready" | "error";
+
+interface FaceVerificationGateProps {
+  laneId: number;
+  expectedShooter: string;
+  isAr: boolean;
+  state: VerificationState;
+  message: string | null;
+  cameraState: CameraState;
+  cameraMessage: string | null;
+  videoRef: React.RefObject<HTMLVideoElement | null>;
+  onScan: () => void;
+}
+
+function FaceVerificationGate({
+  laneId,
+  expectedShooter,
+  isAr,
+  state,
+  message,
+  cameraState,
+  cameraMessage,
+  videoRef,
+  onScan,
+}: FaceVerificationGateProps) {
+  const scanning = state === "scanning";
+
+  return (
+    <div
+      className="min-h-screen bg-zinc-950 text-white flex items-center justify-center p-5 font-mono"
+      dir={isAr ? "rtl" : "ltr"}
+    >
+      <div className="w-full max-w-lg rounded-2xl border border-emerald-500/20 bg-zinc-900/80 shadow-2xl overflow-hidden">
+        <div className="px-5 py-4 border-b border-zinc-800 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <ShieldCheck className="w-5 h-5 text-emerald-400" />
+            <div>
+              <p className="text-xs font-bold tracking-[0.18em] text-emerald-400 uppercase">
+                {isAr ? "التحقق من هوية الرامي" : "Shooter identity check"}
+              </p>
+              <p className="text-xs text-zinc-500 mt-1">
+                {isAr ? `الحارة ${laneId}` : `Lane ${laneId}`}
+              </p>
+            </div>
+          </div>
+          <span className="px-2.5 py-1 rounded-md border border-zinc-700 bg-zinc-950 text-xs text-zinc-400">
+            CAM 0
+          </span>
+        </div>
+
+        <div className="p-5 sm:p-6 space-y-5">
+          <div className="relative mx-auto aspect-[4/3] max-w-sm overflow-hidden rounded-xl border border-zinc-700 bg-black flex items-center justify-center">
+            <div className="absolute z-10 inset-4 border border-emerald-500/20 rounded-lg" />
+            <div className="absolute z-10 inset-x-[20%] inset-y-[14%] rounded-[45%] border border-dashed border-emerald-400/50" />
+            <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className={`absolute z-0 inset-0 w-full h-full object-cover -scale-x-100 ${
+                  cameraState === "ready" ? "opacity-100" : "opacity-0"
+                }`}
+            />
+            {cameraState !== "ready" && (
+              <Camera
+                className={`relative z-10 w-12 h-12 ${scanning ? "text-emerald-400" : "text-zinc-600"}`}
+              />
+            )}
+            {scanning && (
+              <motion.div
+                className="absolute z-20 left-4 right-4 h-px bg-emerald-300 shadow-[0_0_14px_rgba(52,211,153,0.95)]"
+                animate={{ top: ["10%", "90%", "10%"] }}
+                transition={{ duration: 2.2, repeat: Infinity, ease: "linear" }}
+              />
+            )}
+            <div className="absolute z-20 bottom-3 left-3 right-3 flex items-center justify-between text-[0.65rem] tracking-wider text-zinc-300 drop-shadow-md">
+              <span>{isAr ? "كاميرا جهاز الرامي" : "SHOOTER DEVICE CAMERA"}</span>
+              <span>
+                {scanning
+                  ? "SCANNING"
+                  : state === "approved"
+                    ? "VERIFIED"
+                    : cameraState === "ready"
+                      ? "READY"
+                      : cameraState === "error"
+                        ? "UNAVAILABLE"
+                        : "CONNECTING"}
+              </span>
+            </div>
+          </div>
+
+          <div className="text-center space-y-1.5">
+            <p className="text-sm text-zinc-400">
+              {isAr ? "الرامي المتوقع" : "Expected shooter"}
+            </p>
+            <p className="text-xl font-black tracking-wider text-white uppercase">
+              {expectedShooter}
+            </p>
+            <p className="text-xs leading-relaxed text-zinc-500 font-sans">
+              {isAr
+                ? "ضع وجهك أمام كاميرا جهاز الرامي، ثم ابدأ التحقق."
+                : "Face the shooter device camera, then start verification."}
+            </p>
+          </div>
+
+          {cameraState === "error" && cameraMessage && (
+            <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2.5 flex items-start gap-2 text-red-300 text-xs">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{cameraMessage}</span>
+            </div>
+          )}
+
+          {state === "rejected" && message && (
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 flex items-start gap-2 text-amber-300 text-xs">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{message}</span>
+            </div>
+          )}
+
+          {state === "approved" && message && (
+            <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2.5 flex items-start gap-2 text-emerald-300 text-xs">
+              <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>{message}</span>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={onScan}
+            disabled={scanning || cameraState !== "ready"}
+            className="w-full rounded-lg bg-emerald-500 hover:bg-emerald-400 text-zinc-950 py-3 px-4 font-black text-sm tracking-wider uppercase transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
+          >
+            {scanning ? (
+              <LoaderCircle className="w-4 h-4 animate-spin" />
+            ) : (
+              <ScanLine className="w-4 h-4" />
+            )}
+            {scanning
+              ? isAr
+                ? "جارٍ فحص الوجه..."
+                : "Scanning face..."
+              : isAr
+                ? "ابدأ التحقق من الوجه"
+                : "Verify face"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function createDefaultChannel(laneId: number): ActiveShooterChannel {
@@ -81,6 +258,16 @@ export function StationTerminal() {
     createDefaultChannel(laneId),
   );
   const [bannerMsg, setBannerMsg] = useState<string | null>(null);
+  const [verifiedSessionId, setVerifiedSessionId] = useState<string | null>(
+    null,
+  );
+  const [verificationState, setVerificationState] =
+    useState<VerificationState>("idle");
+  const [verificationMessage, setVerificationMessage] = useState<
+    string | null
+  >(null);
+  const [cameraState, setCameraState] = useState<CameraState>("connecting");
+  const [cameraMessage, setCameraMessage] = useState<string | null>(null);
 
   const [zoomLevel, setZoomLevel] = useState(0.68);
   const [showGrid, setShowGrid] = useState(false);
@@ -91,6 +278,8 @@ export function StationTerminal() {
   const targetSvgRef = useRef<SVGSVGElement | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const activeChannelRef = useRef(activeChannel);
+  const faceVideoRef = useRef<HTMLVideoElement | null>(null);
+  const faceCameraStreamRef = useRef<MediaStream | null>(null);
   /** Server-minted device key, same one ShooterWait used before the redirect —
    *  needed to join the device room so a reassignment push lands here. */
   const deviceKeyRef = useRef<string | null>(null);
@@ -98,6 +287,12 @@ export function StationTerminal() {
   useEffect(() => {
     activeChannelRef.current = activeChannel;
   }, [activeChannel]);
+
+  useEffect(() => {
+    setVerifiedSessionId(null);
+    setVerificationState("idle");
+    setVerificationMessage(null);
+  }, [activeChannel.sessionId]);
 
   useEffect(() => {
     useSessionStore.setState((state) => ({
@@ -681,7 +876,244 @@ export function StationTerminal() {
 
   const isArabic = language === "ar";
 
-  if (sessionStatus === "IDLE") {
+  const currentSessionId = activeChannel.sessionId ?? session?.sessionId ?? null;
+  const expectedShooter = (
+    session?.shooterName || activeChannel.name || ""
+  ).trim();
+  const sessionRequiresIdentity =
+    currentSessionId !== null &&
+    (activeChannel.sessionStatus === "CREATED" ||
+      activeChannel.sessionStatus === "ACTIVE" ||
+      activeChannel.sessionStatus === "PAUSED");
+  const requiresFaceVerification =
+    sessionRequiresIdentity && verifiedSessionId !== currentSessionId;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const stopCamera = (stream: MediaStream | null) => {
+      stream?.getTracks().forEach((track) => track.stop());
+    };
+
+    stopCamera(faceCameraStreamRef.current);
+    faceCameraStreamRef.current = null;
+    if (faceVideoRef.current) faceVideoRef.current.srcObject = null;
+
+    if (!requiresFaceVerification) return;
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setCameraState("error");
+      setCameraMessage(
+        isAr
+          ? `تم حظر الكاميرا على ${window.location.origin}. اعتبر هذا العنوان آمناً في إعدادات Chrome أو Edge ثم أعد تشغيل المتصفح.`
+          : `Edge has not exposed camera access on ${window.location.origin}. Confirm the exact origin is enabled under “Insecure origins treated as secure”, fully close Edge, then reopen it.`,
+      );
+      return;
+    }
+
+    setCameraState("connecting");
+    setCameraMessage(null);
+
+    const openCamera = async () => {
+      let stream: MediaStream | null = null;
+      try {
+        const knownDevices = await navigator.mediaDevices.enumerateDevices();
+        const knownIriun = knownDevices.find(
+          (device) =>
+            device.kind === "videoinput" && /iriun/i.test(device.label),
+        );
+
+        if (knownIriun) {
+          stream = await navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: { deviceId: { exact: knownIriun.deviceId } },
+          });
+        } else {
+          stream = await navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: true,
+          });
+
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const iriun = devices.find(
+            (device) =>
+              device.kind === "videoinput" && /iriun/i.test(device.label),
+          );
+          const activeLabel = stream.getVideoTracks()[0]?.label ?? "";
+          if (iriun && !/iriun/i.test(activeLabel)) {
+            stopCamera(stream);
+            stream = null;
+            await new Promise((resolve) => window.setTimeout(resolve, 500));
+            stream = await navigator.mediaDevices.getUserMedia({
+              audio: false,
+              video: { deviceId: { exact: iriun.deviceId } },
+            });
+          }
+        }
+
+        if (cancelled) {
+          stopCamera(stream);
+          return;
+        }
+
+        faceCameraStreamRef.current = stream;
+        const video = faceVideoRef.current;
+        if (!video) throw new Error("Camera preview is not ready");
+        video.srcObject = stream;
+        await video.play();
+        setCameraState("ready");
+      } catch (error) {
+        stopCamera(stream);
+        if (cancelled) return;
+        setCameraState("error");
+        const browserError =
+          error instanceof DOMException
+            ? `${error.name}${error.message ? `: ${error.message}` : ""}`
+            : error instanceof Error
+              ? error.message
+              : "Unknown camera error";
+        setCameraMessage(
+          error instanceof DOMException && error.name === "NotAllowedError"
+            ? isAr
+              ? "تم رفض إذن الكاميرا. اسمح للموقع باستخدام الكاميرا ثم أعد تحميل الصفحة."
+              : "Camera permission was denied. Allow camera access and reload the page."
+            : isAr
+              ? `تعذر فتح كاميرا إيريون على جهاز الرامي: ${browserError}`
+              : `Could not open Iriun on the shooter device: ${browserError}`,
+        );
+      }
+    };
+
+    void openCamera();
+    return () => {
+      cancelled = true;
+      stopCamera(faceCameraStreamRef.current);
+      faceCameraStreamRef.current = null;
+    };
+  }, [currentSessionId, isAr, requiresFaceVerification]);
+
+  const captureFaceFrame = useCallback(async (): Promise<Blob> => {
+    const video = faceVideoRef.current;
+    if (!video || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+      throw new Error("The shooter camera is not ready yet");
+    }
+
+    const sourceWidth = video.videoWidth;
+    const sourceHeight = video.videoHeight;
+    if (!sourceWidth || !sourceHeight) {
+      throw new Error("The shooter camera did not provide a frame");
+    }
+
+    const width = Math.min(sourceWidth, 960);
+    const height = Math.round((sourceHeight / sourceWidth) * width);
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Could not capture the camera frame");
+    context.drawImage(video, 0, 0, width, height);
+
+    return new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (blob) =>
+          blob
+            ? resolve(blob)
+            : reject(new Error("Could not encode the camera frame")),
+        "image/jpeg",
+        0.82,
+      );
+    });
+  }, []);
+
+  const verifyFace = async (): Promise<void> => {
+    if (!currentSessionId || verificationState === "scanning") return;
+    if (!expectedShooter || expectedShooter === "Guest Shooter") {
+      setVerificationState("rejected");
+      setVerificationMessage(
+        isAr
+          ? "لم يعيّن المشرف رامياً لهذه الجلسة بعد."
+          : "The range officer has not assigned a shooter to this session.",
+      );
+      return;
+    }
+
+    setVerificationState("scanning");
+    setVerificationMessage(null);
+
+    try {
+      const frame = await captureFaceFrame();
+      const result = await apiFetchJson<FaceRecognitionResult>(
+        "/api/face-recognition/check-frame",
+        {
+          method: "POST",
+          headers: { "Content-Type": "image/jpeg" },
+          body: frame,
+        },
+      );
+      const recognized = result.person?.trim() ?? "";
+      const identityMatches =
+        recognized.toLowerCase() === expectedShooter.toLowerCase();
+
+      if (result.approved === true && recognized && identityMatches) {
+        setVerificationState("approved");
+        setVerificationMessage(
+          isAr
+            ? `تم التحقق من هوية ${expectedShooter}`
+            : `${expectedShooter} verified`,
+        );
+        triggerSuccessBanner(
+          isAr
+            ? `تم التحقق من هوية ${expectedShooter}`
+            : `${expectedShooter} verified`,
+        );
+        await new Promise((resolve) => window.setTimeout(resolve, 900));
+        if (activeChannelRef.current.sessionId === currentSessionId) {
+          setVerifiedSessionId(currentSessionId);
+        }
+        return;
+      }
+
+      setVerificationState("rejected");
+      setVerificationMessage(
+        result.approved === true && recognized
+          ? isAr
+            ? `تم التعرف على ${recognized}، لكن الجلسة مخصصة لـ ${expectedShooter}.`
+            : `Recognized ${recognized}, but this session is assigned to ${expectedShooter}.`
+          : result.message ||
+              (isAr ? "لم يتم اعتماد الوجه." : "Face was not approved."),
+      );
+    } catch (error) {
+      setVerificationState("rejected");
+      setVerificationMessage(
+        error instanceof Error
+          ? error.message
+          : isAr
+            ? "تعذر تشغيل خدمة التعرف على الوجه."
+            : "Face recognition service could not be reached.",
+      );
+    }
+  };
+
+  if (requiresFaceVerification) {
+    return (
+      <FaceVerificationGate
+        laneId={laneId}
+        expectedShooter={expectedShooter || (isAr ? "غير معيّن" : "Unassigned")}
+        isAr={isAr}
+        state={verificationState}
+        message={verificationMessage}
+        cameraState={cameraState}
+        cameraMessage={cameraMessage}
+        videoRef={faceVideoRef}
+        onScan={() => void verifyFace()}
+      />
+    );
+  }
+
+  if (
+    sessionStatus === "IDLE" &&
+    activeChannel.sessionStatus !== "CREATED"
+  ) {
     return (
       <div className="flex-grow flex flex-col items-center justify-center min-h-screen bg-zinc-950 text-white font-mono p-6 relative overflow-hidden select-none">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] border border-zinc-900 rounded-full opacity-40 pointer-events-none flex items-center justify-center">
@@ -732,8 +1164,21 @@ export function StationTerminal() {
       </AnimatePresence>
 
       <div className="p-3 bg-zinc-900 border-b border-zinc-800 flex justify-between items-center font-mono admin-text-sm text-white">
-        <span className="font-bold text-emerald-400 flex items-center gap-1.5 animate-pulse">
-          ● LANE {laneId} ACTIVE
+        <span
+          className={`font-bold flex items-center gap-1.5 ${
+            sessionStatus === "ACTIVE"
+              ? "text-emerald-400 animate-pulse"
+              : sessionStatus === "PAUSED"
+                ? "text-amber-400"
+                : "text-cyan-400"
+          }`}
+        >
+          ● LANE {laneId}{" "}
+          {sessionStatus === "ACTIVE"
+            ? "ACTIVE"
+            : sessionStatus === "PAUSED"
+              ? "PAUSED"
+              : "VERIFIED • WAITING FOR START"}
         </span>
         <span className="text-zinc-400">
           SHOOTER:{" "}

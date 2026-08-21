@@ -8,6 +8,8 @@ coverage/
 !.env.example
 dist-electron/
 releases/
+.cert/
+public/lumah-dev-cert.crt
 
 # Rust build output. target/ is gigabytes of intermediate artifacts; gen/
 # holds schemas the Tauri CLI regenerates from tauri.conf.json on every build.
