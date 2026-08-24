@@ -180,6 +180,8 @@ export type {
   UserRole,
   LoginResponse,
   ConnectedShooter,
+  AdminSummary,
+  CreateAdminRequest,
 } from "@shared/types/user";
 export type { WebSocketEvent } from "@shared/types/events";
 export type { SensorGateStatus } from "@shared/types/sensor";

@@ -7,7 +7,9 @@ import {
   X,
   Monitor,
   FileText,
+  UserCircle2,
 } from "lucide-react";
+import { getAuthUsername } from "../../../../utils/api";
 import { LanguageSwitcher } from "../../../../components/common/LanguageSwitcher";
 import { ThemeSwitcher } from "../../../../components/common/ThemeSwitcher";
 import type { TranslationSet } from "../../../../translations";
@@ -42,6 +44,8 @@ export function AdminHeader({
   handleLogout,
   isSuperAdmin = false,
 }: Props) {
+  const username = getAuthUsername();
+
   return (
     <header className="fixed top-0 left-0 right-0 admin-app-header safe-area-inset-x border-b border-hud flex justify-between items-center z-40 bg-hud-rail">
       <div className="flex items-center gap-1.5 sm:gap-2 select-none min-w-0">
@@ -117,6 +121,17 @@ export function AdminHeader({
             <FileText className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Logs</span>
           </button>
+        )}
+        {username && (
+          <span
+            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-hud hud-text-secondary admin-text-2xs font-mono max-w-[12rem]"
+            title={
+              isAr ? `تم تسجيل الدخول باسم ${username}` : `Signed in as ${username}`
+            }
+          >
+            <UserCircle2 className="w-3.5 h-3.5 shrink-0 hud-accent" />
+            <span className="truncate">{username}</span>
+          </span>
         )}
         <LanguageSwitcher language={language} setLanguage={setLanguage} />
         <ThemeSwitcher isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} />

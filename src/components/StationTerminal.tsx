@@ -17,12 +17,17 @@ import {
   boardMmToSensorCoords,
   mapRawShotToDisplay,
   mergeDisplayShots,
-
 } from "../utils/shotCoordinates";
 import { applyCalibratedShots } from "../store/channelMutations";
 import { targetProfileFromTargetId } from "../utils/targetProfile";
 import { clickToSensorCoords } from "../utils/shotCoordinates";
-import { api, apiFetchJson, getAuthToken, syncServerClock } from "../utils/api";
+import {
+  api,
+  ApiError,
+  apiFetchJson,
+  getAuthToken,
+  syncServerClock,
+} from "../utils/api";
 import { stationUrl } from "../utils/shooterNavigation";
 import { getOrCreateDeviceId } from "../utils/deviceIdentity";
 import { ShooterDashboard } from "../modules/shooter/components/ShooterDashboard";
@@ -53,11 +58,7 @@ interface StationSession {
 }
 
 type RecognitionStatus =
-  | "matched"
-  | "unknown"
-  | "no_face"
-  | "camera_error"
-  | "processing_error";
+  "matched" | "unknown" | "no_face" | "camera_error" | "processing_error";
 
 interface FaceRecognitionResult {
   approved: boolean;
@@ -69,6 +70,21 @@ interface FaceRecognitionResult {
   message: string;
 }
 
+type FaceRegistrationView = "front" | "side";
+type FaceGateMode = "loading" | "register" | "verify";
+const REGISTRATION_CAPTURE_ATTEMPTS = 5;
+
+interface FaceRegistrationStatus {
+  registered: boolean;
+  capturedViews: FaceRegistrationView[];
+}
+
+interface FaceRegistrationResult {
+  complete: boolean;
+  capturedViews: FaceRegistrationView[];
+  message: string;
+}
+
 type VerificationState = "idle" | "scanning" | "approved" | "rejected";
 type CameraState = "connecting" | "ready" | "error";
 
@@ -76,6 +92,8 @@ interface FaceVerificationGateProps {
   laneId: number;
   expectedShooter: string;
   isAr: boolean;
+  mode: FaceGateMode;
+  registrationView: FaceRegistrationView;
   state: VerificationState;
   message: string | null;
   cameraState: CameraState;
@@ -88,6 +106,8 @@ function FaceVerificationGate({
   laneId,
   expectedShooter,
   isAr,
+  mode,
+  registrationView,
   state,
   message,
   cameraState,
@@ -96,6 +116,43 @@ function FaceVerificationGate({
   onScan,
 }: FaceVerificationGateProps) {
   const scanning = state === "scanning";
+  const busy = scanning || mode === "loading";
+  const actionLabel =
+    mode === "loading"
+      ? isAr
+        ? "جارٍ فحص ملف الوجه..."
+        : "Checking face profile..."
+      : scanning
+        ? mode === "register"
+          ? isAr
+            ? "جارٍ حفظ صورة الوجه..."
+            : "Saving face..."
+          : isAr
+            ? "جارٍ فحص الوجه..."
+            : "Scanning face..."
+        : mode === "register"
+          ? registrationView === "front"
+            ? isAr
+              ? "تسجيل الوجه الأمامي"
+              : "Register front face"
+            : isAr
+              ? "تسجيل الوجه الجانبي"
+              : "Register side face"
+          : isAr
+            ? "ابدأ التحقق من الوجه"
+            : "Verify face";
+  const guidance =
+    mode === "register"
+      ? registrationView === "front"
+        ? isAr
+          ? "انظر مباشرة إلى الكاميرا، ثم التقط الصورة الأمامية."
+          : "Look straight at the camera, then capture the front view."
+        : isAr
+          ? "أدر وجهك قليلاً إلى الجانب مع إبقاء الوجه واضحاً."
+          : "Turn slightly to the side while keeping your face clearly visible."
+      : isAr
+        ? "ضع وجهك أمام كاميرا جهاز الرامي، ثم ابدأ التحقق."
+        : "Face the shooter device camera, then start verification.";
 
   return (
     <div
@@ -108,7 +165,13 @@ function FaceVerificationGate({
             <ShieldCheck className="w-5 h-5 text-emerald-400" />
             <div>
               <p className="text-xs font-bold tracking-[0.18em] text-emerald-400 uppercase">
-                {isAr ? "التحقق من هوية الرامي" : "Shooter identity check"}
+                {mode === "register"
+                  ? isAr
+                    ? "تسجيل وجه الرامي"
+                    : "Shooter face registration"
+                  : isAr
+                    ? "التحقق من هوية الرامي"
+                    : "Shooter identity check"}
               </p>
               <p className="text-xs text-zinc-500 mt-1">
                 {isAr ? `الحارة ${laneId}` : `Lane ${laneId}`}
@@ -116,7 +179,7 @@ function FaceVerificationGate({
             </div>
           </div>
           <span className="px-2.5 py-1 rounded-md border border-zinc-700 bg-zinc-950 text-xs text-zinc-400">
-            CAM 0
+            {mode === "register" ? registrationView.toUpperCase() : "CAM 0"}
           </span>
         </div>
 
@@ -125,13 +188,13 @@ function FaceVerificationGate({
             <div className="absolute z-10 inset-4 border border-emerald-500/20 rounded-lg" />
             <div className="absolute z-10 inset-x-[20%] inset-y-[14%] rounded-[45%] border border-dashed border-emerald-400/50" />
             <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className={`absolute z-0 inset-0 w-full h-full object-cover -scale-x-100 ${
-                  cameraState === "ready" ? "opacity-100" : "opacity-0"
-                }`}
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className={`absolute z-0 inset-0 w-full h-full object-cover -scale-x-100 ${
+                cameraState === "ready" ? "opacity-100" : "opacity-0"
+              }`}
             />
             {cameraState !== "ready" && (
               <Camera
@@ -146,10 +209,16 @@ function FaceVerificationGate({
               />
             )}
             <div className="absolute z-20 bottom-3 left-3 right-3 flex items-center justify-between text-[0.65rem] tracking-wider text-zinc-300 drop-shadow-md">
-              <span>{isAr ? "كاميرا جهاز الرامي" : "SHOOTER DEVICE CAMERA"}</span>
               <span>
-                {scanning
-                  ? "SCANNING"
+                {isAr ? "كاميرا جهاز الرامي" : "SHOOTER DEVICE CAMERA"}
+              </span>
+              <span>
+                {busy
+                  ? mode === "loading"
+                    ? "CHECKING"
+                    : mode === "register"
+                      ? "SAVING"
+                      : "SCANNING"
                   : state === "approved"
                     ? "VERIFIED"
                     : cameraState === "ready"
@@ -169,9 +238,7 @@ function FaceVerificationGate({
               {expectedShooter}
             </p>
             <p className="text-xs leading-relaxed text-zinc-500 font-sans">
-              {isAr
-                ? "ضع وجهك أمام كاميرا جهاز الرامي، ثم ابدأ التحقق."
-                : "Face the shooter device camera, then start verification."}
+              {guidance}
             </p>
           </div>
 
@@ -196,24 +263,26 @@ function FaceVerificationGate({
             </div>
           )}
 
+          {state === "idle" && message && (
+            <div className="rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-2.5 text-sky-300 text-xs">
+              {message}
+            </div>
+          )}
+
           <button
             type="button"
             onClick={onScan}
-            disabled={scanning || cameraState !== "ready"}
+            disabled={busy || cameraState !== "ready"}
             className="w-full rounded-lg bg-emerald-500 hover:bg-emerald-400 text-zinc-950 py-3 px-4 font-black text-sm tracking-wider uppercase transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
           >
-            {scanning ? (
+            {busy ? (
               <LoaderCircle className="w-4 h-4 animate-spin" />
+            ) : mode === "register" ? (
+              <Camera className="w-4 h-4" />
             ) : (
               <ScanLine className="w-4 h-4" />
             )}
-            {scanning
-              ? isAr
-                ? "جارٍ فحص الوجه..."
-                : "Scanning face..."
-              : isAr
-                ? "ابدأ التحقق من الوجه"
-                : "Verify face"}
+            {actionLabel}
           </button>
         </div>
       </div>
@@ -263,9 +332,12 @@ export function StationTerminal() {
   );
   const [verificationState, setVerificationState] =
     useState<VerificationState>("idle");
-  const [verificationMessage, setVerificationMessage] = useState<
-    string | null
-  >(null);
+  const [verificationMessage, setVerificationMessage] = useState<string | null>(
+    null,
+  );
+  const [faceGateMode, setFaceGateMode] = useState<FaceGateMode>("loading");
+  const [registrationView, setRegistrationView] =
+    useState<FaceRegistrationView>("front");
   const [cameraState, setCameraState] = useState<CameraState>("connecting");
   const [cameraMessage, setCameraMessage] = useState<string | null>(null);
 
@@ -292,6 +364,8 @@ export function StationTerminal() {
     setVerifiedSessionId(null);
     setVerificationState("idle");
     setVerificationMessage(null);
+    setFaceGateMode("loading");
+    setRegistrationView("front");
   }, [activeChannel.sessionId]);
 
   useEffect(() => {
@@ -322,7 +396,9 @@ export function StationTerminal() {
       // `/sessions/:id` is ADMIN-only, and a shooter tablet carries no JWT.
       // `/sessions/by-lane/:laneId` is the public, lane-scoped read that
       // returns the same live-session shape without the auth requirement.
-      const record = await api.get<Session | null>(`/sessions/by-lane/${laneId}`);
+      const record = await api.get<Session | null>(
+        `/sessions/by-lane/${laneId}`,
+      );
       if (!record) return;
       const stage = resolveDisplayStage(record);
       const shots = stage?.shots ?? [];
@@ -438,7 +514,9 @@ export function StationTerminal() {
       // session through the public endpoint instead. Otherwise the stage
       // plan (durationSeconds, bulletLimit) never lands and the timer falls
       // back to its 10-minute default countdown.
-      const record = await api.get<Session | null>(`/sessions/by-lane/${laneId}`);
+      const record = await api.get<Session | null>(
+        `/sessions/by-lane/${laneId}`,
+      );
       if (!record) return;
       applySessionRecord(record);
     } catch (err) {
@@ -459,7 +537,9 @@ export function StationTerminal() {
    */
   const hydrateFromLane = useCallback(async () => {
     try {
-      const record = await api.get<Session | null>(`/sessions/by-lane/${laneId}`);
+      const record = await api.get<Session | null>(
+        `/sessions/by-lane/${laneId}`,
+      );
       if (record) applySessionRecord(record);
     } catch (err) {
       console.warn("[StationTerminal] Lane hydration failed:", err);
@@ -876,9 +956,12 @@ export function StationTerminal() {
 
   const isArabic = language === "ar";
 
-  const currentSessionId = activeChannel.sessionId ?? session?.sessionId ?? null;
+  const currentSessionId =
+    activeChannel.sessionId ?? session?.sessionId ?? null;
   const expectedShooter = (
-    session?.shooterName || activeChannel.name || ""
+    session?.shooterName ||
+    activeChannel.name ||
+    ""
   ).trim();
   const sessionRequiresIdentity =
     currentSessionId !== null &&
@@ -887,6 +970,54 @@ export function StationTerminal() {
       activeChannel.sessionStatus === "PAUSED");
   const requiresFaceVerification =
     sessionRequiresIdentity && verifiedSessionId !== currentSessionId;
+
+  useEffect(() => {
+    if (!requiresFaceVerification || !expectedShooter) return;
+
+    let cancelled = false;
+    const loadRegistration = async () => {
+      setFaceGateMode("loading");
+      setVerificationState("idle");
+      setVerificationMessage(null);
+      const deviceId = getOrCreateDeviceId();
+
+      try {
+        // No shooter login: reconnecting the durable browser device lets the
+        // backend confirm that the admin assigned it to this lane.
+        await api.post("/auth/connect", { deviceId });
+        const status = await apiFetchJson<FaceRegistrationStatus>(
+          `/api/face-recognition/registration/${laneId}`,
+          { headers: { "X-Device-Id": deviceId } },
+        );
+        if (cancelled) return;
+
+        if (status.registered) {
+          setFaceGateMode("verify");
+          return;
+        }
+
+        setFaceGateMode("register");
+        setRegistrationView(
+          status.capturedViews.includes("front") ? "side" : "front",
+        );
+      } catch (error) {
+        if (cancelled) return;
+        setVerificationState("rejected");
+        setVerificationMessage(
+          error instanceof Error
+            ? error.message
+            : isAr
+              ? "تعذر فحص تسجيل الوجه."
+              : "Could not check face registration.",
+        );
+      }
+    };
+
+    void loadRegistration();
+    return () => {
+      cancelled = true;
+    };
+  }, [expectedShooter, isAr, laneId, requiresFaceVerification]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1004,14 +1135,30 @@ export function StationTerminal() {
       throw new Error("The shooter camera did not provide a frame");
     }
 
-    const width = Math.min(sourceWidth, 960);
-    const height = Math.round((sourceHeight / sourceWidth) * width);
+    // Crop around the on-screen guide so the detector receives a larger face
+    // and less background without increasing the uploaded JPEG size.
+    const cropWidth = Math.round(sourceWidth * 0.8);
+    const cropHeight = Math.round(sourceHeight * 0.9);
+    const cropX = Math.round((sourceWidth - cropWidth) / 2);
+    const cropY = Math.round((sourceHeight - cropHeight) / 2);
+    const width = Math.min(cropWidth, 960);
+    const height = Math.round((cropHeight / cropWidth) * width);
     const canvas = document.createElement("canvas");
     canvas.width = width;
     canvas.height = height;
     const context = canvas.getContext("2d");
     if (!context) throw new Error("Could not capture the camera frame");
-    context.drawImage(video, 0, 0, width, height);
+    context.drawImage(
+      video,
+      cropX,
+      cropY,
+      cropWidth,
+      cropHeight,
+      0,
+      0,
+      width,
+      height,
+    );
 
     return new Promise<Blob>((resolve, reject) => {
       canvas.toBlob(
@@ -1025,8 +1172,9 @@ export function StationTerminal() {
     });
   }, []);
 
-  const verifyFace = async (): Promise<void> => {
+  const performFaceAction = async (): Promise<void> => {
     if (!currentSessionId || verificationState === "scanning") return;
+    if (faceGateMode === "loading") return;
     if (!expectedShooter || expectedShooter === "Guest Shooter") {
       setVerificationState("rejected");
       setVerificationMessage(
@@ -1041,12 +1189,74 @@ export function StationTerminal() {
     setVerificationMessage(null);
 
     try {
+      const deviceId = getOrCreateDeviceId();
+
+      if (faceGateMode === "register") {
+        let saved: FaceRegistrationResult | null = null;
+        for (
+          let attempt = 0;
+          attempt < REGISTRATION_CAPTURE_ATTEMPTS;
+          attempt++
+        ) {
+          const frame = await captureFaceFrame();
+          try {
+            saved = await apiFetchJson<FaceRegistrationResult>(
+              `/api/face-recognition/register/${laneId}/${registrationView}`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "image/jpeg",
+                  "X-Device-Id": deviceId,
+                },
+                body: frame,
+              },
+            );
+            break;
+          } catch (error) {
+            const transientCaptureFailure =
+              error instanceof ApiError &&
+              error.statusCode === 422 &&
+              !/person name/i.test(error.message);
+            if (
+              !transientCaptureFailure ||
+              attempt === REGISTRATION_CAPTURE_ATTEMPTS - 1
+            ) {
+              throw error;
+            }
+            await new Promise((resolve) => window.setTimeout(resolve, 220));
+          }
+        }
+        if (!saved) throw new Error("Could not capture a usable face image");
+
+        setVerificationState("idle");
+        if (saved.complete) {
+          setFaceGateMode("verify");
+          setRegistrationView("front");
+          setVerificationMessage(
+            isAr
+              ? "اكتمل تسجيل الوجه. تحقق من الوجه للمتابعة."
+              : "Registration complete. Verify the face to continue.",
+          );
+        } else {
+          setRegistrationView("side");
+          setVerificationMessage(
+            isAr
+              ? "تم حفظ الصورة الأمامية. أدر وجهك قليلاً للصورة الجانبية."
+              : "Front view saved. Turn slightly for the side view.",
+          );
+        }
+        return;
+      }
+
       const frame = await captureFaceFrame();
       const result = await apiFetchJson<FaceRecognitionResult>(
-        "/api/face-recognition/check-frame",
+        `/api/face-recognition/check-frame/${laneId}`,
         {
           method: "POST",
-          headers: { "Content-Type": "image/jpeg" },
+          headers: {
+            "Content-Type": "image/jpeg",
+            "X-Device-Id": deviceId,
+          },
           body: frame,
         },
       );
@@ -1100,20 +1310,19 @@ export function StationTerminal() {
         laneId={laneId}
         expectedShooter={expectedShooter || (isAr ? "غير معيّن" : "Unassigned")}
         isAr={isAr}
+        mode={faceGateMode}
+        registrationView={registrationView}
         state={verificationState}
         message={verificationMessage}
         cameraState={cameraState}
         cameraMessage={cameraMessage}
         videoRef={faceVideoRef}
-        onScan={() => void verifyFace()}
+        onScan={() => void performFaceAction()}
       />
     );
   }
 
-  if (
-    sessionStatus === "IDLE" &&
-    activeChannel.sessionStatus !== "CREATED"
-  ) {
+  if (sessionStatus === "IDLE" && activeChannel.sessionStatus !== "CREATED") {
     return (
       <div className="flex-grow flex flex-col items-center justify-center min-h-screen bg-zinc-950 text-white font-mono p-6 relative overflow-hidden select-none">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] border border-zinc-900 rounded-full opacity-40 pointer-events-none flex items-center justify-center">

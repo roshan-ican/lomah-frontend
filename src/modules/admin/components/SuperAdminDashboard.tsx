@@ -1,29 +1,30 @@
 /// <reference types="react" />
 import React, { useState } from "react";
-import { Crosshair, Wifi, BookOpen } from "lucide-react";
+import { Crosshair, Wifi, BookOpen, Users } from "lucide-react";
 import { translations, TranslationSet } from "../../../translations";
 import { AdminHeader } from "./admin-dashboard/AdminHeader";
 import { LaneHardwarePanel } from "./admin-dashboard/LaneHardwarePanel";
 import { LaneAssignmentPanel } from "./admin-dashboard/LaneAssignmentPanel";
+import { AdminAccountsPanel } from "./admin-dashboard/AdminAccountsPanel";
 import { AdminHelp } from "./AdminHelp";
 import { ActivityLog } from "./ActivityLog";
 import type { LanguageCode } from "./admin-dashboard/types";
 
-type SuperAdminTab = "LANE_HARDWARE" | "DEVICES" | "HELP";
+type SuperAdminTab = "LANE_HARDWARE" | "DEVICES" | "HELP" | "USERS";
 
 interface SuperAdminDashboardProps {
-   isDarkMode: boolean;
-   setIsDarkMode: (val: boolean) => void;
-   language: LanguageCode;
-   setLanguage: (lang: LanguageCode) => void;
-   triggerSuccessBanner: (msg: string) => void;
-   /** Failures. Rendered red with a warning icon — routing them through
-    *  triggerSuccessBanner produced a green checkmark on the word "Error". */
-   triggerErrorBanner: (msg: string) => void;
-   addAdminLog: (msg: string) => void;
-   handleLogout: () => void;
-   adminLogs: string[];
- }
+  isDarkMode: boolean;
+  setIsDarkMode: (val: boolean) => void;
+  language: LanguageCode;
+  setLanguage: (lang: LanguageCode) => void;
+  triggerSuccessBanner: (msg: string) => void;
+  /** Failures. Rendered red with a warning icon — routing them through
+   *  triggerSuccessBanner produced a green checkmark on the word "Error". */
+  triggerErrorBanner: (msg: string) => void;
+  addAdminLog: (msg: string) => void;
+  handleLogout: () => void;
+  adminLogs: string[];
+}
 
 /**
  * The commissioning console. Deliberately NOT the admin dashboard.
@@ -39,16 +40,16 @@ interface SuperAdminDashboardProps {
  * controls one conditional away from being reachable.
  */
 export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
-   isDarkMode,
-   setIsDarkMode,
-   language,
-   setLanguage,
-   triggerSuccessBanner,
-   triggerErrorBanner,
-   addAdminLog,
-   handleLogout,
-   adminLogs,
-  }) => {
+  isDarkMode,
+  setIsDarkMode,
+  language,
+  setLanguage,
+  triggerSuccessBanner,
+  triggerErrorBanner,
+  addAdminLog,
+  handleLogout,
+  adminLogs,
+}) => {
   const isAr = language === "ar";
   const t: TranslationSet = translations[language];
   const [activeTab, setActiveTab] = useState<SuperAdminTab>("LANE_HARDWARE");
@@ -68,6 +69,11 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
       tab: "DEVICES",
       icon: <Wifi className="w-4 h-4 shrink-0" />,
       label: isAr ? "أجهزة الرماة" : "Shooter Devices",
+    },
+    {
+      tab: "USERS",
+      icon: <Users className="w-5 h-4 shrink-0" />,
+      label: isAr ? "المشرفون" : "Admins",
     },
     {
       tab: "HELP",
@@ -189,6 +195,14 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
               // SUPER_ADMIN gets the hardware commissioning/testing guide,
               // not the range-officer session-ops one.
               <AdminHelp language={language} t={t} variant="superAdmin" />
+            )}
+            {activeTab === "USERS" && (
+              <AdminAccountsPanel
+                isAr={isAr}
+                triggerSuccessBanner={triggerSuccessBanner}
+                triggerErrorBanner={triggerErrorBanner}
+                addAdminLog={addAdminLog}
+              />
             )}
           </div>
 

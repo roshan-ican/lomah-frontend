@@ -267,8 +267,8 @@ export function ShooterDevicesTab({
         {availableShooters.length === 0 ? (
           <p className="admin-text-xs hud-text-muted font-mono p-4 rounded-lg border border-hud border-dashed text-center">
             {isAr
-              ? "لا يوجد رماة مسجلون. أضف راميًا جديدًا."
-              : "No shooters registered. Add a new shooter above."}
+              ? "قائمة الرماة خاصة بك وتبدأ فارغة. أضف راميًا جديدًا أعلاه."
+              : "Your roster is yours alone and starts empty. Add a shooter above."}
           </p>
         ) : (
           <div className="space-y-1.5">

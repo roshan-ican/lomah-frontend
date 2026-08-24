@@ -13,7 +13,7 @@ export default defineConfig(() => {
   const certificatePath = path.resolve(__dirname, '.cert/lumah-dev-cert.crt');
   const certificateKeyPath = path.resolve(__dirname, '.cert/lumah-dev-key.pem');
   const hasLocalCertificate =
-    fs.existsSync(certificatePath) && fs.existsSync(certificateKeyPath);
+    !process.env.VITE_DISABLE_HTTPS && fs.existsSync(certificatePath) && fs.existsSync(certificateKeyPath);
 
   return {
     base: '/',

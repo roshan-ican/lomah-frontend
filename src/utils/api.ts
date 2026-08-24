@@ -12,6 +12,10 @@ export function getAuthRole(): string | null {
   return localStorage.getItem("role");
 }
 
+export function getAuthUsername(): string | null {
+  return localStorage.getItem("username");
+}
+
 export function setAuthSession(token: string, role: string, username?: string) {
   localStorage.setItem("token", token);
   localStorage.setItem("role", role);
