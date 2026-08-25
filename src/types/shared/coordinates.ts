@@ -1,4 +1,8 @@
-export function scoreFromOffset(xMm: number, yMm: number, profileType: TargetProfileType = "FIGURE"): number {
+export function scoreFromOffset(
+  xMm: number,
+  yMm: number,
+  profileType: TargetProfileType = "FIGURE",
+): number {
   return scoreFromOffsetJS(xMm, yMm, profileType);
 }
 // Target dimensions: Figure 11 target is 45cm wide × 100cm tall.
@@ -35,7 +39,6 @@ export const F11_MIDDLE_HALF_H = 90.5;
 
 export const F11_OUTER_HALF_W = 82.5;
 export const F11_OUTER_HALF_H = 181;
-
 
 export const F11_SILHOUETTE_HALF_W = 225;
 export const F11_SILHOUETTE_HALF_H = 500;
@@ -101,7 +104,6 @@ export function sensorMmToBoardMm(
   return nativeMm - axisError;
 }
 
-
 /** Board-centre mm → native sensor mm (inverse of sensorMmToBoardMm). Formula: x(received) = x + x(error). No rounding — both operands are whole mm. */
 export function boardMmToSensorMm(
   boardMm: number,
@@ -116,7 +118,7 @@ export function boardMmToSensorMm(
 /** Returns true when the sensor reports it could not triangulate the shot.
  *  LOMAH uses (0,0) or (65535,65535) as "no detection" sentinels. */
 export function isSensorMiss(rawX: number, rawY: number): boolean {
-  return (rawX === 0 && rawY === 0)
+  return rawX === 0 && rawY === 0;
 }
 
 /** Infer miss from explicit flag or sensor sentinel values.
@@ -249,7 +251,8 @@ export function scoreFromOffsetJS(
   const dyMiddle = Math.abs(yMm - F11_MIDDLE_Y);
   const dyOuter = Math.abs(yMm - F11_OUTER_Y);
 
-  if (ax > F11_SILHOUETTE_HALF_W || Math.abs(yMm) > F11_SILHOUETTE_HALF_H) return 0;
+  if (ax > F11_SILHOUETTE_HALF_W || Math.abs(yMm) > F11_SILHOUETTE_HALF_H)
+    return 0;
   if (ax <= F11_CENTER_HALF_W && dyCenter <= F11_CENTER_HALF_H) return 5;
   if (ax <= F11_MIDDLE_HALF_W && dyMiddle <= F11_MIDDLE_HALF_H) return 4;
   if (ax <= F11_OUTER_HALF_W && dyOuter <= F11_OUTER_HALF_H) return 3;
@@ -283,11 +286,16 @@ export function zoneFromOffset(
   // Figure 11: derive zone from score
   const score = scoreFromOffset(xMm, yMm, "FIGURE");
   switch (score) {
-    case 5: return "Chest";      // cross = centre mass
-    case 4: return "Shoulder";   // outer rect flanks
-    case 3: return "Body";       // body outside scoring rect
-    case 2: return "Head";       // head zone
-    default: return "Off-Target";
+    case 5:
+      return "Chest"; // cross = centre mass
+    case 4:
+      return "Shoulder"; // outer rect flanks
+    case 3:
+      return "Body"; // body outside scoring rect
+    case 2:
+      return "Head"; // head zone
+    default:
+      return "Off-Target";
   }
 }
 

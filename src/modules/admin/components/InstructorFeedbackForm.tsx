@@ -59,7 +59,7 @@ export const InstructorFeedbackForm: React.FC<InstructorFeedbackFormProps> = ({
       {showHeader && (
         <h4 className="range-rail-label flex items-center gap-1.5 border-b border-hud pb-2 hud-text-secondary">
           <Award className="w-3.5 h-3.5 hud-accent" />
-        {isAr ? "تقييم الجولة وملاحظات المدرب" : "Instructor Feedback Form"}
+          {isAr ? "تقييم الجولة وملاحظات المدرب" : "Instructor Feedback Form"}
         </h4>
       )}
 

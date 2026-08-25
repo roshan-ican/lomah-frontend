@@ -64,7 +64,10 @@ export function useNotifications() {
       minute: "2-digit",
       second: "2-digit",
     });
-    setAdminLogs((prev) => [`[${timestamp}] ${msg}`, ...prev.slice(0, MAX_LOGS - 1)]);
+    setAdminLogs((prev) => [
+      `[${timestamp}] ${msg}`,
+      ...prev.slice(0, MAX_LOGS - 1),
+    ]);
   };
 
   return {

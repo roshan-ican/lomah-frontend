@@ -15,12 +15,7 @@ import { stationUrl } from "../utils/shooterNavigation";
 import { getOrCreateDeviceId } from "../utils/deviceIdentity";
 
 type Status =
-  | "idle"
-  | "scanning"
-  | "connecting"
-  | "connected"
-  | "manual"
-  | "error";
+  "idle" | "scanning" | "connecting" | "connected" | "manual" | "error";
 
 export function ShooterWait() {
   const [status, setStatus] = useState<Status>("idle");
@@ -182,24 +177,31 @@ export function ShooterWait() {
     socketRef.current = socket;
 
     const join = () => {
-      socket.emit("join-device", { key: deviceKey }, (ack?: { ok: boolean; error?: string }) => {
-        if (ack && !ack.ok) {
-          console.warn(`[WebSocket] join-device refused: ${ack.error}`);
-        }
-      });
+      socket.emit(
+        "join-device",
+        { key: deviceKey },
+        (ack?: { ok: boolean; error?: string }) => {
+          if (ack && !ack.ok) {
+            console.warn(`[WebSocket] join-device refused: ${ack.error}`);
+          }
+        },
+      );
     };
     // Re-join on every connect, not just the first: rooms live on the server
     // side of a single connection and are gone after a reconnect.
     socket.on("connect", join);
 
-    socket.on("device:assigned", (event: { key?: string; laneId?: number | null }) => {
-      // The room already scopes this, but a device that rejoined under a new
-      // key could briefly still be in the old room — only act on our own.
-      if (event?.key && event.key !== deviceKey) return;
-      if (event?.laneId != null) {
-        window.location.href = stationUrl(event.laneId, adminHost, adminPort);
-      }
-    });
+    socket.on(
+      "device:assigned",
+      (event: { key?: string; laneId?: number | null }) => {
+        // The room already scopes this, but a device that rejoined under a new
+        // key could briefly still be in the old room — only act on our own.
+        if (event?.key && event.key !== deviceKey) return;
+        if (event?.laneId != null) {
+          window.location.href = stationUrl(event.laneId, adminHost, adminPort);
+        }
+      },
+    );
 
     return () => {
       socket.off("connect", join);
@@ -320,13 +322,13 @@ export function ShooterWait() {
         isDarkMode ? "bg-[#111316] text-gray-100" : "bg-page-bg text-gray-900"
       }`}
     >
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[550px] border border-emerald-500/[0.04] dark:border-emerald-success/[0.07] rounded-full pointer-events-none select-none z-0 flex items-center justify-center">
-        <div className="w-[380px] h-[380px] border border-emerald-500/[0.03] dark:border-emerald-success/[0.05] rounded-full flex items-center justify-center">
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 portal-ring-outer border border-emerald-500/[0.04] dark:border-emerald-success/[0.07] rounded-full pointer-events-none select-none z-0 flex items-center justify-center">
+        <div className="portal-ring-inner border border-emerald-500/[0.03] dark:border-emerald-success/[0.05] rounded-full flex items-center justify-center">
           <div className="w-1.5 h-1.5 bg-emerald-500/20 rounded-full animate-ping" />
         </div>
       </div>
 
-      <div className="w-full max-w-md z-10">
+      <div className="portal-shell z-10">
         <div className="text-center mb-6 select-none">
           <div className="mx-auto w-12 h-12 rounded-2xl bg-emerald-500/10 dark:bg-emerald-success/10 flex items-center justify-center border border-emerald-500/20 mb-3.5 shadow-sm">
             <Target className="w-6 h-6 text-emerald-500 animate-pulse" />
@@ -334,7 +336,7 @@ export function ShooterWait() {
           <h1 className="text-xl md:text-2xl font-black tracking-widest font-sans text-gray-800 dark:text-white uppercase">
             {t.brand}
           </h1>
-          <p className="admin-admin-text-lg font-mono text-gray-500 mt-1">
+          <p className="admin-text-lg font-mono text-gray-500 mt-1">
             {isAr
               ? "محطة الرامي — الاتصال بالمشرف"
               : "Shooter terminal — connect to range control"}
@@ -342,7 +344,7 @@ export function ShooterWait() {
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl admin-admin-text-lg font-mono font-bold text-rose-500 flex items-center gap-2">
+          <div className="mb-4 p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl admin-text-lg font-mono font-bold text-rose-500 flex items-center gap-2">
             <ShieldAlert className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
@@ -365,7 +367,7 @@ export function ShooterWait() {
           >
             {status === "idle" && (
               <div className="space-y-4">
-                <p className="text-center admin-admin-text-lg font-mono text-gray-500 dark:text-gray-400">
+                <p className="text-center admin-text-lg font-mono text-gray-500 dark:text-gray-400">
                   {isElectron
                     ? isAr
                       ? "ابحث عن حاسوب المشرف على الشبكة"
@@ -395,7 +397,7 @@ export function ShooterWait() {
                 <button
                   type="button"
                   onClick={() => setStatus("manual")}
-                  className="admin-admin-text-lg font-mono text-gray-500 dark:text-gray-400 hover:text-emerald-500 underline block w-full text-center"
+                  className="admin-text-lg font-mono text-gray-500 dark:text-gray-400 hover:text-emerald-500 underline block w-full text-center"
                 >
                   {isAr ? "إدخال IP يدوياً" : "Enter IP manually"}
                 </button>
@@ -405,7 +407,7 @@ export function ShooterWait() {
             {(status === "scanning" || status === "connecting") && (
               <div className="flex flex-col items-center gap-4 py-4">
                 <Loader2 className="w-10 h-10 text-emerald-500 animate-spin" />
-              <p className="admin-text-lg font-mono text-gray-500 dark:text-gray-400">
+                <p className="admin-text-lg font-mono text-gray-500 dark:text-gray-400">
                   {status === "scanning"
                     ? isAr
                       ? "جاري البحث عن المشرف..."
@@ -418,7 +420,7 @@ export function ShooterWait() {
                   <button
                     type="button"
                     onClick={() => void stopScan()}
-                    className="px-4 py-2 rounded-lg admin-admin-text-lg font-mono font-bold text-rose-400 border border-rose-500/30 hover:bg-rose-500/10"
+                    className="px-4 py-2 rounded-lg admin-text-lg font-mono font-bold text-rose-400 border border-rose-500/30 hover:bg-rose-500/10"
                   >
                     {isAr ? "إيقاف البحث" : "Stop Scan"}
                   </button>
@@ -428,7 +430,7 @@ export function ShooterWait() {
 
             {status === "manual" && (
               <div className="space-y-4">
-                <p className="text-center admin-admin-text-lg font-mono text-gray-500 dark:text-gray-400">
+                <p className="text-center admin-text-lg font-mono text-gray-500 dark:text-gray-400">
                   {isAr
                     ? "أدخل عنوان IP لحاسوب المشرف"
                     : "ENTER THE ADMIN PC IP ADDRESS"}
@@ -455,7 +457,7 @@ export function ShooterWait() {
                     setStatus("idle");
                     setError("");
                   }}
-                  className="admin-admin-text-lg font-mono text-gray-500 dark:text-gray-400 hover:text-emerald-500 underline block w-full text-center"
+                  className="admin-text-lg font-mono text-gray-500 dark:text-gray-400 hover:text-emerald-500 underline block w-full text-center"
                 >
                   {isAr ? "← رجوع" : "← Back"}
                 </button>
@@ -469,7 +471,7 @@ export function ShooterWait() {
                   <p className="admin-text-lg font-bold text-emerald-500">
                     {isAr ? "متصل بالمشرف" : "Connected to Admin"}
                   </p>
-                  <p className="admin-admin-text-lg font-mono text-gray-500 dark:text-gray-400">
+                  <p className="admin-text-lg font-mono text-gray-500 dark:text-gray-400">
                     {isAr
                       ? "بانتظار تعيين الحارة من المشرف..."
                       : "Awaiting lane assignment from the range officer..."}
@@ -494,14 +496,14 @@ export function ShooterWait() {
             <button
               type="button"
               onClick={() => void backToAdmin()}
-              className="px-4 py-2 rounded-lg admin-admin-text-lg font-mono font-bold text-gray-500 dark:text-gray-400 hover:text-emerald-500 border border-gray-200 dark:border-glass-border hover:border-emerald-500/30"
+              className="px-4 py-2 rounded-lg admin-text-lg font-mono font-bold text-gray-500 dark:text-gray-400 hover:text-emerald-500 border border-gray-200 dark:border-glass-border hover:border-emerald-500/30"
             >
               {isAr ? "← وضع المشرف" : "← Admin Mode"}
             </button>
             <button
               type="button"
               onClick={() => window.electronAPI!.quitApp()}
-              className="px-4 py-2 rounded-lg admin-admin-text-lg font-mono font-bold text-rose-500 border border-rose-500/20 hover:bg-rose-500/10"
+              className="px-4 py-2 rounded-lg admin-text-lg font-mono font-bold text-rose-500 border border-rose-500/20 hover:bg-rose-500/10"
             >
               {isAr ? "✕ خروج" : "✕ Exit"}
             </button>

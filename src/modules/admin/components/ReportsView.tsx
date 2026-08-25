@@ -96,7 +96,8 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           message = err.message;
         }
       } else {
-        message = err instanceof Error ? err.message : "Could not load shooter report.";
+        message =
+          err instanceof Error ? err.message : "Could not load shooter report.";
       }
       setFetchError(message);
       triggerSuccessBanner(message);
@@ -161,9 +162,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   const completionRate = useMemo(() => {
     const sessions = report?.sessions ?? [];
     if (sessions.length === 0) return null;
-    const completed = sessions.filter(
-      (s) => s.status === "COMPLETED",
-    ).length;
+    const completed = sessions.filter((s) => s.status === "COMPLETED").length;
     return Math.round((completed / sessions.length) * 100);
   }, [report]);
 

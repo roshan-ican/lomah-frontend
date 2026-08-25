@@ -105,22 +105,22 @@ export function AdminSidebar({
   return (
     <aside
       className={`shrink-0 flex flex-col gap-2 hud-sidebar border-r border-hud transition-all duration-200 ease-in-out z-30
-        fixed admin-app-top-offset bottom-0 left-0 w-64 p-4
+        fixed admin-app-top-offset bottom-0 left-0 admin-sidebar-w p-4
         ${navOpen ? "translate-x-0" : "-translate-x-full pointer-events-none"}
         md:static md:top-auto md:bottom-auto md:translate-x-0 md:pointer-events-auto
         ${
           navOpen
-            ? "md:w-64 md:p-4 md:opacity-100 md:overflow-visible"
+            ? "md:admin-sidebar-w md:p-4 md:opacity-100 md:overflow-visible"
             : "md:w-0 md:p-0 md:border-0 md:opacity-0 md:overflow-hidden"
         }`}
     >
-      <div className="hidden md:block pb-3 border-b border-hud mb-3 min-w-[14rem]">
+      <div className="hidden md:block pb-3 border-b border-hud mb-3 admin-sidebar-min">
         <span className="hud-label hud-text-muted">
           {isAr ? "لوحة الملاحة العامة" : "RANGE CONSOLE NAV"}
         </span>
       </div>
 
-      <div className="min-w-[14rem] flex flex-col gap-2">
+      <div className="admin-sidebar-min flex flex-col gap-2">
         {navItems.map(({ tab, icon, label }) => (
           <button
             key={tab}
@@ -222,7 +222,7 @@ export function AdminSidebar({
         )}
       </div>
 
-      <div className="hidden md:flex flex-col-reverse flex-grow font-mono admin-text-sm leading-snug hud-text-subtle select-none pb-2 gap-1 min-w-[14rem]">
+      <div className="hidden md:flex flex-col-reverse flex-grow font-mono admin-text-sm leading-snug hud-text-subtle select-none pb-2 gap-1 admin-sidebar-min">
         {dbInfo && (
           <span
             className="truncate opacity-60"

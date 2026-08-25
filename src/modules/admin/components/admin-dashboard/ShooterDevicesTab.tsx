@@ -10,7 +10,7 @@ interface Props {
   refreshShooters: () => void;
   triggerSuccessBanner: (msg: string) => void;
   /** Failures. Rendered red with a warning icon — routing them through
-   *  triggerSuccessBanner produced a green checkmark on the word "Error". */
+   * triggerSuccessBanner produced a green checkmark on the word "Error". */
   triggerErrorBanner: (msg: string) => void;
 }
 
@@ -118,9 +118,7 @@ export function ShooterDevicesTab({
     try {
       await api.delete(`/shooters/${id}`);
       triggerSuccessBanner(
-        isAr
-          ? `تم حذف الرامي "${name}" ✓`
-          : `Shooter "${name}" deleted ✓`,
+        isAr ? `تم حذف الرامي "${name}" ✓` : `Shooter "${name}" deleted ✓`,
       );
       refreshShooters();
     } catch (err) {
@@ -155,23 +153,23 @@ export function ShooterDevicesTab({
             type="button"
             onClick={() => setShowAddForm(!showAddForm)}
             className="
-            inline-flex items-center justify-center gap-1.5
-            px-3 py-1.5
-            rounded-lg
-            border-2
-            border-[var(--hud-primary-border)]
-            admin-text-2xs
-            font-mono
-            font-bold
-            hud-btn-primary
-            cursor-pointer
-            transition-all
-            duration-150
-            hover:bg-[var(--hud-primary-bg)]
-            hover:border-[var(--hud-primary-border)]
-            hover:brightness-125
-            "
-          > 
+ inline-flex items-center justify-center gap-1.5
+ px-3 py-1.5
+ rounded-lg
+ border-2
+ border-[var(--hud-primary-border)]
+ admin-text-2xs
+ font-mono
+ font-bold
+ hud-btn-primary
+ cursor-pointer
+ transition-all
+ duration-150
+ hover:bg-[var(--hud-primary-bg)]
+ hover:border-[var(--hud-primary-border)]
+ hover:brightness-125
+ "
+          >
             <UserPlus className="w-3 h-3 shrink-0" />
             {isAr ? "إضافة رامي" : "Add Shooter"}
           </button>
@@ -201,11 +199,11 @@ export function ShooterDevicesTab({
                   {isAr ? "كلمة المرور" : "Password"}
                 </label>
                 <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="hud-form-input w-full rounded px-2.5 py-1.5 admin-text-base font-mono"
-                  placeholder={isAr ? "اختياري" : "Optional"}
+ type="password"
+ value={newPassword}
+ onChange={(e) => setNewPassword(e.target.value)}
+ className="hud-form-input w-full rounded px-2.5 py-1.5 admin-text-base font-mono"
+ placeholder={isAr ? "اختياري" : "Optional"}
                 />
               </div> */}
               <div>
@@ -356,7 +354,8 @@ export function ShooterDevicesTab({
                         <p className="admin-text-2xs font-mono hud-text-muted">
                           {[s.rank, s.badgeNumber ? `#${s.badgeNumber}` : ""]
                             .filter(Boolean)
-                            .join(" · ") || (isAr ? "بدون تفاصيل" : "No details")}
+                            .join(" · ") ||
+                            (isAr ? "بدون تفاصيل" : "No details")}
                         </p>
                       </div>
                     </div>
@@ -364,7 +363,7 @@ export function ShooterDevicesTab({
                       <button
                         type="button"
                         onClick={() => startEdit(s)}
-                        className="p-1.5 rounded hover:bg-hud-hover cursor-pointer transition-colors"
+                        className="p-1.5 rounded hover:bg-[var(--hud-accent-bg-subtle)] cursor-pointer transition-colors"
                         title={isAr ? "تعديل" : "Edit"}
                       >
                         <Pencil className="w-3.5 h-3.5 hud-text-muted hover:hud-accent" />
@@ -376,7 +375,9 @@ export function ShooterDevicesTab({
                         className="p-1.5 rounded hover:bg-[var(--hud-danger-bg)] cursor-pointer transition-colors disabled:opacity-50"
                         title={isAr ? "حذف" : "Delete"}
                       >
-                        <Trash2 className={`w-3.5 h-3.5 ${deletingId === s.id ? "hud-danger animate-pulse" : "hud-danger/60 hover:hud-danger"}`} />
+                        <Trash2
+                          className={`w-3.5 h-3.5 ${deletingId === s.id ? "hud-danger animate-pulse" : "text-hud-danger/60 hover:hud-danger"}`}
+                        />
                       </button>
                     </div>
                   </div>
@@ -389,8 +390,8 @@ export function ShooterDevicesTab({
 
       {/* ── Lane assignment ───────────────────────────────────────────────────
           Who is standing where. Kept alongside the roster because the two are
-          the same job in practice — an admin adding a shooter is usually about
-          to put them on a lane. */}
+ the same job in practice — an admin adding a shooter is usually about
+ to put them on a lane. */}
       <div className="pt-5 border-t border-hud">
         <LaneAssignmentPanel
           isAr={isAr}

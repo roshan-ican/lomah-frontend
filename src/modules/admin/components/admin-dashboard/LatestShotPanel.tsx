@@ -80,9 +80,7 @@ export function LatestShotPanel({
         }`}
         onClick={embedded ? () => setExpanded(!expanded) : undefined}
       >
-        <span className="hud-text font-bold">
-          #{latestShot.id}
-        </span>
+        <span className="hud-text font-bold">#{latestShot.id}</span>
         {/* Coordinates are suppressed for a round with no impact: both are
             zero, and "X = 0 mm Y = 0 mm" next to the word MISS reads as a shot
             that landed dead centre — the opposite of what happened. */}
@@ -98,12 +96,8 @@ export function LatestShotPanel({
           </span>
         ) : (
           <>
-            <span className="hud-text-subtle">
-              X = {latestShot.x} mm
-            </span>
-            <span className="hud-text-subtle">
-              Y = {latestShot.y} mm
-            </span>
+            <span className="hud-text-subtle">X = {latestShot.x} mm</span>
+            <span className="hud-text-subtle">Y = {latestShot.y} mm</span>
           </>
         )}
         <span

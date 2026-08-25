@@ -76,8 +76,9 @@ export function LaneScheduleView({
   >([]);
   const [saving, setSaving] = useState(false);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
-  const [pendingCancel, setPendingCancel] =
-    useState<OwnedLaneSchedule | null>(null);
+  const [pendingCancel, setPendingCancel] = useState<OwnedLaneSchedule | null>(
+    null,
+  );
 
   const loadLanes = useCallback(async () => {
     try {
@@ -245,14 +246,10 @@ export function LaneScheduleView({
     try {
       if (editing) {
         await api.patch(`/lane-schedules/${editing.id}`, payload);
-        triggerSuccessBanner(
-          isAr ? "تم تحديث الجدول." : "Schedule updated.",
-        );
+        triggerSuccessBanner(isAr ? "تم تحديث الجدول." : "Schedule updated.");
       } else {
         await api.post("/lane-schedules", payload);
-        triggerSuccessBanner(
-          isAr ? "تمت جدولة الحارة." : "Lane scheduled.",
-        );
+        triggerSuccessBanner(isAr ? "تمت جدولة الحارة." : "Lane scheduled.");
       }
       resetForm();
       await loadSchedules();
@@ -267,9 +264,7 @@ export function LaneScheduleView({
     setCancellingId(schedule.id);
     try {
       await api.post(`/lane-schedules/${schedule.id}/cancel`);
-      triggerSuccessBanner(
-        isAr ? "تم إلغاء الجدول." : "Schedule cancelled.",
-      );
+      triggerSuccessBanner(isAr ? "تم إلغاء الجدول." : "Schedule cancelled.");
       await loadSchedules();
     } catch (error) {
       triggerErrorBanner(errorMessage(error));
@@ -318,7 +313,9 @@ export function LaneScheduleView({
               className="hud-btn-secondary p-2 rounded-lg cursor-pointer"
               aria-label={isAr ? "تحديث" : "Refresh"}
             >
-              <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+              <RefreshCw
+                className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
+              />
             </button>
             <button
               type="button"
@@ -328,7 +325,11 @@ export function LaneScheduleView({
               }}
               className="hud-btn-primary px-3 py-2 rounded-lg admin-text-xs font-mono font-bold inline-flex items-center gap-1.5 cursor-pointer"
             >
-              {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+              {showForm ? (
+                <X className="w-4 h-4" />
+              ) : (
+                <Plus className="w-4 h-4" />
+              )}
               {showForm
                 ? isAr
                   ? "إغلاق"
@@ -356,13 +357,17 @@ export function LaneScheduleView({
                     : "New Schedule"}
               </h3>
               <span className="hud-label hud-text-muted">
-                {isAr ? "حقول بسيطة — بدون تشغيل تلقائي" : "No automatic firing"}
+                {isAr
+                  ? "حقول بسيطة — بدون تشغيل تلقائي"
+                  : "No automatic firing"}
               </span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
               <label className="space-y-1">
-                <span className="hud-label hud-text-muted">{isAr ? "الحارة" : "Lane"}</span>
+                <span className="hud-label hud-text-muted">
+                  {isAr ? "الحارة" : "Lane"}
+                </span>
                 <select
                   value={laneId}
                   onChange={(event) => setLaneId(event.target.value)}
@@ -378,7 +383,9 @@ export function LaneScheduleView({
                 </select>
               </label>
               <label className="space-y-1">
-                <span className="hud-label hud-text-muted">{isAr ? "التاريخ" : "Date"}</span>
+                <span className="hud-label hud-text-muted">
+                  {isAr ? "التاريخ" : "Date"}
+                </span>
                 <input
                   type="date"
                   value={dateValue}
@@ -388,7 +395,9 @@ export function LaneScheduleView({
                 />
               </label>
               <label className="space-y-1">
-                <span className="hud-label hud-text-muted">{isAr ? "من" : "Start"}</span>
+                <span className="hud-label hud-text-muted">
+                  {isAr ? "من" : "Start"}
+                </span>
                 <input
                   type="time"
                   value={startTime}
@@ -398,7 +407,9 @@ export function LaneScheduleView({
                 />
               </label>
               <label className="space-y-1">
-                <span className="hud-label hud-text-muted">{isAr ? "إلى" : "End"}</span>
+                <span className="hud-label hud-text-muted">
+                  {isAr ? "إلى" : "End"}
+                </span>
                 <input
                   type="time"
                   value={endTime}
@@ -417,7 +428,9 @@ export function LaneScheduleView({
                 <div className="max-h-44 overflow-y-auto rounded-lg border border-hud p-2 space-y-1">
                   {availableShooters.length === 0 ? (
                     <p className="admin-text-xs font-mono hud-text-muted p-2">
-                      {isAr ? "لا يوجد رماة مسجلون." : "No registered shooters."}
+                      {isAr
+                        ? "لا يوجد رماة مسجلون."
+                        : "No registered shooters."}
                     </p>
                   ) : (
                     availableShooters.map((shooter) => {
@@ -558,7 +571,8 @@ export function LaneScheduleView({
                 ) : (
                   laneSchedules.map((schedule) => {
                     const owned = schedule.access === "OWNER";
-                    const finished = new Date(schedule.endsAt).getTime() <= Date.now();
+                    const finished =
+                      new Date(schedule.endsAt).getTime() <= Date.now();
                     return (
                       <article
                         key={schedule.id}
@@ -572,11 +586,15 @@ export function LaneScheduleView({
                           <div>
                             <div className="flex items-center gap-1.5 admin-text-sm font-mono font-bold hud-text">
                               <Clock3 className="w-3.5 h-3.5" />
-                              {timeFormatter.format(new Date(schedule.startsAt))}
+                              {timeFormatter.format(
+                                new Date(schedule.startsAt),
+                              )}
                               <span className="hud-text-muted">–</span>
                               {timeFormatter.format(new Date(schedule.endsAt))}
                             </div>
-                            <p className={`mt-1 hud-label ${owned ? "hud-accent" : "hud-warning"}`}>
+                            <p
+                              className={`mt-1 hud-label ${owned ? "hud-accent" : "hud-warning"}`}
+                            >
                               {owned
                                 ? isAr
                                   ? "جدولي"

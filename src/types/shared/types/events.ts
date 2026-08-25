@@ -61,7 +61,6 @@ export interface SessionResumedEvent {
   totalPausedMs: number;
 }
 
-
 export interface SessionAdvancedEvent {
   event: "session:advanced";
   laneId: number;
@@ -70,7 +69,6 @@ export interface SessionAdvancedEvent {
   toStageId?: string;
   toStageOrder?: number;
 }
-
 
 export interface SessionCompletedEvent {
   event: "session:completed";
@@ -110,7 +108,6 @@ export interface ShotCalibratedEvent {
   sensorYmm?: number;
   score: number;
 }
-
 
 export interface TargetCalibratedEvent {
   event: "target:calibrated";
@@ -160,7 +157,6 @@ export interface SensorGateEvent extends SensorGateStatus {
   event: "sensor:gate";
 }
 
-
 export interface UnauthorizedEvent {
   event: "unauthorized";
   reason: "missing_token" | "invalid_token";
@@ -196,7 +192,6 @@ export type WebSocketEvent =
   | TargetBenchHitEvent
   | ServerLogEvent
   | UnauthorizedEvent;
-
 
 export interface JoinLaneMessage {
   laneId: number;

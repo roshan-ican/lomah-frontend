@@ -252,7 +252,8 @@ export function useBulkCalibrationDrag({
     clientY: number,
     currentSelectedIds: Set<number>,
   ) => {
-    if (!beginBulkShotDrag(shotId, currentSelectedIds, isPickCalibrate)) return false;
+    if (!beginBulkShotDrag(shotId, currentSelectedIds, isPickCalibrate))
+      return false;
     draggingShotIdRef.current = shotId; // set ref immediately — no stale closure
     setDraggingShotId(shotId);
     dragMovedRef.current = true;

@@ -48,7 +48,7 @@ export function RoleSetup() {
         isDarkMode ? "bg-[#111316] text-gray-100" : "bg-page-bg text-gray-900"
       }`}
     >
-      <div className="w-full max-w-md">
+      <div className="portal-shell">
         <div className="text-center mb-6 select-none">
           <div className="mx-auto w-12 h-12 rounded-2xl bg-emerald-500/10 dark:bg-emerald-success/10 flex items-center justify-center border border-emerald-500/20 mb-3.5">
             <Target className="w-6 h-6 text-emerald-500" />
@@ -102,7 +102,10 @@ export function RoleSetup() {
         {choosing && (
           <div className="flex justify-center items-center gap-3 mt-4">
             <LanguageSwitcher language={language} setLanguage={setLanguage} />
-            <ThemeSwitcher isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} />
+            <ThemeSwitcher
+              isDarkMode={isDarkMode}
+              setIsDarkMode={setIsDarkMode}
+            />
           </div>
         )}
 

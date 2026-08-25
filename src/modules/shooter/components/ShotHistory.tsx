@@ -105,10 +105,9 @@ export const ShotHistory: React.FC<ShotHistoryProps> = ({
   const hasCalibrationMarker = shots.some((sh) => sh.isCalibrationMarker);
   const hasMisses = shots.some((sh) => sh.isMiss ?? false);
   const visibleShots = shots.filter(
-    (sh) =>
-      sh.isCalibrationMarker || !hideMisses || !(sh.isMiss ?? false),
+    (sh) => sh.isCalibrationMarker || !hideMisses || !(sh.isMiss ?? false),
   );
- 
+
   const realVisibleShots = visibleShots.filter((sh) => !sh.isCalibrationMarker);
   const newestId =
     realVisibleShots.length > 0
@@ -138,8 +137,16 @@ export const ShotHistory: React.FC<ShotHistoryProps> = ({
   /** Opt-out for anyone who wants the hits-only view the log used to force. */
   const missToggle = (className: string) =>
     hasMisses ? (
-      <button type="button" onClick={() => setHideMisses((v) => !v)} className={className}>
-        {hideMisses ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+      <button
+        type="button"
+        onClick={() => setHideMisses((v) => !v)}
+        className={className}
+      >
+        {hideMisses ? (
+          <Eye className="w-3 h-3" />
+        ) : (
+          <EyeOff className="w-3 h-3" />
+        )}
         {isAr
           ? hideMisses
             ? "إظهار الإخفاقات"
@@ -176,9 +183,7 @@ export const ShotHistory: React.FC<ShotHistoryProps> = ({
         </span>
         {s && (
           <span className={cls.secondary}>
-            <span className={LABEL_WEIGHT}>
-              {isAr ? "مستشعر" : "SENSOR"}
-            </span>{" "}
+            <span className={LABEL_WEIGHT}>{isAr ? "مستشعر" : "SENSOR"}</span>{" "}
             {sensorText(s.x, s.y)}
           </span>
         )}
@@ -228,8 +233,18 @@ export const ShotHistory: React.FC<ShotHistoryProps> = ({
                 onClick={() => setHidePreCalibration((v) => !v)}
                 className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded ${isSimulator ? "text-[var(--sim-accent)] hover:bg-[var(--sim-accent-soft)]" : "text-[var(--hud-accent)] hover:bg-[var(--hud-accent-bg-subtle)]"}`}
               >
-                {hidePreCalibration ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-                {isAr ? (hidePreCalibration ? "إظهار الكل" : "إخفاء ما قبل المعايرة") : (hidePreCalibration ? "Show all" : "Hide pre-cal")}
+                {hidePreCalibration ? (
+                  <Eye className="w-3 h-3" />
+                ) : (
+                  <EyeOff className="w-3 h-3" />
+                )}
+                {isAr
+                  ? hidePreCalibration
+                    ? "إظهار الكل"
+                    : "إخفاء ما قبل المعايرة"
+                  : hidePreCalibration
+                    ? "Show all"
+                    : "Hide pre-cal"}
               </button>
             )}
             {missToggle(
@@ -244,107 +259,113 @@ export const ShotHistory: React.FC<ShotHistoryProps> = ({
               : "flex gap-2 overflow-x-auto pb-1"
           }
         >
-        {orderedShots.length === 0 ? (
-          <span
-            className={`py-2 ${isSimulator ? "sim-label" : "hud-label hud-text-subtle"}`}
-          >
-            {isAr ? "لا توجد طلقات بعد" : "No shots yet"}
-          </span>
-        ) : (
-          orderedShots.map((sh) => {
-            if (sh.isCalibrationMarker) {
-              return (
-                <div
-                  key={sh.id}
-                  className="shrink-0 flex flex-col items-center gap-0.5 px-1"
-                >
-                  <div className={`w-px h-8 ${isSimulator ? "bg-[var(--sim-accent)]" : "bg-[var(--hud-accent)]"} opacity-60`} />
-                  <span className={`text-[8px] leading-none ${isSimulator ? "text-[var(--sim-accent)]" : "text-[var(--hud-accent)]"} opacity-70 whitespace-nowrap`}>
-                    {isAr ? "المعايرة" : "CAL"}
-                  </span>
-                  <div className={`w-px h-8 ${isSimulator ? "bg-[var(--sim-accent)]" : "bg-[var(--hud-accent)]"} opacity-60`} />
-                </div>
-              );
-            }
-            const isSelected = selectedShotId === sh.id;
-            const chip = chipClass(isSelected);
+          {orderedShots.length === 0 ? (
+            <span
+              className={`py-2 ${isSimulator ? "sim-label" : "hud-label hud-text-subtle"}`}
+            >
+              {isAr ? "لا توجد طلقات بعد" : "No shots yet"}
+            </span>
+          ) : (
+            orderedShots.map((sh) => {
+              if (sh.isCalibrationMarker) {
+                return (
+                  <div
+                    key={sh.id}
+                    className="shrink-0 flex flex-col items-center gap-0.5 px-1"
+                  >
+                    <div
+                      className={`w-px h-8 ${isSimulator ? "bg-[var(--sim-accent)]" : "bg-[var(--hud-accent)]"} opacity-60`}
+                    />
+                    <span
+                      className={`text-[8px] leading-none ${isSimulator ? "text-[var(--sim-accent)]" : "text-[var(--hud-accent)]"} opacity-70 whitespace-nowrap`}
+                    >
+                      {isAr ? "المعايرة" : "CAL"}
+                    </span>
+                    <div
+                      className={`w-px h-8 ${isSimulator ? "bg-[var(--sim-accent)]" : "bg-[var(--hud-accent)]"} opacity-60`}
+                    />
+                  </div>
+                );
+              }
+              const isSelected = selectedShotId === sh.id;
+              const chip = chipClass(isSelected);
 
-            if (sh.isMiss) {
-              const { short } = missLabel(sh, isAr);
+              if (sh.isMiss) {
+                const { short } = missLabel(sh, isAr);
+                return (
+                  <div
+                    key={sh.id}
+                    className={`shrink-0 flex flex-col items-center justify-center gap-0.5 ${chipSize} font-mono rounded-lg border border-dashed ${
+                      isSimulator
+                        ? "border-[var(--sim-muted)] text-[var(--sim-muted)]"
+                        : "border-[var(--hud-text-subtle,#6B7280)] hud-text-subtle"
+                    } opacity-70`}
+                  >
+                    <span className={noScroll ? "text-[10px]" : "text-xs"}>
+                      #{sh.id}
+                    </span>
+                    <span className="text-[9px] font-bold tracking-wider">
+                      {short}
+                    </span>
+                  </div>
+                );
+              }
+
               return (
-                <div
+                <button
                   key={sh.id}
-                  className={`shrink-0 flex flex-col items-center justify-center gap-0.5 ${chipSize} font-mono rounded-lg border border-dashed ${
-                    isSimulator
-                      ? "border-[var(--sim-muted)] text-[var(--sim-muted)]"
-                      : "border-[var(--hud-text-subtle,#6B7280)] hud-text-subtle"
-                  } opacity-70`}
+                  ref={(el) => {
+                    if (el) rowRefs.current.set(sh.id, el);
+                    else rowRefs.current.delete(sh.id);
+                  }}
+                  onClick={() => toggleShot(sh.id)}
+                  // A tooltip rather than a third line of text: the chip strip is
+                  // a scannable summary and already carries number, direction and
+                  // score in the width of a thumb. Millimetres belong to whoever
+                  // stops to ask for them.
+                  title={chipTitle(sh)}
+                  className={`shrink-0 flex flex-col items-center gap-0.5 ${chipSize} font-mono transition-all cursor-pointer rounded-lg border ${chip}`}
                 >
-                  <span className={noScroll ? "text-[10px]" : "text-xs"}>
+                  <span
+                    className={`${noScroll ? "text-[10px]" : "text-xs"} ${isSelected ? (isSimulator ? "sim-accent font-bold" : "hud-accent font-bold") : ""}`}
+                  >
                     #{sh.id}
                   </span>
-                  <span className="text-[9px] font-bold tracking-wider">
-                    {short}
-                  </span>
-                </div>
-              );
-            }
-
-            return (
-              <button
-                key={sh.id}
-                ref={(el) => {
-                  if (el) rowRefs.current.set(sh.id, el);
-                  else rowRefs.current.delete(sh.id);
-                }}
-                onClick={() => toggleShot(sh.id)}
-                // A tooltip rather than a third line of text: the chip strip is
-                // a scannable summary and already carries number, direction and
-                // score in the width of a thumb. Millimetres belong to whoever
-                // stops to ask for them.
-                title={chipTitle(sh)}
-                className={`shrink-0 flex flex-col items-center gap-0.5 ${chipSize} font-mono transition-all cursor-pointer rounded-lg border ${chip}`}
-              >
-                <span
-                  className={`${noScroll ? "text-[10px]" : "text-xs"} ${isSelected ? (isSimulator ? "sim-accent font-bold" : "hud-accent font-bold") : ""}`}
-                >
-                  #{sh.id}
-                </span>
-                <ShotDirectionArrow
-                  x={sh.x}
-                  y={sh.y}
-                  size={noScroll ? 12 : 16}
-                  language={language}
-                  className={
-                    isSelected
-                      ? isSimulator
-                        ? "text-[var(--sim-accent)]"
-                        : "text-[var(--hud-accent)]"
-                      : isSimulator
-                        ? "text-[var(--sim-muted)]"
-                        : "hud-text-subtle"
-                  }
-                />
-                <span
-                  className={`text-sm font-bold tabular-nums ${
-                    sh.score >= 9
-                      ? isSimulator
-                        ? "text-[var(--sim-accent)]"
-                        : "text-[var(--hud-accent)]"
-                      : sh.score === 0
-                        ? "hud-danger"
+                  <ShotDirectionArrow
+                    x={sh.x}
+                    y={sh.y}
+                    size={noScroll ? 12 : 16}
+                    language={language}
+                    className={
+                      isSelected
+                        ? isSimulator
+                          ? "text-[var(--sim-accent)]"
+                          : "text-[var(--hud-accent)]"
                         : isSimulator
-                          ? "text-[var(--sim-warm)]"
-                          : "hud-warning"
-                  }`}
-                >
-                  {sh.score}
-                </span>
-              </button>
-            );
-          })
-        )}
-      </div>
+                          ? "text-[var(--sim-muted)]"
+                          : "hud-text-subtle"
+                    }
+                  />
+                  <span
+                    className={`text-sm font-bold tabular-nums ${
+                      sh.score >= 9
+                        ? isSimulator
+                          ? "text-[var(--sim-accent)]"
+                          : "text-[var(--hud-accent)]"
+                        : sh.score === 0
+                          ? "hud-danger"
+                          : isSimulator
+                            ? "text-[var(--sim-warm)]"
+                            : "hud-warning"
+                    }`}
+                  >
+                    {sh.score}
+                  </span>
+                </button>
+              );
+            })
+          )}
+        </div>
       </div>
     );
   }
@@ -567,8 +588,18 @@ export const ShotHistory: React.FC<ShotHistoryProps> = ({
                 onClick={() => setHidePreCalibration((v) => !v)}
                 className="flex items-center gap-1 text-xs px-2 py-0.5 rounded text-[var(--hud-accent)] hover:bg-[var(--hud-accent-bg-subtle)]"
               >
-                {hidePreCalibration ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-                {isAr ? (hidePreCalibration ? "إظهار الكل" : "إخفاء ما قبل المعايرة") : (hidePreCalibration ? "Show all" : "Hide pre-cal")}
+                {hidePreCalibration ? (
+                  <Eye className="w-3 h-3" />
+                ) : (
+                  <EyeOff className="w-3 h-3" />
+                )}
+                {isAr
+                  ? hidePreCalibration
+                    ? "إظهار الكل"
+                    : "إخفاء ما قبل المعايرة"
+                  : hidePreCalibration
+                    ? "Show all"
+                    : "Hide pre-cal"}
               </button>
             )}
             {missToggle(
@@ -598,8 +629,18 @@ export const ShotHistory: React.FC<ShotHistoryProps> = ({
               onClick={() => setHidePreCalibration((v) => !v)}
               className="flex items-center gap-1 text-xs px-2 py-0.5 rounded text-emerald-500 hover:bg-emerald-500/10"
             >
-              {hidePreCalibration ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-              {isAr ? (hidePreCalibration ? "إظهار الكل" : "إخفاء ما قبل المعايرة") : (hidePreCalibration ? "Show all" : "Hide pre-cal")}
+              {hidePreCalibration ? (
+                <Eye className="w-3 h-3" />
+              ) : (
+                <EyeOff className="w-3 h-3" />
+              )}
+              {isAr
+                ? hidePreCalibration
+                  ? "إظهار الكل"
+                  : "إخفاء ما قبل المعايرة"
+                : hidePreCalibration
+                  ? "Show all"
+                  : "Hide pre-cal"}
             </button>
           )}
           {missToggle(
@@ -699,8 +740,10 @@ export const ShotHistory: React.FC<ShotHistoryProps> = ({
                     </span>
                     <span className="flex items-baseline gap-2 mt-0.5 whitespace-nowrap">
                       {coordBlock(sh, {
-                        primary: "font-mono text-[9px] text-gray-500 dark:text-gray-400",
-                        secondary: "font-mono text-[9px] text-gray-500 dark:text-gray-400/60",
+                        primary:
+                          "font-mono text-[9px] text-gray-500 dark:text-gray-400",
+                        secondary:
+                          "font-mono text-[9px] text-gray-500 dark:text-gray-400/60",
                       })}
                     </span>
                   </div>

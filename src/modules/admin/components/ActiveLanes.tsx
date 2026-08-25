@@ -145,10 +145,7 @@ export const ActiveLanes: React.FC<ActiveLanesProps> = ({
       (schedule) => schedule.laneId === getLaneIdFromChannelId(ch.id),
     );
 
-  const shooterLabel = (
-    ch: ActiveChannel,
-    schedule?: LaneScheduleView,
-  ) => {
+  const shooterLabel = (ch: ActiveChannel, schedule?: LaneScheduleView) => {
     if (ch.name && ch.name !== "Vacant Lane" && ch.name !== "Guest Shooter") {
       return ch.name;
     }
@@ -259,7 +256,9 @@ export const ActiveLanes: React.FC<ActiveLanesProps> = ({
                   </div>
                   <div className="text-right font-mono admin-text-2xs shrink-0">
                     {hasSession && ch.sessionStatus !== "CREATED" && (
-                      <div className={isLive ? "hud-success" : "hud-text-subtle"}>
+                      <div
+                        className={isLive ? "hud-success" : "hud-text-subtle"}
+                      >
                         {status.label}
                       </div>
                     )}
@@ -339,32 +338,32 @@ export const ActiveLanes: React.FC<ActiveLanesProps> = ({
 
   return (
     <div className="space-y-4">
-<div className="flex items-center justify-between border-b border-hud pb-3">
-         <div>
-            <h2 className="admin-text-lg font-bold tracking-tight hud-text flex items-center gap-2">
-             <Radio className="w-5 h-5 hud-accent animate-pulse" />
-             {t.liveCommandGrid}
-           </h2>
-           <p className="admin-text-xs hud-text-muted font-mono mt-1">
-             {isAr
-               ? "اضغط على الحارة لاستهداف لوحة المعاينة ومتابعة رشق الرامي."
-               : "Click lane to focus preview and follow shooter metrics."}
-           </p>
-         </div>
-         <div className="flex flex-wrap items-center gap-2 justify-end">
-           {liveFiringCount > 0 && (
-             <span className="font-mono admin-text-xs hud-success px-2.5 py-1 rounded-full font-bold flex items-center gap-1.5">
-               <Activity className="w-3.5 h-3.5" />
-               {liveFiringCount} {isAr ? "حارة ترصد الآن" : "LIVE FIRING"}
-             </span>
-           )}
-           {readyCount > 0 && (
-             <span className="font-mono admin-text-xs hud-accent-bg-subtle hud-accent px-2.5 py-1 rounded-full font-bold">
-               {readyCount} {isAr ? "جاهزة" : "READY"}
-             </span>
-           )}
-         </div>
-       </div>
+      <div className="flex items-center justify-between border-b border-hud pb-3">
+        <div>
+          <h2 className="admin-text-lg font-bold tracking-tight hud-text flex items-center gap-2">
+            <Radio className="w-5 h-5 hud-accent animate-pulse" />
+            {t.liveCommandGrid}
+          </h2>
+          <p className="admin-text-xs hud-text-muted font-mono mt-1">
+            {isAr
+              ? "اضغط على الحارة لاستهداف لوحة المعاينة ومتابعة رشق الرامي."
+              : "Click lane to focus preview and follow shooter metrics."}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 justify-end">
+          {liveFiringCount > 0 && (
+            <span className="font-mono admin-text-xs hud-success px-2.5 py-1 rounded-full font-bold flex items-center gap-1.5">
+              <Activity className="w-3.5 h-3.5" />
+              {liveFiringCount} {isAr ? "حارة ترصد الآن" : "LIVE FIRING"}
+            </span>
+          )}
+          {readyCount > 0 && (
+            <span className="font-mono admin-text-xs bg-[var(--hud-accent-bg-subtle)] hud-accent px-2.5 py-1 rounded-full font-bold">
+              {readyCount} {isAr ? "جاهزة" : "READY"}
+            </span>
+          )}
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {channels.map((ch, idx) => {
@@ -391,24 +390,24 @@ export const ActiveLanes: React.FC<ActiveLanesProps> = ({
             <div
               key={ch.id}
               onClick={() => setSelectedChannelId(ch.id)}
-className={`p-4 rounded-xl border transition-all cursor-pointer relative overflow-hidden flex flex-col gap-3 ${
-                 isLiveFiring
-                   ? isSelected
-                     ? "hud-lane-card--live"
-                     : "hud-lane-card"
-                   : isSelected
-                     ? "hud-lane-card--selected"
-                     : "hud-lane-card"
-               }`}
+              className={`p-4 rounded-xl border transition-all cursor-pointer relative overflow-hidden flex flex-col gap-3 ${
+                isLiveFiring
+                  ? isSelected
+                    ? "hud-lane-card--live"
+                    : "hud-lane-card"
+                  : isSelected
+                    ? "hud-lane-card--selected"
+                    : "hud-lane-card"
+              }`}
             >
               <div className="flex justify-between items-center pl-1">
                 <div className="flex items-center gap-2">
-<span className="font-mono admin-text-xs font-bold hud-accent-bg-subtle hud-text-subtle px-2 py-0.5 rounded">
-                     {isAr ? `حارة ${idx + 1}` : `LANE 0${idx + 1}`}
-                   </span>
-                   <h3 className="font-sans admin-text-base font-bold truncate max-w-[140px] hud-text">
-                     {shooterLabel(ch, reservation)}
-                   </h3>
+                  <span className="font-mono admin-text-xs font-bold bg-[var(--hud-accent-bg-subtle)] hud-text-subtle px-2 py-0.5 rounded">
+                    {isAr ? `حارة ${idx + 1}` : `LANE 0${idx + 1}`}
+                  </span>
+                  <h3 className="font-sans admin-text-base font-bold truncate max-w-[140px] hud-text">
+                    {shooterLabel(ch, reservation)}
+                  </h3>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span
@@ -419,44 +418,44 @@ className={`p-4 rounded-xl border transition-all cursor-pointer relative overflo
                 </div>
               </div>
 
-<div className="grid grid-cols-4 gap-2 bg-hud-elevated p-2.5 rounded-lg border border-hud text-center admin-text-sm font-mono">
-                 <div>
-                   <span className="block admin-text-2xs hud-text-muted uppercase tracking-wide">
-                     {isAr ? "الرصاص" : "BULLETS"}
-                   </span>
-                   <span className="font-bold mt-0.5 block">{bulletsLabel}</span>
-                 </div>
-                 <div>
-                   <span className="block admin-text-2xs hud-text-muted uppercase tracking-wide">
-                     {isAr ? "الوقت" : "TIME"}
-                   </span>
-                   <SessionTimer
-                     startTime={ch.startTime}
-                     endTime={ch.endTime}
-                     durationSeconds={ch.durationSeconds}
-                     totalPausedMs={ch.totalPausedMs}
-                     sessionStatus={ch.sessionStatus}
-                     language={language}
-                     compact
-                   />
-                 </div>
-                 <div>
-                   <span className="block admin-text-2xs hud-text-muted uppercase tracking-wide">
-                     {isAr ? "النتيجة" : "SCORE"}
-                   </span>
-                   <span className="font-bold hud-accent mt-0.5 block">
-                     {hasSession ? totalLaneScore : "—"}
-                   </span>
-                 </div>
-                 <div>
-                   <span className="block admin-text-2xs hud-text-muted uppercase tracking-wide">
-                     {isAr ? "آخر طلقة" : "LAST"}
-                   </span>
-                   <span className="font-bold hud-warning mt-0.5 block">
-                     {lastHit ? lastHit.score : "—"}
-                   </span>
-                 </div>
-               </div>
+              <div className="grid grid-cols-4 gap-2 bg-hud-elevated p-2.5 rounded-lg border border-hud text-center admin-text-sm font-mono">
+                <div>
+                  <span className="block admin-text-2xs hud-text-muted uppercase tracking-wide">
+                    {isAr ? "الرصاص" : "BULLETS"}
+                  </span>
+                  <span className="font-bold mt-0.5 block">{bulletsLabel}</span>
+                </div>
+                <div>
+                  <span className="block admin-text-2xs hud-text-muted uppercase tracking-wide">
+                    {isAr ? "الوقت" : "TIME"}
+                  </span>
+                  <SessionTimer
+                    startTime={ch.startTime}
+                    endTime={ch.endTime}
+                    durationSeconds={ch.durationSeconds}
+                    totalPausedMs={ch.totalPausedMs}
+                    sessionStatus={ch.sessionStatus}
+                    language={language}
+                    compact
+                  />
+                </div>
+                <div>
+                  <span className="block admin-text-2xs hud-text-muted uppercase tracking-wide">
+                    {isAr ? "النتيجة" : "SCORE"}
+                  </span>
+                  <span className="font-bold hud-accent mt-0.5 block">
+                    {hasSession ? totalLaneScore : "—"}
+                  </span>
+                </div>
+                <div>
+                  <span className="block admin-text-2xs hud-text-muted uppercase tracking-wide">
+                    {isAr ? "آخر طلقة" : "LAST"}
+                  </span>
+                  <span className="font-bold hud-warning mt-0.5 block">
+                    {lastHit ? lastHit.score : "—"}
+                  </span>
+                </div>
+              </div>
 
               {hasSession && onViewLaneDetail && (
                 <button
@@ -465,7 +464,7 @@ className={`p-4 rounded-xl border transition-all cursor-pointer relative overflo
                     e.stopPropagation();
                     onViewLaneDetail(ch.id);
                   }}
-                  className="p-1 px-2.5 font-mono font-semibold admin-text-2xs rounded flex items-center gap-1 cursor-pointer border hud-accent-bg-subtle hud-text-subtle"
+                  className="p-1 px-2.5 font-mono font-semibold admin-text-2xs rounded flex items-center gap-1 cursor-pointer border bg-[var(--hud-accent-bg-subtle)] hud-text-subtle"
                 >
                   {isAr ? "سجل الطلقات" : "SHOT LOG"}
                 </button>

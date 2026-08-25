@@ -100,7 +100,8 @@ export function handleRealtimeEvent(
       minute: "2-digit",
       second: "2-digit",
     });
-    const mark = data.level === "error" ? "✖" : data.level === "warn" ? "⚠" : "";
+    const mark =
+      data.level === "error" ? "✖" : data.level === "warn" ? "⚠" : "";
     const where = data.context ? `${data.context}: ` : "";
     // addAdminLog stamps its own time, so this passes the SERVER's time in the
     // body — the two can differ, and the server's is the one that matters when
@@ -114,7 +115,9 @@ export function handleRealtimeEvent(
     // an app event lets the shell route back to login instead of leaving the
     // user staring at a board that silently never updates.
     window.dispatchEvent(
-      new CustomEvent("lomah:unauthorized", { detail: { reason: data.reason } }),
+      new CustomEvent("lomah:unauthorized", {
+        detail: { reason: data.reason },
+      }),
     );
     return;
   }
@@ -201,7 +204,9 @@ export function handleRealtimeEvent(
       );
       // This event is only emitted after the target echoed PLAY back, so the
       // handshake mark is earned, not decorative.
-      addAdminLog(`🤝 START: Target acknowledged — active shooting on Lane ${laneId}.`);
+      addAdminLog(
+        `🤝 START: Target acknowledged — active shooting on Lane ${laneId}.`,
+      );
       // Stage bulletLimit/durationSeconds come from the session record.
       void syncLaneFromApi(laneId);
       break;
@@ -234,7 +239,9 @@ export function handleRealtimeEvent(
           };
         }),
       );
-      addAdminLog(`🤝 RESUME: Target re-acknowledged — shooting resumed on Lane ${laneId}.`);
+      addAdminLog(
+        `🤝 RESUME: Target re-acknowledged — shooting resumed on Lane ${laneId}.`,
+      );
       break;
 
     case "session:advanced": {
@@ -277,8 +284,7 @@ export function handleRealtimeEvent(
           // replacement (see useSessionActions.handleCreateSession), so the
           // cancel event can arrive AFTER the new session is already in state
           // — without this check it would blank a lane that has moved on.
-          ch.id === chId &&
-          (!ch.sessionId || ch.sessionId === data.sessionId)
+          ch.id === chId && (!ch.sessionId || ch.sessionId === data.sessionId)
             ? cancelled
               ? toVacantLane(ch)
               : {

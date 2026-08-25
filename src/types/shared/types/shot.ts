@@ -1,4 +1,3 @@
-
 export interface Shot {
   id: string;
   sessionStageId: string;

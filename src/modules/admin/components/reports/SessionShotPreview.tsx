@@ -55,7 +55,9 @@ export const SessionShotPreview: React.FC<SessionShotPreviewProps> = ({
 
   if (error) {
     return (
-      <p className="admin-text-xs hud-danger font-mono py-4 text-center">{error}</p>
+      <p className="admin-text-xs hud-danger font-mono py-4 text-center">
+        {error}
+      </p>
     );
   }
 
@@ -98,7 +100,7 @@ export const SessionShotPreview: React.FC<SessionShotPreviewProps> = ({
         </span>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-3 lg:gap-4 h-[550px]">
+      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-3 lg:gap-4 report-stage-h">
         <div className="rounded-lg border border-hud overflow-hidden flex flex-col h-full bg-hud-elevated">
           <div className="px-3 py-2.5 border-b border-hud hud-label hud-accent flex items-center gap-2 shrink-0">
             <Crosshair className="w-3.5 h-3.5" />
@@ -198,7 +200,9 @@ export const SessionShotPreview: React.FC<SessionShotPreviewProps> = ({
                       // Second tap clears it, same as the live shot log — this
                       // table drives the same highlight on the plot beside it.
                       onClick={() => {
-                        setSelectedShotId(selectedShotId === sh.id ? null : sh.id);
+                        setSelectedShotId(
+                          selectedShotId === sh.id ? null : sh.id,
+                        );
                       }}
                       className={`border-t border-hud cursor-pointer hover:bg-[var(--hud-accent-bg-subtle)]
     ${selectedShotId === sh.id ? "bg-[var(--hud-accent-bg-subtle)]" : ""}

@@ -193,37 +193,25 @@ export const ShooterDashboard: React.FC<ShooterDashboardProps> = ({
             <div className="mx-2 mb-2 rounded-xl border border-hud bg-hud-rail px-3 py-4 sm:px-5">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-4 text-center">
                 <div>
-                  <div className="text-sm sm:text-base opacity-80 uppercase tracking-wide">
-                    Lane
-                  </div>
-                  <div className="font-bold text-2xl sm:text-3xl leading-tight">
-                    {laneNumber ?? "-"}
-                  </div>
+                  <div className="range-stat-label opacity-80">Lane</div>
+                  <div className="range-stat-value">{laneNumber ?? "-"}</div>
                 </div>
 
                 <div>
-                  <div className="text-sm sm:text-base opacity-80 uppercase tracking-wide">
-                    Shooter
-                  </div>
-                  <div className="font-bold text-2xl sm:text-3xl leading-tight truncate">
+                  <div className="range-stat-label opacity-80">Shooter</div>
+                  <div className="range-stat-value truncate">
                     {loggedInShooter ?? "Unassigned"}
                   </div>
                 </div>
 
                 <div>
-                  <div className="text-sm sm:text-base opacity-80 uppercase tracking-wide">
-                    Shots
-                  </div>
-                  <div className="font-bold text-2xl sm:text-3xl leading-tight">
-                    {roundsText}
-                  </div>
+                  <div className="range-stat-label opacity-80">Shots</div>
+                  <div className="range-stat-value">{roundsText}</div>
                 </div>
 
                 <div>
-                  <div className="text-sm sm:text-base opacity-80 uppercase tracking-wide">
-                    Score
-                  </div>
-                  <div className="font-bold text-2xl sm:text-3xl leading-tight text-emerald-500">
+                  <div className="range-stat-label opacity-80">Score</div>
+                  <div className="range-stat-value text-emerald-500">
                     {totalScore}
                   </div>
                 </div>

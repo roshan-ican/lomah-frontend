@@ -126,7 +126,9 @@ export function AdminHeader({
           <span
             className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-hud hud-text-secondary admin-text-2xs font-mono max-w-[12rem]"
             title={
-              isAr ? `تم تسجيل الدخول باسم ${username}` : `Signed in as ${username}`
+              isAr
+                ? `تم تسجيل الدخول باسم ${username}`
+                : `Signed in as ${username}`
             }
           >
             <UserCircle2 className="w-3.5 h-3.5 shrink-0 hud-accent" />

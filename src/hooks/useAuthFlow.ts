@@ -18,7 +18,12 @@
 
 import { useEffect, useState } from "react";
 import type { Dispatch, SetStateAction } from "react";
-import type { AuthStage, ConnectedShooter, LoginResponse, Shooter } from "../types";
+import type {
+  AuthStage,
+  ConnectedShooter,
+  LoginResponse,
+  Shooter,
+} from "../types";
 import { AUTH_STAGE_PATH } from "../types";
 import { api, ApiError, clearAuthSession, setAuthSession } from "../utils/api";
 import { getOrCreateDeviceId } from "../utils/deviceIdentity";

@@ -41,13 +41,13 @@ export function AuthLayout({
   return (
     <div className="flex-grow flex flex-col items-center justify-center p-4 relative overflow-hidden">
       {/* Radar backdrop */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[550px] border border-emerald-500/[0.04] dark:border-emerald-success/[0.07] rounded-full pointer-events-none select-none z-1 flex items-center justify-center">
-        <div className="w-[380px] h-[380px] border border-emerald-500/[0.03] dark:border-emerald-success/[0.05] rounded-full flex items-center justify-center">
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 portal-ring-outer border border-emerald-500/[0.04] dark:border-emerald-success/[0.07] rounded-full pointer-events-none select-none z-1 flex items-center justify-center">
+        <div className="portal-ring-inner border border-emerald-500/[0.03] dark:border-emerald-success/[0.05] rounded-full flex items-center justify-center">
           <div className="w-1.5 h-1.5 bg-emerald-500/20 rounded-full animate-ping"></div>
         </div>
       </div>
 
-      <div className="w-full max-w-md z-10">
+      <div className="portal-shell z-10">
         {/* Logo */}
         <div className="text-center mb-6 select-none">
           <div className="mx-auto w-12 h-12 rounded-2xl bg-emerald-500/10 dark:bg-emerald-success/10 flex items-center justify-center border border-emerald-500/20 mb-3.5 shadow-sm">

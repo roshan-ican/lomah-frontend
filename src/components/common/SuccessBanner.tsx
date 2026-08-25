@@ -9,9 +9,12 @@ export const SuccessBanner = ({ message }: Props) => (
   <AnimatePresence>
     {message && (
       <motion.div
+        // Symmetric path: it leaves the way it arrived. Matches the banner in
+        // App.tsx, which is the same component in a different place.
         initial={{ opacity: 0, y: -45, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: -25, scale: 0.95 }}
+        exit={{ opacity: 0, y: -45, scale: 0.95 }}
+        transition={{ type: "spring", bounce: 0.18, duration: 0.42 }}
         className="fixed top-5 left-1/2 -translate-x-1/2 z-[9999] px-5 py-3 rounded-xl border shadow-xl bg-[#1C1F26] border-emerald-500/30 text-emerald-400 font-mono admin-text-sm font-bold flex items-center gap-2.5"
       >
         <Check className="w-4 h-4 text-emerald-400 animate-bounce" />

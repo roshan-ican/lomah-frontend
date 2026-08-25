@@ -127,11 +127,11 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
             ${navOpen ? "flex" : "hidden md:flex"}
             ${
               navOpen
-                ? "md:w-64 md:opacity-100 md:overflow-visible"
+                ? "md:admin-sidebar-w md:opacity-100 md:overflow-visible"
                 : "md:w-0 md:p-0 md:border-0 md:opacity-0 md:overflow-hidden"
             }`}
         >
-          <div className="min-w-[14rem] flex flex-col flex-1">
+          <div className="admin-sidebar-min flex flex-col flex-1">
             <div className="px-4 pt-4 pb-2">
               <p className="admin-text-2xs font-mono uppercase tracking-[0.18em] text-amber-500">
                 {isAr ? "المشرف الأعلى — العتاد" : "Super Admin — Hardware"}

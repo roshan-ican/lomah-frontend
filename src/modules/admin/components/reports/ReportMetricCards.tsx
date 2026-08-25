@@ -96,9 +96,7 @@ export const ReportMetricCards: React.FC<ReportMetricCardsProps> = ({
               <span className="hud-label block hud-text-subtle mb-0.5">
                 {label}
               </span>
-              <span className="admin-text-lg">
-                {cardLoading ? "…" : value}
-              </span>
+              <span className="admin-text-lg">{cardLoading ? "…" : value}</span>
             </div>
           </div>
         ),

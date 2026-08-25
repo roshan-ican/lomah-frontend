@@ -134,7 +134,10 @@ export function CalibrationTargetFace({
   };
 
   const topLeft = mmToSvgPoint(-TARGET_HALF_WIDTH_MM, TARGET_HALF_HEIGHT_MM);
-  const bottomRight = mmToSvgPoint(TARGET_HALF_WIDTH_MM, -TARGET_HALF_HEIGHT_MM);
+  const bottomRight = mmToSvgPoint(
+    TARGET_HALF_WIDTH_MM,
+    -TARGET_HALF_HEIGHT_MM,
+  );
   const paper = {
     x: topLeft.x,
     y: topLeft.y,
@@ -247,7 +250,10 @@ export function CalibrationTargetFace({
           points={[...reads]
             .sort((a, b) => a.shot - b.shot)
             .map((r) => {
-              const p = mmToSvgPoint(r.sensorX + offsetXmm, r.sensorY + offsetYmm);
+              const p = mmToSvgPoint(
+                r.sensorX + offsetXmm,
+                r.sensorY + offsetYmm,
+              );
               return `${p.x},${p.y}`;
             })
             .join(" ")}

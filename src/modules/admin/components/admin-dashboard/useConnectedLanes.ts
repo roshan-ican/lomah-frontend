@@ -36,7 +36,8 @@ export function useConnectedLanes() {
       setLanes(list);
       return list;
     } catch (error: unknown) {
-      if (error instanceof Error) console.warn("[Lanes] refresh failed:", error);
+      if (error instanceof Error)
+        console.warn("[Lanes] refresh failed:", error);
       return [];
     }
   };
@@ -45,7 +46,8 @@ export function useConnectedLanes() {
     void refreshLanes();
     const handleLaneEvent = () => void refreshLanes();
     window.addEventListener("lomah:lane-event", handleLaneEvent);
-    return () => window.removeEventListener("lomah:lane-event", handleLaneEvent);
+    return () =>
+      window.removeEventListener("lomah:lane-event", handleLaneEvent);
   }, []);
 
   return { lanes, refreshLanes };

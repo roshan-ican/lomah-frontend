@@ -1,4 +1,3 @@
-
 import type { TargetProfileType } from "../coordinates";
 
 export type { TargetProfileType };
@@ -109,7 +108,6 @@ export interface TargetDevDataResult extends TargetFrameExchange {
    *  null if the board never answered. */
   sensors: number | null;
 }
-
 
 export interface TargetReadShotResult extends TargetFrameExchange {
   shot: number;

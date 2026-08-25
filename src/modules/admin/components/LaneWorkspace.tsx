@@ -172,27 +172,27 @@ const LiveLaneTargetCard: React.FC<LiveLaneTargetCardProps> = ({
                 : "Unassigned"}
           </div>
         </div>
-         <div className="text-right font-mono admin-text-2xs shrink-0">
-           <div className={isLive ? "hud-success" : "hud-text-subtle"}>
-             {channel.sessionStatus}
-           </div>
-           <div className="hud-accent tabular-nums">
-             {roundsLabel} · {hasSession ? totalScore : "-"}
-           </div>
-           {hasSession && channel.bulletLimit && channel.bulletLimit > 0 && (
-             <div className="w-20 h-1 rounded-full bg-hud/40 mt-0.5">
-               <div
-                 className="h-full rounded-full hud-accent transition-all"
-                 style={{
-                   width: `${Math.min(
-                     100,
-                     (visibleShots.length / channel.bulletLimit) * 100,
-                   )}%`,
-                 }}
-               />
-             </div>
-           )}
-         </div>
+        <div className="text-right font-mono admin-text-2xs shrink-0">
+          <div className={isLive ? "hud-success" : "hud-text-subtle"}>
+            {channel.sessionStatus}
+          </div>
+          <div className="hud-accent tabular-nums">
+            {roundsLabel} · {hasSession ? totalScore : "-"}
+          </div>
+          {hasSession && channel.bulletLimit && channel.bulletLimit > 0 && (
+            <div className="w-20 h-1 rounded-full bg-hud/40 mt-0.5">
+              <div
+                className="h-full rounded-full hud-accent transition-all"
+                style={{
+                  width: `${Math.min(
+                    100,
+                    (visibleShots.length / channel.bulletLimit) * 100,
+                  )}%`,
+                }}
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       {hasSession ? (
@@ -394,23 +394,21 @@ export const LaneWorkspace: React.FC<LaneWorkspaceProps> = ({
   };
 
   /** Clears the drag-derived reference/recal badge fields — used after any
-   *  write that isn't derived from a specific shot (a manual X/Y entry, or a
-   *  reset to zero), so the badge never attributes a number to a shot that
-   *  didn't produce it. */
+   * write that isn't derived from a specific shot (a manual X/Y entry, or a
+   * reset to zero), so the badge never attributes a number to a shot that
+   * didn't produce it. */
   const clearCalibrationRefFields = () => {
-    useSessionStore
-      .getState()
-      .setChannels((prev) =>
-        prev.map((c) =>
-          c.id === channel.id
-            ? {
-                ...c,
-                referenceShotId: undefined,
-                calibratedShotCount: undefined,
-              }
-            : c,
-        ),
-      );
+    useSessionStore.getState().setChannels((prev) =>
+      prev.map((c) =>
+        c.id === channel.id
+          ? {
+              ...c,
+              referenceShotId: undefined,
+              calibratedShotCount: undefined,
+            }
+          : c,
+      ),
+    );
   };
 
   const saveOffset = async () => {
@@ -667,8 +665,8 @@ export const LaneWorkspace: React.FC<LaneWorkspaceProps> = ({
                 </span>
 
                 {/* Pops the floating shot readout. Lives here rather than on
-                    the board's own toolbar so that it stays reachable when the
-                    panel has been dragged over those controls. */}
+ the board's own toolbar so that it stays reachable when the
+ panel has been dragged over those controls. */}
                 <button
                   type="button"
                   onClick={() => setShowShotPanel((v) => !v)}
@@ -676,17 +674,19 @@ export const LaneWorkspace: React.FC<LaneWorkspaceProps> = ({
                   aria-label={isAr ? "بيانات الطلقة" : "Shot readout"}
                   title={isAr ? "بيانات الطلقة" : "Shot readout"}
                   className={`touch-target ms-auto inline-flex items-center justify-center rounded-md cursor-pointer hover:bg-[var(--hud-accent-bg-subtle)] ${
-                    showShotPanel ? "hud-accent" : "hud-text-muted hover:hud-accent"
+                    showShotPanel
+                      ? "hud-accent"
+                      : "hud-text-muted hover:hud-accent"
                   }`}
                 >
                   <Crosshair className="w-4 h-4" />
                 </button>
               </div>
 
-                {calibrationLaneId != null &&
+              {calibrationLaneId != null &&
                 `CH-${calibrationLaneId}` === channel.id &&
                 calibrateMode !== "off" && (
-                  <div className="shrink-0 mx-2 mt-2 flex items-center justify-between gap-3 px-4 py-3 border border-hud rounded-lg hud-accent-bg-subtle">
+                  <div className="shrink-0 mx-2 mt-2 flex items-center justify-between gap-3 px-4 py-3 border border-hud rounded-lg bg-[var(--hud-accent-bg-subtle)]">
                     <p className="admin-text-sm font-mono hud-accent">
                       {calibrateMode === "pick"
                         ? isAr
@@ -699,60 +699,60 @@ export const LaneWorkspace: React.FC<LaneWorkspaceProps> = ({
                     <button
                       type="button"
                       onClick={onCalibrationDismiss}
-                      className="shrink-0 px-3 py-1.5 rounded-lg border border-hud bg-hud-elevated hover:bg-hud cursor-pointer admin-text-sm"
+                      className="shrink-0 px-3 py-1.5 rounded-lg border border-hud bg-hud-elevated hover:bg-[var(--hud-accent-bg-subtle)] cursor-pointer admin-text-sm"
                     >
                       {isAr ? "تخطي" : "Done"}
                     </button>
                   </div>
                 )}
 
-               {/* `relative` is what the floating shot panel positions
-                   against: it must be the target stage, not the page, so the
-                   panel stays put relative to the board rather than drifting
-                   over the rails when the window resizes. */}
-               <div className="relative flex-1 min-h-0 target-stage overflow-visible px-0.5 sm:px-2 py-0.5">
-                    {/* Follows the SELECTED shot when the admin clicks one in
-                        the shot log or on the board, so the 'D' sensor query
-                        inside it targets that bullet. Falls back to the newest
-                        shot when nothing is selected.
+              {/* `relative` is what the floating shot panel positions
+ against: it must be the target stage, not the page, so the
+ panel stays put relative to the board rather than drifting
+ over the rails when the window resizes. */}
+              <div className="relative flex-1 min-h-0 target-stage overflow-visible px-0.5 sm:px-2 py-0.5">
+                {/* Follows the SELECTED shot when the admin clicks one in
+ the shot log or on the board, so the 'D' sensor query
+ inside it targets that bullet. Falls back to the newest
+ shot when nothing is selected.
 
                         Floated over the board rather than stacked above it:
-                        see DraggablePanel for why it no longer takes layout
-                        space. */}
-                    {showShotPanel &&
-                      (() => {
-                        const shown =
-                          channel.shots.find((s) => s.id === selectedShotId) ??
-                          channel.shots[channel.shots.length - 1];
-                        if (!shown) return null;
-                        const isSelected = shown.id === selectedShotId;
-                        return (
-                          <DraggablePanel
-                            storageKey="lomah.admin.shotPanel.position"
-                            title={shotPanelTitle(isSelected, isAr)}
-                            onClose={() => setShowShotPanel(false)}
-                            isAr={isAr}
-                          >
-                            <LatestShotPanel
-                              latestShot={{
-                                id: shown.id,
-                                x: shown.x,
-                                y: shown.y,
-                                score: shown.score,
-                                isMiss: shown.isMiss ?? false,
-                                isLost: shown.isLost ?? false,
-                                timestamp: shown.timestamp,
-                                targetId: shown.targetId,
-                              }}
-                              isSelected={isSelected}
-                              isAr={isAr}
-                              embedded
-                            />
-                          </DraggablePanel>
-                        );
-                      })()}
-                 <div className="target-fit-box h-full">
-                   <TargetView
+ see DraggablePanel for why it no longer takes layout
+ space. */}
+                {showShotPanel &&
+                  (() => {
+                    const shown =
+                      channel.shots.find((s) => s.id === selectedShotId) ??
+                      channel.shots[channel.shots.length - 1];
+                    if (!shown) return null;
+                    const isSelected = shown.id === selectedShotId;
+                    return (
+                      <DraggablePanel
+                        storageKey="lomah.admin.shotPanel.position"
+                        title={shotPanelTitle(isSelected, isAr)}
+                        onClose={() => setShowShotPanel(false)}
+                        isAr={isAr}
+                      >
+                        <LatestShotPanel
+                          latestShot={{
+                            id: shown.id,
+                            x: shown.x,
+                            y: shown.y,
+                            score: shown.score,
+                            isMiss: shown.isMiss ?? false,
+                            isLost: shown.isLost ?? false,
+                            timestamp: shown.timestamp,
+                            targetId: shown.targetId,
+                          }}
+                          isSelected={isSelected}
+                          isAr={isAr}
+                          embedded
+                        />
+                      </DraggablePanel>
+                    );
+                  })()}
+                <div className="target-fit-box h-full">
+                  <TargetView
                     key={`${channel.id}-${channel.sessionId ?? "none"}-${laneProfile}`}
                     activeChannel={channel}
                     profileType={laneProfile}

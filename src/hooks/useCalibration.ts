@@ -28,7 +28,13 @@ import {
   mergeDisplayShots,
 } from "../utils/shotCoordinates";
 import { useSessionStore } from "../store/sessionStore";
-import type { AuthStage, CalibrateMode, DisplayShot, Shot, Target } from "../types";
+import type {
+  AuthStage,
+  CalibrateMode,
+  DisplayShot,
+  Shot,
+  Target,
+} from "../types";
 
 interface CalibrationDeps {
   authStage: AuthStage;
@@ -179,7 +185,9 @@ export function useCalibration({
     const referenceShot = ch?.shots.find((s) => s.id === referenceShotId);
     if (!referenceShot) {
       triggerSuccessBanner(
-        isAr ? "تعذّر العثور على الطلقة المرجعية." : "Reference shot not found.",
+        isAr
+          ? "تعذّر العثور على الطلقة المرجعية."
+          : "Reference shot not found.",
       );
       return;
     }
@@ -200,7 +208,8 @@ export function useCalibration({
         },
       );
 
-      const shotCount = ch?.shots.filter((s) => !s.isCalibrationMarker).length ?? 0;
+      const shotCount =
+        ch?.shots.filter((s) => !s.isCalibrationMarker).length ?? 0;
       setChannels((prev) =>
         prev.map((c) =>
           c.id === selectedChannelId
@@ -301,9 +310,7 @@ export function useCalibration({
     } catch (e) {
       const msg = e instanceof Error ? e.message : "";
       triggerSuccessBanner(
-        isAr
-          ? `تعذّر تحديث الإزاحة. ${msg}`
-          : `Offset update failed. ${msg}`,
+        isAr ? `تعذّر تحديث الإزاحة. ${msg}` : `Offset update failed. ${msg}`,
       );
       return false;
     }

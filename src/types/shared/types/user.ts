@@ -1,4 +1,3 @@
-
 export type UserRole = "SUPER_ADMIN" | "ADMIN" | "SHOOTER";
 
 export interface User {

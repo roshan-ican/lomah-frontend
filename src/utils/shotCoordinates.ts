@@ -118,7 +118,6 @@ export function mergeDisplayShots(
   return sortShotsNewestFirst(Array.from(byId.values()));
 }
 
-
 export function buildCalibrationMarker(
   shotCount: number,
   calibratedAt?: string,
@@ -164,7 +163,6 @@ export function mapRawShotToDisplay(
 
   serverScore?: number,
 ): DisplayShot {
-
   const xVal = Number.isFinite(rawShot.x) ? rawShot.x : 0;
   const yVal = Number.isFinite(rawShot.y) ? rawShot.y : 0;
   // A lost bullet is a miss by definition — the server writes it that way, but

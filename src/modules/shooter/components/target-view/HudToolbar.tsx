@@ -122,19 +122,19 @@ export function HudToolbar({
           <button
             type="button"
             onClick={() => changeZoom(-0.25)}
-            className="hud-label p-1 hud-text-subtle hover:hud-accent cursor-pointer"
+            className="hud-label touch-target inline-flex items-center justify-center rounded-lg hud-text-subtle hover:hud-accent cursor-pointer"
             aria-label={isAr ? "تصغير الهدف" : "Zoom out"}
             title={isAr ? "تصغير الهدف" : "Zoom out"}
           >
             <Minus className="w-3.5 h-3.5" />
           </button>
-          <span className="hud-value text-xs hud-accent min-w-[2.75rem] text-center">
+          <span className="hud-value admin-text-base hud-accent min-w-[3.25rem] text-center tabular-nums">
             {zoomLabel}
           </span>
           <button
             type="button"
             onClick={() => changeZoom(0.25)}
-            className="hud-label p-1 hud-text-subtle hover:hud-accent cursor-pointer"
+            className="hud-label touch-target inline-flex items-center justify-center rounded-lg hud-text-subtle hover:hud-accent cursor-pointer"
             aria-label={isAr ? "تكبير الهدف" : "Zoom in"}
             title={isAr ? "تكبير الهدف" : "Zoom in"}
           >
@@ -143,7 +143,7 @@ export function HudToolbar({
           <button
             type="button"
             onClick={resetZoom}
-            className="hud-label p-1 hud-text-subtle hover:hud-accent cursor-pointer"
+            className="hud-label touch-target inline-flex items-center justify-center rounded-lg hud-text-subtle hover:hud-accent cursor-pointer"
             aria-label={isAr ? "إعادة ضبط التكبير" : "Reset zoom"}
             title={isAr ? "إعادة ضبط التكبير" : "Reset zoom"}
           >

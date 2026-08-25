@@ -109,7 +109,9 @@ export function LaneHardwarePanel({
   const [testing, setTesting] = useState<Set<string>>(new Set());
   const [ipDrafts, setIpDrafts] = useState<Map<string, string>>(new Map());
   const [selectedTargetId, setSelectedTargetId] = useState<string | null>(null);
-  const [packetLogs, setPacketLogs] = useState<Map<string, SensorPacket[]>>(new Map());
+  const [packetLogs, setPacketLogs] = useState<Map<string, SensorPacket[]>>(
+    new Map(),
+  );
   const [armedTargets, setArmedTargets] = useState<Set<string>>(new Set());
 
   /**
@@ -139,7 +141,9 @@ export function LaneHardwarePanel({
   /** In-flight edits to a target's command host/port override. The row is
    *  only reachable on a target that already carries one — see the override
    *  row below for why there is no longer a control that opens it. */
-  const [cmdDrafts, setCmdDrafts] = useState<Map<string, { host: string; port: string }>>(new Map());
+  const [cmdDrafts, setCmdDrafts] = useState<
+    Map<string, { host: string; port: string }>
+  >(new Map());
 
   /** Rows with the sensitivity (wiper) panel expanded. Defaults hidden — every
    *  open/refresh is a live UDP round trip, not something to show by default
@@ -183,7 +187,10 @@ export function LaneHardwarePanel({
         host: target.commandHost ?? "",
         port: target.commandPort ? String(target.commandPort) : "",
       };
-      next.set(target.id, { ...(next.get(target.id) ?? saved), [field]: value });
+      next.set(target.id, {
+        ...(next.get(target.id) ?? saved),
+        [field]: value,
+      });
       return next;
     });
 
@@ -219,9 +226,7 @@ export function LaneHardwarePanel({
     setLoading(true);
     try {
       const rows = await api.get<Lane[]>("/lanes");
-      setLanes(
-        (Array.isArray(rows) ? rows : []).sort((a, b) => a.id - b.id),
-      );
+      setLanes((Array.isArray(rows) ? rows : []).sort((a, b) => a.id - b.id));
     } catch (err) {
       triggerSuccessBanner(
         isAr
@@ -327,7 +332,9 @@ export function LaneHardwarePanel({
       });
       mergeTarget(laneId, saved);
       triggerSuccessBanner(
-        isAr ? `تم تحديث العنوان إلى ${ipAddress}` : `Address moved to ${ipAddress}`,
+        isAr
+          ? `تم تحديث العنوان إلى ${ipAddress}`
+          : `Address moved to ${ipAddress}`,
       );
     } catch (err) {
       fail(err, "Re-address failed");
@@ -362,7 +369,9 @@ export function LaneHardwarePanel({
 
     const octets = next.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
     if (!octets || octets.slice(1).some((o) => Number(o) > 255)) {
-      triggerSuccessBanner(isAr ? `عنوان غير صالح: ${next}` : `Invalid address: ${next}`);
+      triggerSuccessBanner(
+        isAr ? `عنوان غير صالح: ${next}` : `Invalid address: ${next}`,
+      );
       return;
     }
     void readdressTarget(target.laneId, target, next);
@@ -380,9 +389,13 @@ export function LaneHardwarePanel({
     const rawHost = draft.host.trim();
     const rawPort = draft.port.trim();
     if (rawHost) {
-      const octets = rawHost.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+      const octets = rawHost.match(
+        /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/,
+      );
       if (!octets || octets.slice(1).some((o) => Number(o) > 255)) {
-        triggerSuccessBanner(isAr ? `عنوان غير صالح: ${rawHost}` : `Invalid host: ${rawHost}`);
+        triggerSuccessBanner(
+          isAr ? `عنوان غير صالح: ${rawHost}` : `Invalid host: ${rawHost}`,
+        );
         setCmdDraft(target, field, "");
         return;
       }
@@ -390,7 +403,9 @@ export function LaneHardwarePanel({
     if (rawPort) {
       const port = Number(rawPort);
       if (!Number.isInteger(port) || port < 1 || port > 65535) {
-        triggerSuccessBanner(isAr ? `منفذ غير صالح: ${rawPort}` : `Invalid port: ${rawPort}`);
+        triggerSuccessBanner(
+          isAr ? `منفذ غير صالح: ${rawPort}` : `Invalid port: ${rawPort}`,
+        );
         setCmdDraft(target, field, "");
         return;
       }
@@ -403,7 +418,11 @@ export function LaneHardwarePanel({
 
     const commandHost = rawHost || null;
     const commandPort = rawPort ? Number(rawPort) : null;
-    if (commandHost === target.commandHost && commandPort === target.commandPort) return;
+    if (
+      commandHost === target.commandHost &&
+      commandPort === target.commandPort
+    )
+      return;
 
     setBusyId(target.id);
     api
@@ -498,7 +517,9 @@ export function LaneHardwarePanel({
     // The very first board on a clean range is the real bench target — see
     // DEFAULT_TARGET_IP. Everything added after it follows the derived scheme.
     const firstTarget = lanes.every((l) => (l.targets ?? []).length === 0);
-    const ipAddress = firstTarget ? DEFAULT_TARGET_IP : addressFor(lane.id, slot);
+    const ipAddress = firstTarget
+      ? DEFAULT_TARGET_IP
+      : addressFor(lane.id, slot);
     setBusyId(`add-${lane.id}`);
     try {
       const saved = await api.post<Target>("/targets", {
@@ -530,7 +551,10 @@ export function LaneHardwarePanel({
         prev.map((l) =>
           l.id !== lane.id
             ? l
-            : { ...l, targets: (l.targets ?? []).filter((t) => t.id !== target.id) },
+            : {
+                ...l,
+                targets: (l.targets ?? []).filter((t) => t.id !== target.id),
+              },
         ),
       );
       triggerSuccessBanner(isAr ? "تم حذف الهدف" : "Target removed");
@@ -724,7 +748,9 @@ export function LaneHardwarePanel({
         result.ok ? "success" : "error",
         result.message,
       );
-      triggerSuccessBanner(isAr ? `${target.label} تم الإيقاف` : result.message);
+      triggerSuccessBanner(
+        isAr ? `${target.label} تم الإيقاف` : result.message,
+      );
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Stop failed";
       logPacket(target.id, "S", "rx", "", "", "error", msg);
@@ -824,7 +850,9 @@ export function LaneHardwarePanel({
   const getSelectedTarget = (): Target | null => {
     if (!selectedTargetId) return null;
     for (const lane of lanes) {
-      const target = (lane.targets ?? []).find((t) => t.id === selectedTargetId);
+      const target = (lane.targets ?? []).find(
+        (t) => t.id === selectedTargetId,
+      );
       if (target) return target;
     }
     return null;
@@ -850,186 +878,196 @@ export function LaneHardwarePanel({
     <div className="flex h-full gap-0">
       <div className="flex-1 overflow-y-auto">
         <div className="flex items-center justify-between mb-3">
-        <div>
-          <h2 className="admin-text-lg font-semibold hud-text">
-            {isAr ? "إدارة عتاد الحارات" : "Lane Hardware Management"}
-          </h2>
-          <p className="admin-text-xs hud-text-muted font-mono mt-0.5">
-            {isAr
-              ? "تهيئة الحارات والأهداف الفعلية المركّبة عليها"
-              : "Commission lanes and the physical targets mounted on them"}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {!readOnly && (
+          <div>
+            <h2 className="admin-text-lg font-semibold hud-text">
+              {isAr ? "إدارة عتاد الحارات" : "Lane Hardware Management"}
+            </h2>
+            <p className="admin-text-xs hud-text-muted font-mono mt-0.5">
+              {isAr
+                ? "تهيئة الحارات والأهداف الفعلية المركّبة عليها"
+                : "Commission lanes and the physical targets mounted on them"}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {!readOnly && (
+              <button
+                type="button"
+                onClick={() => void addLane()}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg admin-text-xs font-mono font-bold hud-btn-secondary cursor-pointer transition-colors"
+              >
+                <Plus className="w-3 h-3 shrink-0" />
+                {isAr ? "إضافة حارة" : "Add Lane"}
+              </button>
+            )}
             <button
               type="button"
-              onClick={() => void addLane()}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg admin-text-xs font-mono font-bold hud-btn-secondary cursor-pointer transition-colors"
+              onClick={() => void load()}
+              disabled={loading}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg admin-text-xs font-mono font-bold hud-btn-secondary cursor-pointer transition-colors disabled:opacity-50"
             >
-              <Plus className="w-3 h-3 shrink-0" />
-              {isAr ? "إضافة حارة" : "Add Lane"}
+              <RefreshCw
+                className={`w-3 h-3 shrink-0 ${loading ? "animate-spin" : ""}`}
+              />
+              {isAr ? "تحديث" : "Refresh"}
             </button>
-          )}
-          <button
-            type="button"
-            onClick={() => void load()}
-            disabled={loading}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg admin-text-xs font-mono font-bold hud-btn-secondary cursor-pointer transition-colors disabled:opacity-50"
-          >
-            <RefreshCw
-              className={`w-3 h-3 shrink-0 ${loading ? "animate-spin" : ""}`}
-            />
-            {isAr ? "تحديث" : "Refresh"}
-          </button>
+          </div>
         </div>
-      </div>
 
-      <p className="admin-text-xs font-mono hud-text-subtle mb-3">
-        {isAr
-          ? `شبكة واحدة للميدان بالكامل (${RANGE_SUBNET}.x) — يُشتق العنوان من الحارة والموضع ولا يُكتب يدوياً.`
-          : `One router, one subnet for the whole range (${RANGE_SUBNET}.x). Addresses are derived from lane and position — never typed.`}
-      </p>
+        <p className="admin-text-xs font-mono hud-text-subtle mb-3">
+          {isAr
+            ? `شبكة واحدة للميدان بالكامل (${RANGE_SUBNET}.x) — يُشتق العنوان من الحارة والموضع ولا يُكتب يدوياً.`
+            : `One router, one subnet for the whole range (${RANGE_SUBNET}.x). Addresses are derived from lane and position — never typed.`}
+        </p>
 
-      {lanes.length === 0 && !loading && (
-        <div className="px-3 py-6 rounded-lg border border-dashed border-hud text-center">
-          <p className="admin-text-xs font-mono hud-text-subtle">
-            {isAr
-              ? "لا توجد حارات بعد. اطلب من المشرف الأعلى تهيئتها."
-              : "No lanes yet. Ask a SUPER_ADMIN to commission the range."}
-          </p>
-        </div>
-      )}
+        {lanes.length === 0 && !loading && (
+          <div className="px-3 py-6 rounded-lg border border-dashed border-hud text-center">
+            <p className="admin-text-xs font-mono hud-text-subtle">
+              {isAr
+                ? "لا توجد حارات بعد. اطلب من المشرف الأعلى تهيئتها."
+                : "No lanes yet. Ask a SUPER_ADMIN to commission the range."}
+            </p>
+          </div>
+        )}
 
-      <div className="space-y-3">
-        {lanes.map((lane) => {
-          const rows = targetsOf(lane);
-          const laneBusy = busyId === `lane-${lane.id}`;
-          const addBusy = busyId === `add-${lane.id}`;
-          const usedSlots = new Set(rows.map((t) => t.positionIndex));
+        <div className="space-y-3">
+          {lanes.map((lane) => {
+            const rows = targetsOf(lane);
+            const laneBusy = busyId === `lane-${lane.id}`;
+            const addBusy = busyId === `add-${lane.id}`;
+            const usedSlots = new Set(rows.map((t) => t.positionIndex));
 
-          return (
-            <div
-              key={lane.id}
-              className="rounded-lg border border-hud bg-hud-elevated p-4"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                <div className="flex items-baseline gap-2.5 min-w-0">
-                  <h3 className="admin-text-lg font-mono font-bold hud-text uppercase tracking-wider">
-                    {isAr
-                      ? `حارة ${lane.id}`
-                      : `Lane ${String(lane.id).padStart(2, "0")}`}
-                  </h3>
-                  <span className="admin-text-xs font-mono hud-text-subtle truncate">
-                    {lane.siteName || lane.name}
-                    {" · "}
-                    {rows.length}{" "}
-                    {isAr ? "هدف" : `target${rows.length === 1 ? "" : "s"}`}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-1.5 shrink-0">
-                {readOnly ? (
-                  <span
-                    className={`${readonlyCellCls} w-auto uppercase tracking-wider font-bold ${
-                      lane.status === "OCCUPIED"
-                        ? "hud-accent"
-                        : lane.status === "AVAILABLE"
-                          ? "hud-success"
-                          : lane.status === "MAINTENANCE"
-                            ? "hud-warning"
-                            : "hud-text-muted"
-                    }`}
-                  >
-                    {laneStatusLabel(lane.status, isAr)}
-                  </span>
-                ) : (
-                  <select
-                    value={lane.status}
-                    disabled={laneBusy}
-                    onChange={(e) =>
-                      void updateLane(lane, {
-                        status: e.target.value as LaneStatus,
-                      })
-                    }
-                    className={`${selectCls} w-auto uppercase tracking-wider font-bold`}
-                  >
-                    {/* Present but not offered — the session lifecycle owns it. */}
-                    {lane.status === "OCCUPIED" && (
-                      <option value="OCCUPIED">
-                        {laneStatusLabel("OCCUPIED", isAr)}
-                      </option>
-                    )}
-                    {SETTABLE_LANE_STATUSES.map((s) => (
-                      <option key={s} value={s}>
-                        {laneStatusLabel(s, isAr)}
-                      </option>
-                    ))}
-                  </select>
-                )}
-                {!readOnly && (
-                  <button
-                    type="button"
-                    onClick={() => void removeLane(lane)}
-                    disabled={laneBusy}
-                    title={isAr ? "حذف الحارة" : "Delete lane"}
-                    className="p-1.5 rounded text-rose-500 hover:bg-rose-500/10 cursor-pointer disabled:opacity-50 transition-colors"
-                  >
-                    {laneBusy ? (
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                    ) : (
-                      <Trash2 className="w-3 h-3" />
-                    )}
-                  </button>
-                )}
-                </div>
-              </div>
-
-              {rows.length === 0 ? (
-                <p className="admin-text-xs font-mono hud-text-subtle mb-2">
-                  {isAr
-                    ? "لا توجد أهداف على هذه الحارة."
-                    : "No targets mounted on this lane."}
-                </p>
-              ) : (
-                <div className="space-y-2 mb-2">
-                  <div className={`hidden md:grid ${gridCls} px-1`}>
-                    <span className={`${labelCls} w-12 text-center`}>
-                      {isAr ? "الوجه" : "Face"}
+            return (
+              <div
+                key={lane.id}
+                className="rounded-lg border border-hud bg-hud-elevated p-4"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                  <div className="flex items-baseline gap-2.5 min-w-0">
+                    <h3 className="admin-text-lg font-mono font-bold hud-text uppercase tracking-wider">
+                      {isAr
+                        ? `حارة ${lane.id}`
+                        : `Lane ${String(lane.id).padStart(2, "0")}`}
+                    </h3>
+                    <span className="admin-text-xs font-mono hud-text-subtle truncate">
+                      {lane.siteName || lane.name}
+                      {" · "}
+                      {rows.length}{" "}
+                      {isAr ? "هدف" : `target${rows.length === 1 ? "" : "s"}`}
                     </span>
-                    <span className={labelCls}>{isAr ? "الاسم" : "Label"}</span>
-                    <span className={labelCls}>
-                      {isAr ? "المسافة" : "Distance"}
-                    </span>
-                    <span className={labelCls}>
-                      {isAr ? "نوع الهدف" : "Profile"}
-                    </span>
-                    <span className={labelCls}>
-                      {isAr ? "عنوان IP" : "IP Address"}
-                    </span>
-                    <span className={labelCls}>
-                      {isAr ? "الموضع" : "Position"}
-                    </span>
-                    <span />
                   </div>
 
-                  {rows.map((target) => {
-                    const busy = busyId === target.id;
-                    const expectedIp = addressFor(lane.id, target.positionIndex);
-                    const test = testResults.get(target.id);
-                    const isTesting = testing.has(target.id);
-                    // Its own slot plus whatever is still free — offering a
-                    // taken slot would collide on both @@unique([laneId,
-                    // positionIndex]) and the target's unique address.
-                    const slotOptions = Array.from(
-                      { length: MAX_SLOTS_PER_LANE },
-                      (_v, i) => i,
-                    ).filter(
-                      (i) => i === target.positionIndex || !usedSlots.has(i),
-                    );
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {readOnly ? (
+                      <span
+                        className={`${readonlyCellCls} w-auto uppercase tracking-wider font-bold ${
+                          lane.status === "OCCUPIED"
+                            ? "hud-accent"
+                            : lane.status === "AVAILABLE"
+                              ? "hud-success"
+                              : lane.status === "MAINTENANCE"
+                                ? "hud-warning"
+                                : "hud-text-muted"
+                        }`}
+                      >
+                        {laneStatusLabel(lane.status, isAr)}
+                      </span>
+                    ) : (
+                      <select
+                        value={lane.status}
+                        disabled={laneBusy}
+                        onChange={(e) =>
+                          void updateLane(lane, {
+                            status: e.target.value as LaneStatus,
+                          })
+                        }
+                        className={`${selectCls} w-auto uppercase tracking-wider font-bold`}
+                      >
+                        {/* Present but not offered — the session lifecycle owns it. */}
+                        {lane.status === "OCCUPIED" && (
+                          <option value="OCCUPIED">
+                            {laneStatusLabel("OCCUPIED", isAr)}
+                          </option>
+                        )}
+                        {SETTABLE_LANE_STATUSES.map((s) => (
+                          <option key={s} value={s}>
+                            {laneStatusLabel(s, isAr)}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    {!readOnly && (
+                      <button
+                        type="button"
+                        onClick={() => void removeLane(lane)}
+                        disabled={laneBusy}
+                        title={isAr ? "حذف الحارة" : "Delete lane"}
+                        className="p-1.5 rounded text-rose-500 hover:bg-rose-500/10 cursor-pointer disabled:opacity-50 transition-colors"
+                      >
+                        {laneBusy ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-3 h-3" />
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </div>
 
-                    const testStatus: "testing" | "pass" | "fail" | "not-armed" | "no-answer" | "idle" =
-                      isTesting
+                {rows.length === 0 ? (
+                  <p className="admin-text-xs font-mono hud-text-subtle mb-2">
+                    {isAr
+                      ? "لا توجد أهداف على هذه الحارة."
+                      : "No targets mounted on this lane."}
+                  </p>
+                ) : (
+                  <div className="space-y-2 mb-2">
+                    <div className={`hidden md:grid ${gridCls} px-1`}>
+                      <span className={`${labelCls} w-12 text-center`}>
+                        {isAr ? "الوجه" : "Face"}
+                      </span>
+                      <span className={labelCls}>
+                        {isAr ? "الاسم" : "Label"}
+                      </span>
+                      <span className={labelCls}>
+                        {isAr ? "المسافة" : "Distance"}
+                      </span>
+                      <span className={labelCls}>
+                        {isAr ? "نوع الهدف" : "Profile"}
+                      </span>
+                      <span className={labelCls}>
+                        {isAr ? "عنوان IP" : "IP Address"}
+                      </span>
+                      <span className={labelCls}>
+                        {isAr ? "الموضع" : "Position"}
+                      </span>
+                      <span />
+                    </div>
+
+                    {rows.map((target) => {
+                      const busy = busyId === target.id;
+                      const expectedIp = addressFor(
+                        lane.id,
+                        target.positionIndex,
+                      );
+                      const test = testResults.get(target.id);
+                      const isTesting = testing.has(target.id);
+                      // Its own slot plus whatever is still free — offering a
+                      // taken slot would collide on both @@unique([laneId,
+                      // positionIndex]) and the target's unique address.
+                      const slotOptions = Array.from(
+                        { length: MAX_SLOTS_PER_LANE },
+                        (_v, i) => i,
+                      ).filter(
+                        (i) => i === target.positionIndex || !usedSlots.has(i),
+                      );
+
+                      const testStatus:
+                        | "testing"
+                        | "pass"
+                        | "fail"
+                        | "not-armed"
+                        | "no-answer"
+                        | "idle" = isTesting
                         ? "testing"
                         : test?.outcome === "PASSED"
                           ? "pass"
@@ -1041,325 +1079,342 @@ export function LaneHardwarePanel({
                                 ? "no-answer"
                                 : "idle";
 
-                    return (
-                      // Outer wrapper is intentionally NOT the grid — the
-                      // command-override editor and the sensitivity panel
-                      // below render at full row width as block-level
-                      // siblings, not as additional grid cells. Interleaving
-                      // them as extra children of a 7-column grid (as an
-                      // earlier version of this did for the cmd editor) makes
-                      // every cell after them wrap into the wrong column of an
-                      // implicit next row.
-                      <div
-                        key={target.id}
-                        className={`space-y-1.5 cursor-pointer rounded p-2 transition-colors ${
-                          selectedTargetId === target.id
-                            ? "bg-hud-accent/10 border border-hud-accent/30"
-                            : "hover:bg-hud/50"
-                        }`}
-                        onClick={() => setSelectedTargetId(target.id)}
-                      >
-                      <div className={gridCls}>
-                        <TargetFacePreview
-                          profileType={target.profileType}
-                          size={48}
-                          title={`${slotCode(lane.id, target.positionIndex)} · ${target.distanceM}m`}
-                          className="hud-text-muted"
-                        />
-
-                        {/* Derived from the distance below — a target's name IS
-                            where it stands, so there is nothing to type. */}
-                        <span
-                          className={`${readonlyCellCls} hud-text border-hud/40`}
-                          title={isAr ? "يُشتق من المسافة" : "Derived from distance"}
+                      return (
+                        // Outer wrapper is intentionally NOT the grid — the
+                        // command-override editor and the sensitivity panel
+                        // below render at full row width as block-level
+                        // siblings, not as additional grid cells. Interleaving
+                        // them as extra children of a 7-column grid (as an
+                        // earlier version of this did for the cmd editor) makes
+                        // every cell after them wrap into the wrong column of an
+                        // implicit next row.
+                        <div
+                          key={target.id}
+                          className={`space-y-1.5 cursor-pointer rounded p-2 transition-colors ${
+                            selectedTargetId === target.id
+                              ? "bg-hud-accent/10 border border-hud-accent/30"
+                              : "hover:bg-hud/50"
+                          }`}
+                          onClick={() => setSelectedTargetId(target.id)}
                         >
-                          {target.label}
-                        </span>
+                          <div className={gridCls}>
+                            <TargetFacePreview
+                              profileType={target.profileType}
+                              size={48}
+                              title={`${slotCode(lane.id, target.positionIndex)} · ${target.distanceM}m`}
+                              className="hud-text-muted"
+                            />
 
-                        {readOnly ? (
-                          <span className={`${readonlyCellCls} hud-text border-hud/40`}>
-                            {target.distanceM}m
-                          </span>
-                        ) : (
-                          <select
-                            value={target.distanceM}
-                            disabled={busy}
-                            onChange={(e) =>
-                              void updateTarget(lane.id, target, {
-                                distanceM: Number(e.target.value),
-                              })
-                            }
-                            className={selectCls}
-                          >
-                            {/* A distance already in the database that is not a
+                            {/* Derived from the distance below — a target's name IS
+                            where it stands, so there is nothing to type. */}
+                            <span
+                              className={`${readonlyCellCls} hud-text border-hud/40`}
+                              title={
+                                isAr
+                                  ? "يُشتق من المسافة"
+                                  : "Derived from distance"
+                              }
+                            >
+                              {target.label}
+                            </span>
+
+                            {readOnly ? (
+                              <span
+                                className={`${readonlyCellCls} hud-text border-hud/40`}
+                              >
+                                {target.distanceM}m
+                              </span>
+                            ) : (
+                              <select
+                                value={target.distanceM}
+                                disabled={busy}
+                                onChange={(e) =>
+                                  void updateTarget(lane.id, target, {
+                                    distanceM: Number(e.target.value),
+                                  })
+                                }
+                                className={selectCls}
+                              >
+                                {/* A distance already in the database that is not a
                                 preset stays selectable, so an older commissioning
                                 is not silently rewritten by opening this screen. */}
-                            {!DISTANCE_PRESETS_M.includes(
-                              target.distanceM as (typeof DISTANCE_PRESETS_M)[number],
-                            ) && (
-                              <option value={target.distanceM}>
-                                {target.distanceM}m
-                              </option>
+                                {!DISTANCE_PRESETS_M.includes(
+                                  target.distanceM as (typeof DISTANCE_PRESETS_M)[number],
+                                ) && (
+                                  <option value={target.distanceM}>
+                                    {target.distanceM}m
+                                  </option>
+                                )}
+                                {DISTANCE_PRESETS_M.map((d) => (
+                                  <option key={d} value={d}>
+                                    {d}m
+                                  </option>
+                                ))}
+                              </select>
                             )}
-                            {DISTANCE_PRESETS_M.map((d) => (
-                              <option key={d} value={d}>
-                                {d}m
-                              </option>
-                            ))}
-                          </select>
-                        )}
 
-                        {readOnly ? (
-                          <span className={`${readonlyCellCls} hud-text border-hud/40`}>
-                            {target.profileType === "FIGURE"
-                              ? isAr
-                                ? "شخصي"
-                                : "Silhouette"
-                              : isAr
-                                ? "دائري"
-                                : "Bullseye"}
-                          </span>
-                        ) : (
-                          <select
-                            value={target.profileType}
-                            disabled={busy}
-                            onChange={(e) =>
-                              void updateTarget(lane.id, target, {
-                                profileType: e.target.value as TargetProfileType,
-                              })
-                            }
-                            className={selectCls}
-                          >
-                            {PROFILES.map((p) => (
-                              <option key={p} value={p}>
-                                {p === "FIGURE"
+                            {readOnly ? (
+                              <span
+                                className={`${readonlyCellCls} hud-text border-hud/40`}
+                              >
+                                {target.profileType === "FIGURE"
                                   ? isAr
                                     ? "شخصي"
                                     : "Silhouette"
                                   : isAr
                                     ? "دائري"
                                     : "Bullseye"}
-                              </option>
-                            ))}
-                          </select>
-                        )}
+                              </span>
+                            ) : (
+                              <select
+                                value={target.profileType}
+                                disabled={busy}
+                                onChange={(e) =>
+                                  void updateTarget(lane.id, target, {
+                                    profileType: e.target
+                                      .value as TargetProfileType,
+                                  })
+                                }
+                                className={selectCls}
+                              >
+                                {PROFILES.map((p) => (
+                                  <option key={p} value={p}>
+                                    {p === "FIGURE"
+                                      ? isAr
+                                        ? "شخصي"
+                                        : "Silhouette"
+                                      : isAr
+                                        ? "دائري"
+                                        : "Bullseye"}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
 
-                        {/* Editable for SUPER_ADMIN: an address is usually a
+                            {/* Editable for SUPER_ADMIN: an address is usually a
                             consequence of lane + position, but a target is not
                             always on the convention — a simulated or container
                             target answers on whatever IP its network gives it,
                             and that has to be typed in. Committed on
                             blur/Enter; off-convention targets also get a snap
                             back to the derived address. */}
-                        {readOnly ? (
-                          expectedIp === target.ipAddress ? (
-                            <span
-                              className={`${readonlyCellCls} hud-accent border-hud/40`}
-                              title={
-                                isAr
-                                  ? "يُشتق من الحارة والموضع"
-                                  : `Derived: lane ${lane.id}, slot ${target.positionIndex + 1}`
-                              }
-                            >
-                              {target.ipAddress}
-                            </span>
-                          ) : (
-                            <span
-                              className={`${readonlyCellCls} text-amber-500 border-amber-500/40`}
-                              title={
-                                isAr
-                                  ? `خارج الاتفاقية. المتوقع ${expectedIp}`
-                                  : `Off-convention. Expected ${expectedIp}`
-                              }
-                            >
-                              {target.ipAddress} → {expectedIp}
-                            </span>
-                          )
-                        ) : (
-                          <div
-                            className={`${readonlyCellCls} flex items-center gap-1 border-hud/40 p-1`}
-                          >
-                            <input
-                              type="text"
-                              value={ipDrafts.get(target.id) ?? target.ipAddress}
-                              disabled={busy}
-                              onChange={(e) => setIpDraft(target.id, e.target.value)}
-                              onBlur={() => commitIp(target)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                  e.preventDefault();
-                                  (e.target as HTMLInputElement).blur();
-                                } else if (e.key === "Escape") {
-                                  setIpDraft(target.id, "");
-                                  (e.target as HTMLInputElement).blur();
-                                }
-                              }}
-                              className="w-full min-w-0 bg-transparent font-mono admin-text-sm px-1.5 py-0.5 rounded border border-transparent hover:border-hud focus:border-[var(--hud-accent-border)] focus:bg-[var(--hud-elevated)] outline-none transition-colors disabled:opacity-50"
-                              title={
-                                isAr
-                                  ? "عنوان IP الهدف — يُحفظ عند الخروج من الحقل"
-                                  : "Target IP — saved on blur/Enter"
-                              }
-                            />
-                            {target.ipAddress !== expectedIp && (
-                              <button
-                                type="button"
-                                onClick={() => commitIp(target, expectedIp)}
-                                disabled={busy}
-                                title={
-                                  isAr
-                                    ? `العودة إلى العنوان المشتق (${expectedIp})`
-                                    : `Snap to derived address (${expectedIp})`
-                                }
-                                className="shrink-0 p-1 rounded text-amber-500 hover:bg-amber-500/10 cursor-pointer disabled:opacity-50 transition-colors"
+                            {readOnly ? (
+                              expectedIp === target.ipAddress ? (
+                                <span
+                                  className={`${readonlyCellCls} hud-accent border-hud/40`}
+                                  title={
+                                    isAr
+                                      ? "يُشتق من الحارة والموضع"
+                                      : `Derived: lane ${lane.id}, slot ${target.positionIndex + 1}`
+                                  }
+                                >
+                                  {target.ipAddress}
+                                </span>
+                              ) : (
+                                <span
+                                  className={`${readonlyCellCls} text-amber-500 border-amber-500/40`}
+                                  title={
+                                    isAr
+                                      ? `خارج الاتفاقية. المتوقع ${expectedIp}`
+                                      : `Off-convention. Expected ${expectedIp}`
+                                  }
+                                >
+                                  {target.ipAddress} → {expectedIp}
+                                </span>
+                              )
+                            ) : (
+                              <div
+                                className={`${readonlyCellCls} flex items-center gap-1 border-hud/40 p-1`}
                               >
-                                <RefreshCw className="w-3 h-3" />
-                              </button>
+                                <input
+                                  type="text"
+                                  value={
+                                    ipDrafts.get(target.id) ?? target.ipAddress
+                                  }
+                                  disabled={busy}
+                                  onChange={(e) =>
+                                    setIpDraft(target.id, e.target.value)
+                                  }
+                                  onBlur={() => commitIp(target)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      (e.target as HTMLInputElement).blur();
+                                    } else if (e.key === "Escape") {
+                                      setIpDraft(target.id, "");
+                                      (e.target as HTMLInputElement).blur();
+                                    }
+                                  }}
+                                  className="w-full min-w-0 bg-transparent font-mono admin-text-sm px-1.5 py-0.5 rounded border border-transparent hover:border-hud focus:border-[var(--hud-accent-border)] focus:bg-[var(--hud-elevated)] outline-none transition-colors disabled:opacity-50"
+                                  title={
+                                    isAr
+                                      ? "عنوان IP الهدف — يُحفظ عند الخروج من الحقل"
+                                      : "Target IP — saved on blur/Enter"
+                                  }
+                                />
+                                {target.ipAddress !== expectedIp && (
+                                  <button
+                                    type="button"
+                                    onClick={() => commitIp(target, expectedIp)}
+                                    disabled={busy}
+                                    title={
+                                      isAr
+                                        ? `العودة إلى العنوان المشتق (${expectedIp})`
+                                        : `Snap to derived address (${expectedIp})`
+                                    }
+                                    className="shrink-0 p-1 rounded text-amber-500 hover:bg-amber-500/10 cursor-pointer disabled:opacity-50 transition-colors"
+                                  >
+                                    <RefreshCw className="w-3 h-3" />
+                                  </button>
+                                )}
+                              </div>
                             )}
-                          </div>
-                        )}
 
-                        {readOnly ? (
-                          <span className={`${readonlyCellCls} hud-text border-hud/40`}>
-                            {slotCode(lane.id, target.positionIndex)}
-                          </span>
-                        ) : (
-                          <select
-                            value={target.positionIndex}
-                            disabled={busy}
-                            onChange={(e) =>
-                              void updateTarget(lane.id, target, {
-                                positionIndex: Number(e.target.value),
-                              })
-                            }
-                            className={selectCls}
-                          >
-                            {slotOptions.map((i) => (
-                              <option key={i} value={i}>
-                                {slotCode(lane.id, i)}
-                              </option>
-                            ))}
-                          </select>
-                        )}
+                            {readOnly ? (
+                              <span
+                                className={`${readonlyCellCls} hud-text border-hud/40`}
+                              >
+                                {slotCode(lane.id, target.positionIndex)}
+                              </span>
+                            ) : (
+                              <select
+                                value={target.positionIndex}
+                                disabled={busy}
+                                onChange={(e) =>
+                                  void updateTarget(lane.id, target, {
+                                    positionIndex: Number(e.target.value),
+                                  })
+                                }
+                                className={selectCls}
+                              >
+                                {slotOptions.map((i) => (
+                                  <option key={i} value={i}>
+                                    {slotCode(lane.id, i)}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
 
-                        {!readOnly && (
-                          <div className="flex items-center justify-end gap-1.5 shrink-0">
-                          {/* PLAY/STOP live in the sensor console for the
+                            {!readOnly && (
+                              <div className="flex items-center justify-end gap-1.5 shrink-0">
+                                {/* PLAY/STOP live in the sensor console for the
                               selected target — the row used to carry its own
                               copies, which duplicated the console's. */}
-                          {/* Green only after the board has actually run and
+                                {/* Green only after the board has actually run and
                               PASSED its own self-test ('T'). Never green from
                               configuration alone — a row can be perfectly
                               filled in and point at a board that is unplugged,
                               or one that is reachable but whose timing circuit
                               has actually failed. */}
-                          <button
-                            type="button"
-                            onClick={() => void runSelfTest(target)}
-                            disabled={isTesting}
-                            title={
-                              test
-                                ? test.message
-                                : isAr
-                                  ? "تشغيل الهدف وتنفيذ اختبار ذاتي، ثم إيقافه"
-                                  : "Arm the target, run its self-test, then disarm it"
-                            }
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded admin-text-xs font-mono font-bold cursor-pointer transition-colors disabled:cursor-wait ${
-                              testStatus === "testing"
-                                ? "border border-hud hud-text-subtle"
-                                : testStatus === "pass"
-                                  ? "border border-emerald-500/50 text-emerald-500 bg-emerald-500/10 hover:bg-emerald-500/20"
-                                  : testStatus === "fail"
-                                    ? "border border-rose-500/50 text-rose-500 bg-rose-500/10 hover:bg-rose-500/20"
-                                    : testStatus === "not-armed"
-                                      ? "border border-amber-500/50 text-amber-500 bg-amber-500/10 hover:bg-amber-500/20"
-                                      : testStatus === "no-answer"
-                                        ? "border border-rose-500/50 text-rose-500 bg-rose-500/10 hover:bg-rose-500/20"
-                                        : "hud-btn-secondary"
-                            }`}
-                          >
-                            {testStatus === "testing" ? (
-                              <>
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                {isAr ? "جارٍ" : "Testing"}
-                              </>
-                            ) : testStatus === "pass" ? (
-                              <>
-                                <CheckCircle2 className="w-3.5 h-3.5" />
-                                {isAr ? "ناجح" : "Passed"}
-                              </>
-                            ) : testStatus === "fail" ? (
-                              <>
-                                <AlertCircle className="w-3.5 h-3.5" />
-                                {isAr ? "فشل الاختبار" : "Failed"}
-                              </>
-                            ) : testStatus === "not-armed" ? (
-                              <>
-                                <AlertTriangle className="w-3.5 h-3.5" />
-                                {isAr ? "غير مسلَّح" : "Not armed"}
-                              </>
-                            ) : testStatus === "no-answer" ? (
-                              <>
-                                <AlertCircle className="w-3.5 h-3.5" />
-                                {isAr ? "لا يستجيب" : "No reply"}
-                              </>
-                            ) : (
-                              <>
-                                <Play className="w-3.5 h-3.5" />
-                                {isAr ? "اختبار" : "Test"}
-                              </>
+                                <button
+                                  type="button"
+                                  onClick={() => void runSelfTest(target)}
+                                  disabled={isTesting}
+                                  title={
+                                    test
+                                      ? test.message
+                                      : isAr
+                                        ? "تشغيل الهدف وتنفيذ اختبار ذاتي، ثم إيقافه"
+                                        : "Arm the target, run its self-test, then disarm it"
+                                  }
+                                  className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded admin-text-xs font-mono font-bold cursor-pointer transition-colors disabled:cursor-wait ${
+                                    testStatus === "testing"
+                                      ? "border border-hud hud-text-subtle"
+                                      : testStatus === "pass"
+                                        ? "border border-emerald-500/50 text-emerald-500 bg-emerald-500/10 hover:bg-emerald-500/20"
+                                        : testStatus === "fail"
+                                          ? "border border-rose-500/50 text-rose-500 bg-rose-500/10 hover:bg-rose-500/20"
+                                          : testStatus === "not-armed"
+                                            ? "border border-amber-500/50 text-amber-500 bg-amber-500/10 hover:bg-amber-500/20"
+                                            : testStatus === "no-answer"
+                                              ? "border border-rose-500/50 text-rose-500 bg-rose-500/10 hover:bg-rose-500/20"
+                                              : "hud-btn-secondary"
+                                  }`}
+                                >
+                                  {testStatus === "testing" ? (
+                                    <>
+                                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                      {isAr ? "جارٍ" : "Testing"}
+                                    </>
+                                  ) : testStatus === "pass" ? (
+                                    <>
+                                      <CheckCircle2 className="w-3.5 h-3.5" />
+                                      {isAr ? "ناجح" : "Passed"}
+                                    </>
+                                  ) : testStatus === "fail" ? (
+                                    <>
+                                      <AlertCircle className="w-3.5 h-3.5" />
+                                      {isAr ? "فشل الاختبار" : "Failed"}
+                                    </>
+                                  ) : testStatus === "not-armed" ? (
+                                    <>
+                                      <AlertTriangle className="w-3.5 h-3.5" />
+                                      {isAr ? "غير مسلَّح" : "Not armed"}
+                                    </>
+                                  ) : testStatus === "no-answer" ? (
+                                    <>
+                                      <AlertCircle className="w-3.5 h-3.5" />
+                                      {isAr ? "لا يستجيب" : "No reply"}
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Play className="w-3.5 h-3.5" />
+                                      {isAr ? "اختبار" : "Test"}
+                                    </>
+                                  )}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => toggleCal(target.id)}
+                                  title={
+                                    isAr
+                                      ? "المعايرة — أطلق طلقة واضبط الإزاحة"
+                                      : "Calibration — fire a shot and set the offset"
+                                  }
+                                  className={`p-1.5 rounded cursor-pointer transition-colors ${
+                                    calOpen.has(target.id)
+                                      ? "hud-accent bg-[var(--hud-accent-bg-subtle)]"
+                                      : "hud-text-subtle hover:bg-hud-elevated"
+                                  }`}
+                                >
+                                  <TargetIcon className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => toggleSens(target.id)}
+                                  title={
+                                    isAr
+                                      ? "الحساسية (مواضع المقاومات)"
+                                      : "Sensitivity (wiper positions)"
+                                  }
+                                  className={`p-1.5 rounded cursor-pointer transition-colors ${
+                                    sensOpen.has(target.id)
+                                      ? "hud-accent bg-[var(--hud-accent-bg-subtle)]"
+                                      : "hud-text-subtle hover:bg-hud-elevated"
+                                  }`}
+                                >
+                                  <SlidersHorizontal className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    void removeTarget(lane, target)
+                                  }
+                                  disabled={busy}
+                                  title={isAr ? "حذف" : "Remove"}
+                                  className="p-1.5 rounded text-rose-500 hover:bg-rose-500/10 cursor-pointer disabled:opacity-50 transition-colors"
+                                >
+                                  {busy ? (
+                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                  ) : (
+                                    <X className="w-3.5 h-3.5" />
+                                  )}
+                                </button>
+                              </div>
                             )}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => toggleCal(target.id)}
-                            title={
-                              isAr
-                                ? "المعايرة — أطلق طلقة واضبط الإزاحة"
-                                : "Calibration — fire a shot and set the offset"
-                            }
-                            className={`p-1.5 rounded cursor-pointer transition-colors ${
-                              calOpen.has(target.id)
-                                ? "hud-accent bg-[var(--hud-accent-bg-subtle)]"
-                                : "hud-text-subtle hover:bg-hud-elevated"
-                            }`}
-                          >
-                            <TargetIcon className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => toggleSens(target.id)}
-                            title={
-                              isAr
-                                ? "الحساسية (مواضع المقاومات)"
-                                : "Sensitivity (wiper positions)"
-                            }
-                            className={`p-1.5 rounded cursor-pointer transition-colors ${
-                              sensOpen.has(target.id)
-                                ? "hud-accent bg-[var(--hud-accent-bg-subtle)]"
-                                : "hud-text-subtle hover:bg-hud-elevated"
-                            }`}
-                          >
-                            <SlidersHorizontal className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => void removeTarget(lane, target)}
-                            disabled={busy}
-                            title={isAr ? "حذف" : "Remove"}
-                            className="p-1.5 rounded text-rose-500 hover:bg-rose-500/10 cursor-pointer disabled:opacity-50 transition-colors"
-                          >
-                            {busy ? (
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            ) : (
-                              <X className="w-3.5 h-3.5" />
-                            )}
-                          </button>
-                        </div>
-                        )}
-                      </div>
+                          </div>
 
-                      {/* Command unicast override — Docker/simulated targets
+                          {/* Command unicast override — Docker/simulated targets
                           only. Full row width, block-level: see the comment
                           on the outer wrapper for why this is not a grid cell.
                           Shown only for a target that already has an override:
@@ -1368,131 +1423,153 @@ export function LaneHardwarePanel({
                           not a way to create them. Clearing both fields drops
                           the target back to its IP and the default port, and
                           the row goes with it. */}
-                      {!readOnly && (target.commandHost || target.commandPort) && (
-                        <div className="flex items-center gap-1 admin-text-2xs hud-text-subtle">
-                          <span className="font-mono" title={isAr ? "عنوان الأوامر" : "Command host/port (PLAY/STOP)"}>
-                            cmd
-                          </span>
-                          <input
-                            type="text"
-                            value={
-                              cmdDrafts.get(target.id)?.host ??
-                              target.commandHost ??
-                              ""
-                            }
-                            disabled={busy}
-                            placeholder={isAr ? "= IP" : "= IP"}
-                            onChange={(e) => setCmdDraft(target, "host", e.target.value)}
-                            onBlur={() => commitCommand(target, "host")}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault();
-                                (e.target as HTMLInputElement).blur();
-                              } else if (e.key === "Escape") {
-                                setCmdDrafts((prev) => {
-                                  const next = new Map(prev);
-                                  next.delete(target.id);
-                                  return next;
-                                });
-                              }
-                            }}
-                            className="w-24 min-w-0 bg-transparent font-mono px-1 py-0.5 rounded border border-hud/40 hover:border-hud focus:border-[var(--hud-accent-border)] focus:bg-[var(--hud-elevated)] outline-none transition-colors disabled:opacity-50"
-                            title={isAr ? "مضيف الأوامر — فارغ يعني عنوان IP" : "Command host — empty means the target IP"}
-                          />
-                          <span>:</span>
-                          <input
-                            type="text"
-                            value={
-                              cmdDrafts.get(target.id)?.port ??
-                              (target.commandPort ? String(target.commandPort) : "")
-                            }
-                            disabled={busy}
-                            placeholder="14550"
-                            onChange={(e) => setCmdDraft(target, "port", e.target.value)}
-                            onBlur={() => commitCommand(target, "port")}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault();
-                                (e.target as HTMLInputElement).blur();
-                              } else if (e.key === "Escape") {
-                                setCmdDrafts((prev) => {
-                                  const next = new Map(prev);
-                                  next.delete(target.id);
-                                  return next;
-                                });
-                              }
-                            }}
-                            className="w-16 min-w-0 bg-transparent font-mono px-1 py-0.5 rounded border border-hud/40 hover:border-hud focus:border-[var(--hud-accent-border)] focus:bg-[var(--hud-elevated)] outline-none transition-colors disabled:opacity-50"
-                            title={isAr ? "منفذ الأوامر — فارغ يعني 14550" : "Command port — empty means 14550"}
-                          />
-                        </div>
-                      )}
+                          {!readOnly &&
+                            (target.commandHost || target.commandPort) && (
+                              <div className="flex items-center gap-1 admin-text-2xs hud-text-subtle">
+                                <span
+                                  className="font-mono"
+                                  title={
+                                    isAr
+                                      ? "عنوان الأوامر"
+                                      : "Command host/port (PLAY/STOP)"
+                                  }
+                                >
+                                  cmd
+                                </span>
+                                <input
+                                  type="text"
+                                  value={
+                                    cmdDrafts.get(target.id)?.host ??
+                                    target.commandHost ??
+                                    ""
+                                  }
+                                  disabled={busy}
+                                  placeholder={isAr ? "= IP" : "= IP"}
+                                  onChange={(e) =>
+                                    setCmdDraft(target, "host", e.target.value)
+                                  }
+                                  onBlur={() => commitCommand(target, "host")}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      (e.target as HTMLInputElement).blur();
+                                    } else if (e.key === "Escape") {
+                                      setCmdDrafts((prev) => {
+                                        const next = new Map(prev);
+                                        next.delete(target.id);
+                                        return next;
+                                      });
+                                    }
+                                  }}
+                                  className="w-24 min-w-0 bg-transparent font-mono px-1 py-0.5 rounded border border-hud/40 hover:border-hud focus:border-[var(--hud-accent-border)] focus:bg-[var(--hud-elevated)] outline-none transition-colors disabled:opacity-50"
+                                  title={
+                                    isAr
+                                      ? "مضيف الأوامر — فارغ يعني عنوان IP"
+                                      : "Command host — empty means the target IP"
+                                  }
+                                />
+                                <span>:</span>
+                                <input
+                                  type="text"
+                                  value={
+                                    cmdDrafts.get(target.id)?.port ??
+                                    (target.commandPort
+                                      ? String(target.commandPort)
+                                      : "")
+                                  }
+                                  disabled={busy}
+                                  placeholder="14550"
+                                  onChange={(e) =>
+                                    setCmdDraft(target, "port", e.target.value)
+                                  }
+                                  onBlur={() => commitCommand(target, "port")}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      (e.target as HTMLInputElement).blur();
+                                    } else if (e.key === "Escape") {
+                                      setCmdDrafts((prev) => {
+                                        const next = new Map(prev);
+                                        next.delete(target.id);
+                                        return next;
+                                      });
+                                    }
+                                  }}
+                                  className="w-16 min-w-0 bg-transparent font-mono px-1 py-0.5 rounded border border-hud/40 hover:border-hud focus:border-[var(--hud-accent-border)] focus:bg-[var(--hud-elevated)] outline-none transition-colors disabled:opacity-50"
+                                  title={
+                                    isAr
+                                      ? "منفذ الأوامر — فارغ يعني 14550"
+                                      : "Command port — empty means 14550"
+                                  }
+                                />
+                              </div>
+                            )}
 
-                      {/* Calibration — fire one at a known point and derive
+                          {/* Calibration — fire one at a known point and derive
                           the mounting offset from where the board saw it.
                           Commissioning's counterpart to the ADMIN board's
                           drag-to-calibrate, which needs a live relay. */}
-                      {!readOnly && calOpen.has(target.id) && (
-                        <TargetCalibrationPanel
-                          target={target}
-                          siblings={otherTargets(target.id)}
-                          isAr={isAr}
-                          onNotice={triggerSuccessBanner}
-                          onError={triggerErrorBanner}
-                          addAdminLog={addAdminLog}
-                          onPacket={logPacket}
-                          onCalibrated={(saved) =>
-                            mergeTarget(saved.laneId, saved)
-                          }
-                        />
-                      )}
+                          {!readOnly && calOpen.has(target.id) && (
+                            <TargetCalibrationPanel
+                              target={target}
+                              siblings={otherTargets(target.id)}
+                              isAr={isAr}
+                              onNotice={triggerSuccessBanner}
+                              onError={triggerErrorBanner}
+                              addAdminLog={addAdminLog}
+                              onPacket={logPacket}
+                              onCalibrated={(saved) =>
+                                mergeTarget(saved.laneId, saved)
+                              }
+                            />
+                          )}
 
-                      {/* Sensitivity — SUPER_ADMIN only, live off the board.
+                          {/* Sensitivity — SUPER_ADMIN only, live off the board.
                           See TargetSensitivityPanel for why channels are
                           A1..A5/B1..B5 and never a physical sensor name. */}
-                      {!readOnly && sensOpen.has(target.id) && (
-                        <TargetSensitivityPanel
-                          target={target}
-                          isAr={isAr}
-                          onNotice={triggerSuccessBanner}
-                          addAdminLog={addAdminLog}
-                          onPacket={logPacket}
-                        />
-                      )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+                          {!readOnly && sensOpen.has(target.id) && (
+                            <TargetSensitivityPanel
+                              target={target}
+                              isAr={isAr}
+                              onNotice={triggerSuccessBanner}
+                              addAdminLog={addAdminLog}
+                              onPacket={logPacket}
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
 
-              {!readOnly && (
-                <button
-                  type="button"
-                  onClick={() => void addTarget(lane)}
-                  disabled={addBusy || rows.length >= MAX_SLOTS_PER_LANE}
-                  className="inline-flex items-center gap-1.5 admin-text-xs font-mono hud-accent cursor-pointer hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
-                >
-                  {addBusy ? (
-                    <Loader2 className="w-3 h-3 shrink-0 animate-spin" />
-                  ) : (
-                    <Crosshair className="w-3 h-3 shrink-0" />
-                  )}
-                  {isAr ? "إضافة هدف لهذه الحارة" : "Add target to this lane"}
-                  {rows.length < MAX_SLOTS_PER_LANE && (
-                    <span className="hud-text-subtle">
-                      {" — "}
-                      {slotCode(lane.id, freeSlot(lane) ?? 0)} ·{" "}
-                      {lanes.every((l) => (l.targets ?? []).length === 0)
-                        ? DEFAULT_TARGET_IP
-                        : addressFor(lane.id, freeSlot(lane) ?? 0)}
-                    </span>
-                  )}
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </div>
+                {!readOnly && (
+                  <button
+                    type="button"
+                    onClick={() => void addTarget(lane)}
+                    disabled={addBusy || rows.length >= MAX_SLOTS_PER_LANE}
+                    className="inline-flex items-center gap-1.5 admin-text-xs font-mono hud-accent cursor-pointer hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+                  >
+                    {addBusy ? (
+                      <Loader2 className="w-3 h-3 shrink-0 animate-spin" />
+                    ) : (
+                      <Crosshair className="w-3 h-3 shrink-0" />
+                    )}
+                    {isAr ? "إضافة هدف لهذه الحارة" : "Add target to this lane"}
+                    {rows.length < MAX_SLOTS_PER_LANE && (
+                      <span className="hud-text-subtle">
+                        {" — "}
+                        {slotCode(lane.id, freeSlot(lane) ?? 0)} ·{" "}
+                        {lanes.every((l) => (l.targets ?? []).length === 0)
+                          ? DEFAULT_TARGET_IP
+                          : addressFor(lane.id, freeSlot(lane) ?? 0)}
+                      </span>
+                    )}
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {!readOnly && (
@@ -1501,14 +1578,24 @@ export function LaneHardwarePanel({
           isAr={isAr}
           packets={packetLogs.get(selectedTargetId ?? "") ?? []}
           isConnected={true}
-          isArmed={selectedTargetId ? armedTargets.has(selectedTargetId) : false}
+          isArmed={
+            selectedTargetId ? armedTargets.has(selectedTargetId) : false
+          }
           isTesting={selectedTargetId ? testing.has(selectedTargetId) : false}
           mode={mode}
           onClear={() => selectedTargetId && clearConsole(selectedTargetId)}
-          onPlay={() => getSelectedTarget() && sendPlayCommand(getSelectedTarget()!)}
-          onStop={() => getSelectedTarget() && sendStopCommand(getSelectedTarget()!)}
-          onHeartbeat={() => getSelectedTarget() && sendHeartbeat(getSelectedTarget()!)}
-          onDevData={(shot) => getSelectedTarget() && sendDevData(getSelectedTarget()!, shot)}
+          onPlay={() =>
+            getSelectedTarget() && sendPlayCommand(getSelectedTarget()!)
+          }
+          onStop={() =>
+            getSelectedTarget() && sendStopCommand(getSelectedTarget()!)
+          }
+          onHeartbeat={() =>
+            getSelectedTarget() && sendHeartbeat(getSelectedTarget()!)
+          }
+          onDevData={(shot) =>
+            getSelectedTarget() && sendDevData(getSelectedTarget()!, shot)
+          }
         />
       )}
 

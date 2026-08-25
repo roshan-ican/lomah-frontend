@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "npm run build:native && vite --port=3000 --host=0.0.0.0",
     "dev:web": "cross-env VITE_WEB_ONLY=true vite --port=3000 --host=0.0.0.0",
+    "dev:http": "cross-env VITE_WEB_ONLY=true VITE_DISABLE_HTTPS=true vite --port=3000 --host=0.0.0.0",
     "build": "vite build",
     "preview": "vite preview",
     "build:backend": "cd ../lomah-nest && npm run build:dist",

@@ -42,13 +42,13 @@ export const PortalScreen = (props: Props) => {
   return (
     <div className="flex-grow flex flex-col items-center justify-center p-4 relative overflow-hidden">
       {/* Static radar circles (exactly as before) */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[550px] border border-emerald-500/[0.04] dark:border-emerald-success/[0.07] rounded-full pointer-events-none select-none z-1 flex items-center justify-center">
-        <div className="w-[380px] h-[380px] border border-emerald-500/[0.03] dark:border-emerald-success/[0.05] rounded-full flex items-center justify-center">
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 portal-ring-outer border border-emerald-500/[0.04] dark:border-emerald-success/[0.07] rounded-full pointer-events-none select-none z-1 flex items-center justify-center">
+        <div className="portal-ring-inner border border-emerald-500/[0.03] dark:border-emerald-success/[0.05] rounded-full flex items-center justify-center">
           <div className="w-1.5 h-1.5 bg-emerald-500/20 rounded-full animate-ping"></div>
         </div>
       </div>
 
-      <div className="w-full max-w-md z-10">
+      <div className="portal-shell z-10">
         {/* Brand header */}
         <div className="text-center mb-6 select-none">
           <div className="mx-auto w-12 h-12 rounded-2xl bg-emerald-500/10 dark:bg-emerald-success/10 flex items-center justify-center border border-emerald-500/20 mb-3.5 shadow-sm">
@@ -122,7 +122,7 @@ export const PortalScreen = (props: Props) => {
                   className="group p-4 leading-relaxed rounded-xl text-left border cursor-pointer select-none transition-all duration-200 hover:shadow-md bg-transparent border-gray-200 dark:border-glass-border hover:border-emerald-500/50 hover:bg-emerald-500/[0.01]"
                 >
                   <div className="flex items-center gap-2.5">
-                    <div className="p-2 bg-gray-100 dark:bg-slate-surface text-gray-500 dark:text-gray-400 rounded-lg group-hover:scale-105 transition-transformFixed">
+                    <div className="p-2 bg-gray-100 dark:bg-slate-surface text-gray-500 dark:text-gray-400 rounded-lg group-hover:scale-105 transition-transform">
                       <User className="w-5 h-5" />
                     </div>
                     <div>

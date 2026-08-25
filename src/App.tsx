@@ -15,7 +15,13 @@ import type { CalibrateMode } from "./types";
 import { AuthStage, AUTH_STAGE_PATH, authStageFromPath } from "./types";
 import { translations, TranslationSet } from "./translations";
 import { clickToSensorCoords } from "./utils/shotCoordinates";
-import { apiFetchJson, ApiError, BACKEND_URL, getAuthRole, api } from "./utils/api";
+import {
+  apiFetchJson,
+  ApiError,
+  BACKEND_URL,
+  getAuthRole,
+  api,
+} from "./utils/api";
 import { useNotifications } from "./hooks/useNotifications";
 import { useLaneOffsets } from "./hooks/useLaneOffsets";
 import { useSessionStore } from "./store/sessionStore";
@@ -323,9 +329,16 @@ function App() {
           <motion.div
             key={banner.tone}
             role={banner.tone === "error" ? "alert" : "status"}
+            // Same path in and out. It used to enter from -45 and leave to
+            // -25, so the banner dropped further than it rose — it read as two
+            // unrelated animations rather than one thing arriving and going
+            // back where it came from.
             initial={{ opacity: 0, y: -45, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -25, scale: 0.95 }}
+            exit={{ opacity: 0, y: -45, scale: 0.95 }}
+            // A banner that slides down from the top edge has travelled and
+            // has momentum; a small overshoot is what that looks like.
+            transition={{ type: "spring", bounce: 0.18, duration: 0.42 }}
             className={`fixed top-5 left-1/2 -translate-x-1/2 z-[9999] max-w-[min(90vw,44rem)] px-5 py-3 rounded-xl border shadow-xl bg-[#1C1F26] font-mono admin-text-sm font-bold flex items-start gap-2.5 ${
               banner.tone === "error"
                 ? "border-red-500/40 text-red-400"

@@ -118,7 +118,8 @@ export function AdminAccountsPanel({
   };
 
   /** Colours only — PasswordInput supplies its own width and padding. */
-  const inputSkin = "hud-form-input rounded admin-text-base font-mono disabled:opacity-50";
+  const inputSkin =
+    "hud-form-input rounded admin-text-base font-mono disabled:opacity-50";
   const inputCls = `${inputSkin} px-2.5 py-1.5 w-full`;
 
   return (

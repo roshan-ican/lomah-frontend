@@ -82,7 +82,8 @@ export const SessionHistoryView: React.FC<SessionHistoryViewProps> = ({
           message = err.message;
         }
       } else {
-        message = err instanceof Error ? err.message : "Could not load shooter report.";
+        message =
+          err instanceof Error ? err.message : "Could not load shooter report.";
       }
       setFetchError(message);
       triggerSuccessBanner(message);

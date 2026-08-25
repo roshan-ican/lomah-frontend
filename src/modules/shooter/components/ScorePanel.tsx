@@ -184,7 +184,9 @@ export const ScorePanel: React.FC<ScorePanelProps> = ({
           </span>
           <span className="text-xl font-mono font-bold block mt-0.5">
             {totalScore}{" "}
-            <span className="text-xs text-gray-500 dark:text-gray-400">/ {shots.length * 10}</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              / {shots.length * 10}
+            </span>
           </span>
         </div>
       </div>

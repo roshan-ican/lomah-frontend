@@ -12,40 +12,41 @@ interface ActivityLogProps {
   /** Extra classes for the footer wrapper. */
   className?: string;
   /** Starting height of the log list in pixels, used until the operator drags
-   *  the handle. After that their own size wins and is remembered. */
+   * the handle. After that their own size wins and is remembered. */
   defaultHeight?: number;
   /** Where the dragged height is remembered. Distinct keys let the admin and
-   *  super-admin consoles keep independent sizes — they show the same log but
-   *  sit in very different layouts. */
+   * super-admin consoles keep independent sizes — they show the same log but
+   * sit in very different layouts. */
   storageKey?: string;
   /** Start collapsed. Defaults to expanded. */
   defaultCollapsed?: boolean;
 }
 
 /** Below this the list is too short to read; above it the panel would swallow
- *  the target view. Both are enforced on every drag frame, not just at rest. */
+ * the target view. Both are enforced on every drag frame, not just at rest. */
 const MIN_HEIGHT = 72;
 const maxHeight = () => Math.round(window.innerHeight * 0.8);
 
 /** Same four-way tone→colour mapping the sensor console's packet log uses, so
- *  both logs read with the same vocabulary: emerald = confirmed, rose = failed,
- *  amber = in-between, light green = plain information. */
+ * both logs read with the same vocabulary: emerald = confirmed, rose = failed,
+ * amber = in-between, light green = plain information. */
 type ActivityTone = "success" | "error" | "warn" | "info";
 
 /** The messages are plain strings, so the tone is inferred from the first
- *  keyword after the timestamp (and any ✖/⚠/emoji marker the server attached).
+ * keyword after the timestamp (and any ✖/⚠/emoji marker the server attached).
  *  Everything unclassified reads as info — it genuinely is, most of the time. */
 const getTone = (rest: string): ActivityTone => {
   const t = rest.replace(/^[^\w:]*/, "");
   if (rest.startsWith("✖") || /^FAILED\b/i.test(t)) return "error";
-  if (rest.startsWith("⚠") || /^(PAUSE|ADVANCE|RESET)\b/i.test(t)) return "warn";
+  if (rest.startsWith("⚠") || /^(PAUSE|ADVANCE|RESET)\b/i.test(t))
+    return "warn";
   if (/^(START|RESUME|REVIEW|RANGE_CONTROL)\b/i.test(t)) return "success";
   return "info";
 };
 
 /** The coloured chip shown in each card's header — the message's own keyword
  *  (FAILED, RESET, SENSITIVITY, TARGET CAL, …), capped at two words so an
- *  over-verbose prefix like "CALIBRATION CARRIED into bulk start" stays short. */
+ * over-verbose prefix like "CALIBRATION CARRIED into bulk start" stays short. */
 const categoryOf = (rest: string): string => {
   const seg = rest.split(":")[0].trim();
   const words = seg.split(/\s+/).filter(Boolean).slice(0, 2).join(" ");
@@ -53,16 +54,16 @@ const categoryOf = (rest: string): string => {
 };
 
 /** Split `[HH:MM:SS]` (stamped by addAdminLog) off the front so it can render
- *  subtle like the packet log's clock, with the payload left to the body. */
+ * subtle like the packet log's clock, with the payload left to the body. */
 const parseTime = (text: string): { time: string | null; rest: string } => {
   const m = text.match(/^\[(\d{2}:\d{2}:\d{2})\]\s?(.*)$/s);
   return m ? { time: m[1], rest: m[2] } : { time: null, rest: text };
 };
 
 /** Highlight the hex the backend embeds in sensor messages — `cmd=0x57(P)`,
- *  `x=0x04D2`, and whole frames like `frame=[24 57 41 02 1E 00 00 DC 23]` — in
- *  the same amber the packet log uses for its HEX line. Timestamps and decimal
- *  numbers are deliberately left alone. */
+ * `x=0x04D2`, and whole frames like `frame=[24 57 41 02 1E 00 00 DC 23]` — in
+ * the same amber the packet log uses for its HEX line. Timestamps and decimal
+ * numbers are deliberately left alone. */
 const HEX_TOKEN = /0x[0-9A-Fa-f]{1,}|\[[0-9A-Fa-f]{2}(?:\s+[0-9A-Fa-f]{2})*\]/g;
 
 const renderHex = (text: string): React.ReactNode[] => {
@@ -75,7 +76,10 @@ const renderHex = (text: string): React.ReactNode[] => {
       parts.push(<span key={key++}>{text.slice(last, m.index)}</span>);
     }
     parts.push(
-      <span key={key++} className="font-bold text-amber-700 dark:text-amber-300">
+      <span
+        key={key++}
+        className="font-bold text-amber-700 dark:text-amber-300"
+      >
         {m[0]}
       </span>,
     );
@@ -173,9 +177,9 @@ export const ActivityLog: React.FC<ActivityLogProps> = ({
           aria-orientation="horizontal"
           aria-label={isAr ? "تغيير ارتفاع السجل" : "Resize activity log"}
           className={`group h-2 -mt-1 mb-0.5 flex items-center justify-center
-                      cursor-row-resize touch-none select-none ${
-                        dragging ? "opacity-100" : "opacity-50 hover:opacity-100"
-                      }`}
+ cursor-row-resize touch-none select-none ${
+   dragging ? "opacity-100" : "opacity-50 hover:opacity-100"
+ }`}
         >
           <span
             className={`h-0.5 w-10 rounded-full ${
@@ -196,7 +200,7 @@ export const ActivityLog: React.FC<ActivityLogProps> = ({
           {heading}
         </h3>
         {/* Count stays visible while collapsed — otherwise there is no way to
-            tell a quiet range from a panel that is simply folded shut. */}
+ tell a quiet range from a panel that is simply folded shut. */}
         <span className="admin-text-3xs font-mono hud-text-muted">
           ({rows.length})
         </span>
@@ -230,13 +234,13 @@ export const ActivityLog: React.FC<ActivityLogProps> = ({
                   key={idx}
                   className={`flex items-start gap-1.5 px-1.5 py-1 rounded border font-mono ${getBorderColor(tone)}`}
                 >
-                  <span className={`text-2xs px-1 rounded font-bold shrink-0 ${getLabelColor(tone)}`}>
+                  <span
+                    className={`admin-text-2xs px-1 rounded font-bold shrink-0 ${getLabelColor(tone)}`}
+                  >
                     {categoryOf(rest)}
                   </span>
-                  <span className="text-2xs break-all leading-snug">
-                    {time && (
-                      <span className="hud-text-subtle">[{time}] </span>
-                    )}
+                  <span className="admin-text-2xs break-all leading-snug">
+                    {time && <span className="hud-text-subtle">[{time}] </span>}
                     {renderHex(rest)}
                   </span>
                 </div>

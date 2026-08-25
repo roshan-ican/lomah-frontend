@@ -200,7 +200,13 @@ export const TargetView: React.FC<TargetViewProps> = ({
   // Pinch, ctrl+wheel and drag-to-pan. Disabled during a bulk calibration
   // drag, where a second finger on the board means "drag with two fingers",
   // not "zoom", and where hijacking the gesture would move shots.
-  const { pan, isPanning, panHandlers, reset: resetView } = usePanZoom({
+  const {
+    pan,
+    isPanning,
+    isMoving,
+    panHandlers,
+    reset: resetView,
+  } = usePanZoom({
     targetRef: pinchAreaRef,
     zoomLevel,
     changeZoom,
@@ -227,7 +233,10 @@ export const TargetView: React.FC<TargetViewProps> = ({
   // CLICK_TO_FIRE_ENABLED is off: a tap on the board no longer forges a shot.
   // See featureFlags.ts for why, and flip it there to restore local testing.
   const canFire =
-    CLICK_TO_FIRE_ENABLED && !readOnly && !!handleTargetClick && !isBulkCalibrate;
+    CLICK_TO_FIRE_ENABLED &&
+    !readOnly &&
+    !!handleTargetClick &&
+    !isBulkCalibrate;
   // Selecting a shot only highlights it — it mutates nothing on the server and
   // nothing on the board. `readOnly` gates FIRING (see canFire above, which
   // checks it independently), so tying selection to it as well was what made
@@ -353,10 +362,13 @@ export const TargetView: React.FC<TargetViewProps> = ({
         <div
           ref={targetContainerRef}
           onClick={canFire ? handleTargetClick : undefined}
-          // No transition while the finger is down: a 200ms ease on every pan
-          // frame turns a drag into the board sliding after the pointer.
+          // No transition while the board is moving under its own steam
+          // either: a 200ms ease on every pan frame turns a drag into the
+          // board sliding after the pointer, and it fights the release spring
+          // the same way — two animations on one property, the CSS one always
+          // starting over from the value the spring just wrote.
           className={`relative select-none flex items-center justify-center aspect-square shrink-0${
-            isPanning ? "" : " transition-transform duration-200"
+            isMoving ? "" : " transition-transform duration-200"
           }${canFire ? " cursor-crosshair" : ""}${
             isBulkCalibrate ? " touch-none" : ""
           }${isHud ? " mx-auto" : ""}`}
@@ -444,7 +456,11 @@ export const TargetView: React.FC<TargetViewProps> = ({
                 const bulkPreview = bulkDragPreview?.get(sh.id);
                 const xMm = (bulkPreview?.xMm ?? sh.x) + previewDx;
                 const yMm = (bulkPreview?.yMm ?? sh.y) + previewDy;
-                const { x: rawCx, y: rawCy } = mmToSvgPoint(xMm, yMm, profileType);
+                const { x: rawCx, y: rawCy } = mmToSvgPoint(
+                  xMm,
+                  yMm,
+                  profileType,
+                );
                 const { cx, cy, wasClamped } = clampToEdge(
                   rawCx,
                   rawCy,
@@ -483,7 +499,11 @@ export const TargetView: React.FC<TargetViewProps> = ({
                 const bulkPreview = bulkDragPreview?.get(sh.id);
                 const xMm = (bulkPreview?.xMm ?? sh.x) + previewDx;
                 const yMm = (bulkPreview?.yMm ?? sh.y) + previewDy;
-                const { x: rawX, y: rawY } = mmToSvgPoint(xMm, yMm, profileType);
+                const { x: rawX, y: rawY } = mmToSvgPoint(
+                  xMm,
+                  yMm,
+                  profileType,
+                );
                 // Same rule as the marker, or the highlight ring and the shot
                 // it is meant to be circling end up in two different places.
                 const { cx: x, cy: y } = clampToEdge(

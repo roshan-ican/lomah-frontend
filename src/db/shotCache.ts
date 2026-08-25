@@ -57,8 +57,7 @@ export async function getCachedShots(
   try {
     const db = await getDb();
     const rec = (await db.get(STORE, key(sessionId, laneId))) as
-      | CachedSession
-      | undefined;
+      CachedSession | undefined;
     if (!rec?.shots) return null;
     // Drop calibration dividers that sort before shot #1. These could only come
     // from a build that inserted a marker for a zero-shot calibration (id 0.5),
@@ -112,9 +111,7 @@ export async function clearCachedShots(
  * Used when a new session is created on the lane so the previous
  * session's bullets don't leak into the new one.
  */
-export async function clearCachedShotsForLane(
-  laneId: number,
-): Promise<void> {
+export async function clearCachedShotsForLane(laneId: number): Promise<void> {
   try {
     const db = await getDb();
     const all = (await db.getAll(STORE)) as CachedSession[];

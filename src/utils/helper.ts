@@ -1,6 +1,10 @@
 // ─── Pure helpers (module-level, no hooks) ───────────────────────────────────
 
-import type { ActiveShooterChannel, ApiSessionSnapshot, SessionStage } from "../types";
+import type {
+  ActiveShooterChannel,
+  ApiSessionSnapshot,
+  SessionStage,
+} from "../types";
 import {
   mapRawShotToDisplay,
   mergeDisplayShots,
@@ -38,7 +42,6 @@ function usernameMatches(a?: string | null, b?: string | null): boolean {
   return !!a && !!b && a.toLowerCase() === b.toLowerCase();
 }
 
-
 function resolveDisplayStage(
   session: ApiSessionSnapshot,
 ): SessionStage | undefined {
@@ -73,7 +76,6 @@ function createUnassignedShooterChannel(
     shots: [],
   };
 }
-
 
 function applyApiSessionToChannel(
   ch: ActiveShooterChannel,

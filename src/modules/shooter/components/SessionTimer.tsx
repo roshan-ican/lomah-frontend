@@ -38,7 +38,9 @@ function formatElapsed(
   // If the end time is missing (event dropped / not yet delivered), cap the
   // elapsed display at the session's configured duration so the timer can never
   // keep climbing past the limit.
-  const end = endIso ? new Date(endIso).getTime() : start + durationSeconds * 1000;
+  const end = endIso
+    ? new Date(endIso).getTime()
+    : start + durationSeconds * 1000;
   const elapsedMs = Math.max(0, end - start);
   const cappedMs = Math.min(elapsedMs, durationSeconds * 1000);
   return clock(cappedMs / 1000);

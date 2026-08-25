@@ -29,9 +29,7 @@ export function useActiveLaneSchedules(): LaneScheduleView[] {
   const loadSchedules = useCallback(async () => {
     const range = localDayRange(serverNow());
     const query = new URLSearchParams(range).toString();
-    const rows = await api.get<LaneScheduleView[]>(
-      `/lane-schedules?${query}`,
-    );
+    const rows = await api.get<LaneScheduleView[]>(`/lane-schedules?${query}`);
     setSchedules(Array.isArray(rows) ? rows : []);
   }, []);
 

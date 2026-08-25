@@ -47,11 +47,7 @@ export function ShotMarker({
     // visible bullet is always the same size at every score and position.
     const coreR = MARKER_CORE_R;
 
-    const ringStroke = isMiss
-        ? isClamped
-          ? "#F59E0B"
-          : "#6B7280"
-        : "#E11D48";
+    const ringStroke = isMiss ? (isClamped ? "#F59E0B" : "#6B7280") : "#E11D48";
 
     return (
       <g

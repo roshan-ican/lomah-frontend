@@ -84,7 +84,8 @@ const BACKEND_DB_URL = `file:${path.join(USER_DATA, "lomah.db").replace(/\\/g, "
 function getOrCreateJwtSecret(): string {
   const secretFile = path.join(USER_DATA, "jwt-secret.txt");
   try {
-    if (fs.existsSync(secretFile)) return fs.readFileSync(secretFile, "utf-8").trim();
+    if (fs.existsSync(secretFile))
+      return fs.readFileSync(secretFile, "utf-8").trim();
   } catch (e) {
     console.error(e);
   }
@@ -569,8 +570,22 @@ let win: BrowserWindow | null = null;
 
 function createWindow(url: string) {
   win = new BrowserWindow({
+    // Only the restore-down size. The window opens full screen (below), so
+    // these are what the operator gets if they ever leave it — not the size
+    // the app is normally seen at.
     width: 1200,
     height: 800,
+    // This is a range console, not a browser. It occupies the whole display:
+    // there is nothing else on the machine to switch to, and a 1200x800 window
+    // floating on a 1920 or 2560 monitor wastes the screen the lane data is
+    // meant to fill. `fullscreen` rather than `kiosk` — kiosk also blocks
+    // alt-tab and the task manager, which is the wrong trade on a machine a
+    // range officer may need to get out of.
+    fullscreen: true,
+    // No menu bar at all, not merely hidden: setMenuBarVisibility(false) still
+    // leaves it reachable with Alt, which pops a File/Edit/View strip over the
+    // top of the lane grid mid-session.
+    autoHideMenuBar: true,
     // Electron shows the window the instant it's constructed unless told
     // otherwise, which paints the OS's default white background for however
     // long loadURL takes — a real, visible "blank screen" on every launch,
@@ -592,6 +607,16 @@ function createWindow(url: string) {
   });
 
   win.setMenuBarVisibility(false);
+  win.setMenu(null);
+
+  // Pinch-zoom and ctrl+wheel zoom are browser affordances that have no meaning
+  // here and one very real cost: a stray two-finger gesture on the tablet used
+  // to re-scale the whole console, and nothing in the UI told the operator how
+  // to undo it. The target board has its own pinch-to-zoom (usePanZoom) which
+  // keeps working — this only removes the shell-level zoom sitting on top of it.
+  win.webContents.setVisualZoomLevelLimits(1, 1).catch(() => {
+    /* older Electron: not fatal, the gesture just stays enabled */
+  });
 
   // Bounded to one retry per window: the BLANK check below already logs
   // every occurrence, so a second consecutive blank load is a real failure
@@ -604,13 +629,19 @@ function createWindow(url: string) {
   // here, so "it started blank" becomes a line in backend.log instead of a
   // report with nothing behind it.
   win.webContents.on("did-fail-load", (_e, code, description, failedUrl) => {
-    writeLog(ERROR_LOG, `[renderer] load failed ${code} ${description} :: ${failedUrl}`);
+    writeLog(
+      ERROR_LOG,
+      `[renderer] load failed ${code} ${description} :: ${failedUrl}`,
+    );
   });
   win.webContents.on("render-process-gone", (_e, details) => {
     writeLog(ERROR_LOG, `[renderer] process gone: ${details.reason}`);
   });
   win.webContents.on("preload-error", (_e, preloadPath, error) => {
-    writeLog(ERROR_LOG, `[renderer] preload failed ${preloadPath}: ${error.message}`);
+    writeLog(
+      ERROR_LOG,
+      `[renderer] preload failed ${preloadPath}: ${error.message}`,
+    );
   });
   // Electron changed this event's shape: it used to be
   // (event, level, message, line, sourceId) and is now (event, details). Both
@@ -634,12 +665,18 @@ function createWindow(url: string) {
           sourceId?: string;
         };
         if (d.level === "error" || d.level === "warning") {
-          writeLog(ERROR_LOG, `[renderer] ${d.level}: ${d.message} (${d.sourceId}:${d.lineNumber})`);
+          writeLog(
+            ERROR_LOG,
+            `[renderer] ${d.level}: ${d.message} (${d.sourceId}:${d.lineNumber})`,
+          );
         }
         return;
       }
       if (typeof levelOrDetails === "number" && levelOrDetails >= 2) {
-        writeLog(ERROR_LOG, `[renderer] console: ${message} (${sourceId}:${line})`);
+        writeLog(
+          ERROR_LOG,
+          `[renderer] console: ${message} (${sourceId}:${line})`,
+        );
       }
     },
   );
@@ -665,7 +702,10 @@ function createWindow(url: string) {
       .then((state: string) => {
         const { mounted } = JSON.parse(state) as { mounted: number };
         if (mounted > 0) {
-          writeLog(BACKEND_LOG, `[renderer] mounted ok (${mounted} root children)`);
+          writeLog(
+            BACKEND_LOG,
+            `[renderer] mounted ok (${mounted} root children)`,
+          );
         } else if (!blankReloadAttempted) {
           // This used to only be logged, so a blank first load just sat
           // there until the operator noticed and pressed refresh — the exact
@@ -688,7 +728,10 @@ function createWindow(url: string) {
         }
       })
       .catch((err: Error) => {
-        writeLog(ERROR_LOG, `[renderer] could not inspect the document: ${err.message}`);
+        writeLog(
+          ERROR_LOG,
+          `[renderer] could not inspect the document: ${err.message}`,
+        );
       });
   });
 
@@ -696,9 +739,21 @@ function createWindow(url: string) {
     writeLog(ERROR_LOG, `[renderer] loadURL rejected: ${err.message}`);
   });
 
-  win.webContents.on("before-input-event", (_e, input) => {
+  win.webContents.on("before-input-event", (event, input) => {
     if (input.key === "F12") {
       win?.webContents.toggleDevTools();
+    }
+    // The window opens full screen, so there has to be a way back — and it has
+    // to be the key every operator already expects. Without this the only exit
+    // is closing the app.
+    if (input.key === "F11" && input.type === "keyDown") {
+      win?.setFullScreen(!win.isFullScreen());
+    }
+    // Ctrl +/-/0 resize the entire console the same way pinch does, and for the
+    // same reason it has no place here: the density scale in index.css is what
+    // adapts this UI to the display.
+    if (input.control && ["+", "-", "=", "0"].includes(input.key)) {
+      event.preventDefault();
     }
   });
 

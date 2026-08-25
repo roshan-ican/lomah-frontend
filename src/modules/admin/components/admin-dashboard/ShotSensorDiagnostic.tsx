@@ -16,7 +16,7 @@ const SENSOR_LABELS = ["R1", "R2", "R3", "R4", "L1", "L2", "L3", "L4"] as const;
 
 interface ShotSensorDiagnosticProps {
   /** The board that reported this shot. Null disables the query — see the
-   *  targetId comment on DisplayShot for why it is per-shot. */
+   * targetId comment on DisplayShot for why it is per-shot. */
   targetId: string | null;
   /** Shot number as the board counts them, i.e. DisplayShot.id. */
   shotNumber: number | null;
@@ -73,8 +73,8 @@ export function ShotSensorDiagnostic({
         onClick={() => void query()}
         disabled={disabled}
         className="flex items-center gap-1.5 admin-text-3xs font-mono uppercase tracking-wider
-                   px-2 py-1 rounded border border-hud bg-hud-elevated
-                   hover:bg-hud disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+ px-2 py-1 rounded border border-hud bg-hud-elevated
+ hover:bg-[var(--hud-accent-bg-subtle)] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
       >
         {loading ? (
           <Loader2 className="w-3 h-3 animate-spin" />
@@ -101,7 +101,7 @@ export function ShotSensorDiagnostic({
       {result && (
         <div className="space-y-1">
           {/* sensors === null means the board never answered at all, which is a
-              different failure from "answered, detected nothing" (0x00). */}
+ different failure from "answered, detected nothing" (0x00). */}
           {result.sensors === null ? (
             <p className="admin-text-3xs font-mono text-amber-500">
               {result.message}
@@ -127,8 +127,7 @@ export function ShotSensorDiagnostic({
               </div>
               <p className="admin-text-3xs font-mono hud-text-subtle">
                 0x{result.sensors.toString(16).toUpperCase().padStart(2, "0")} —{" "}
-                {countBits(result.sensors)}/8{" "}
-                {isAr ? "استشعرت" : "detected"}
+                {countBits(result.sensors)}/8 {isAr ? "استشعرت" : "detected"}
               </p>
               {result.sensors === 0 && (
                 <p className="admin-text-3xs font-mono text-amber-500">

@@ -56,9 +56,12 @@ export const LaneOffsetEditDialog: React.FC<LaneOffsetEditDialogProps> = ({
   const [dragging, setDragging] = useState(false);
   const frameRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-  const origin = useRef<{ px: number; py: number; x: number; y: number } | null>(
-    null,
-  );
+  const origin = useRef<{
+    px: number;
+    py: number;
+    x: number;
+    y: number;
+  } | null>(null);
 
   // Hooks first, guard second — returning before useState would make the hook
   // order depend on `open`.
@@ -160,7 +163,7 @@ export const LaneOffsetEditDialog: React.FC<LaneOffsetEditDialogProps> = ({
                 value={draftX}
                 onChange={(e) => onChangeX(Number(e.target.value))}
                 disabled={busy}
-                className="w-16 bg-hud-elevated border border-hud rounded px-1.5 py-1 admin-text-sm font-mono text-hud-strong focus:outline-none focus:border-hud-accent disabled:opacity-60"
+                className="w-16 bg-hud-elevated border border-hud rounded px-1.5 py-1 admin-text-sm font-mono hud-text-strong focus:outline-none focus:border-hud-accent disabled:opacity-60"
               />
             </label>
 
@@ -171,7 +174,7 @@ export const LaneOffsetEditDialog: React.FC<LaneOffsetEditDialogProps> = ({
                 value={draftY}
                 onChange={(e) => onChangeY(Number(e.target.value))}
                 disabled={busy}
-                className="w-16 bg-hud-elevated border border-hud rounded px-1.5 py-1 admin-text-sm font-mono text-hud-strong focus:outline-none focus:border-hud-accent disabled:opacity-60"
+                className="w-16 bg-hud-elevated border border-hud rounded px-1.5 py-1 admin-text-sm font-mono hud-text-strong focus:outline-none focus:border-hud-accent disabled:opacity-60"
               />
             </label>
           </div>

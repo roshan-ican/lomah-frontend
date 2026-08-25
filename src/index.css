@@ -86,11 +86,11 @@
   --color-emerald-success: #1d9e75;
   --color-surface-container-high: #282a2d;
 
-  --animate-scanline: scanline 10s linear infinite;
-  --animate-pulse-active: pulse 1.2s infinite;
+  /* The only ambient animation the app actually uses — see .hud-scan-overlay,
+     applied to the target board. The scanline / pulse-active / impact-pulse /
+     hud-glow entries that sat here were never referenced by any component; they
+     and their @keyframes have been removed. */
   --animate-hud-scan: hud-scan 4s ease-in-out infinite;
-  --animate-impact-pulse: impact-pulse 1.4s ease-out infinite;
-  --animate-hud-glow: hud-glow 3s ease-in-out infinite;
 
   --color-hud-bg: #05080d;
   --color-hud-surface: #0b1220;
@@ -98,27 +98,96 @@
   --color-hud-text: #d5e2ff;
   --color-hud-impact: #ff3355;
   --color-hud-warning: #ff9f1c;
+
+  /* Theme colours that mirror the runtime --hud-* variables.
+   *
+   * These exist so Tailwind can generate the utilities the codebase was
+   * ALREADY writing. `border-hud/40` appears 18 times, `bg-hud-elevated/80`
+   * and `focus:border-hud-accent` several more — none of them produced a
+   * single rule, because an opacity modifier or a variant needs a real
+   * Tailwind colour and `.border-hud` was only ever a hand-written class.
+   * Pointing the colour at the var (not at a literal) keeps light/dark
+   * switching intact.
+   */
+  --color-hud: var(--hud-accent-border);
+  --color-hud-elevated: var(--hud-elevated);
+  --color-hud-accent: var(--hud-accent);
+  /* `border-hud-strong` is the established meaning of this name (4 uses), so
+     the colour is the strong BORDER, not the strong text. The two places that
+     wrote `text-hud-strong` for the text colour use the `hud-text-strong`
+     utility instead. */
+  --color-hud-strong: var(--hud-accent-border-strong);
+  --color-hud-text-subtle: var(--hud-text-subtle);
+  --color-hud-danger: var(--hud-danger);
 }
 
-@keyframes scanline {
-  0% {
-    transform: translateY(-100%);
-  }
-  100% {
-    transform: translateY(100vh);
-  }
+/* Tactical HUD interface — theme-aware via --hud-* tokens.
+ *
+ * @utility, not plain classes. A plain `.hud-accent {}` cannot be composed
+ * with a variant, so every `hover:hud-accent` in the app — nine of them,
+ * including the header's mode switch and the sidebar's nav — generated no
+ * CSS at all and the hover state simply never happened. Registering them as
+ * utilities makes `hover:`, `focus:` and the rest work as written.
+ *
+ * It also settles the cascade: utilities sit in Tailwind's utilities layer,
+ * which beats the component layer below, so `range-display-stat hud-accent`
+ * now resolves to the accent instead of the component class silently winning.
+ */
+@utility hud-text {
+  color: var(--hud-text);
+}
+@utility hud-text-muted {
+  color: var(--hud-text-muted);
+}
+@utility hud-text-subtle {
+  color: var(--hud-text-subtle);
+}
+@utility hud-text-secondary {
+  color: var(--hud-text-secondary);
+}
+/* Was never defined at all, in 13 places across five dialogs — those elements
+   simply inherited whatever colour their parent had. */
+@utility hud-text-strong {
+  color: var(--hud-text-strong);
+}
+@utility hud-accent {
+  color: var(--hud-accent);
+}
+@utility hud-success {
+  color: var(--hud-success);
+}
+@utility hud-warning {
+  color: var(--hud-warning);
+}
+@utility hud-danger {
+  color: var(--hud-danger);
+}
+@utility hud-timer {
+  color: var(--hud-timer);
 }
 
-@keyframes pulse {
-  0% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-  100% {
-    opacity: 1;
-  }
+@utility bg-hud-page {
+  background-color: var(--hud-page);
+}
+@utility bg-hud-rail {
+  background-color: var(--hud-rail);
+}
+/* Utilities, not component classes: AdminSidebar writes `md:admin-sidebar-w`,
+   and a variant can only be built on a real utility. As a plain class the
+   md: form would generate nothing — which is exactly how `w-64` ended up
+   pinned at every breakpoint in the first place.
+
+   16rem → 20rem. The nav labels are the longest strings in the rail, so this
+   is what stops "Shooters & Devices" wrapping on a wide display. */
+@utility admin-sidebar-w {
+  width: clamp(16rem, 13.09rem + 4.55vw, 20rem);
+}
+@utility admin-sidebar-min {
+  min-width: clamp(14rem, 11.09rem + 4.55vw, 18rem);
+}
+
+@utility bg-hud-target-stage {
+  background-color: var(--hud-target-stage);
 }
 
 @keyframes hud-scan {
@@ -130,38 +199,6 @@
   50% {
     opacity: 0.7;
     transform: scale(1.008);
-  }
-}
-
-@keyframes impact-pulse {
-  0%,
-  100% {
-    opacity: 1;
-    r: 7.5;
-  }
-  50% {
-    opacity: 0.65;
-  }
-}
-
-@keyframes hud-glow {
-  0%,
-  100% {
-    box-shadow: 0 0 12px rgba(0, 255, 209, 0.08);
-  }
-  50% {
-    box-shadow: 0 0 24px rgba(0, 255, 209, 0.18);
-  }
-}
-
-@keyframes impact-expand {
-  0% {
-    transform: scale(0.4);
-    opacity: 0.9;
-  }
-  100% {
-    transform: scale(1.6);
-    opacity: 0;
   }
 }
 
@@ -258,14 +295,39 @@ html {
   min-height: calc(100vh / var(--ui-zoom));
 }
 
+/**
+ * Display density.
+ *
+ * --ui-zoom above is one number for every screen. It cannot be, because the
+ * two screens this app actually ships on are a wall-mounted monitor read from
+ * several metres away and a tablet held at arm's length — and the admin scale
+ * below bottoms out at 0.5rem, which is 8.8px after zoom. On a 1920-wide
+ * console that is the smallest readable text in the room sitting on the
+ * largest display in the room.
+ *
+ * Every size is therefore a ramp on window width rather than a constant: it
+ * holds at today's value up to 1024px (so no tablet or small-laptop layout can
+ * start overflowing), then grows linearly to +28% at 2432px and holds again.
+ * The scale follows the display continuously instead of stepping at a
+ * breakpoint — 1180px tablet ≈ +3%, 1920px monitor ≈ +18%, 2560px ≈ +28%.
+ *
+ * The ramp is written as `clamp(min, rem + vw, max)` and not as a --density
+ * multiplier because a unitless clamp bound cannot be compared against a
+ * length ratio — `clamp(0, (100vw - 1024px) / 1408, 1)` is invalid and every
+ * size silently falls back to 16px.
+ *
+ * vw resolves against the initial containing block, which is OUTSIDE the
+ * zoomed subtree — that is what we want here: the true window width, not the
+ * zoomed one. Unlike the vh rules above, this must NOT be divided by --ui-zoom.
+ */
 :root {
-  --admin-font-3xs: 0.5rem;
-  --admin-font-2xs: 0.5625rem;
-  --admin-font-xs: 0.625rem;
-  --admin-font-sm: 0.6875rem;
-  --admin-font-base: 0.75rem;
-  --admin-font-lg: 0.8125rem;
-  --admin-font-xl: 0.875rem;
+  --admin-font-3xs: clamp(0.5rem, 0.3982rem + 0.1591vw, 0.64rem);
+  --admin-font-2xs: clamp(0.5625rem, 0.448rem + 0.179vw, 0.72rem);
+  --admin-font-xs: clamp(0.625rem, 0.4977rem + 0.1989vw, 0.8rem);
+  --admin-font-sm: clamp(0.6875rem, 0.5475rem + 0.2187vw, 0.88rem);
+  --admin-font-base: clamp(0.75rem, 0.5973rem + 0.2386vw, 0.96rem);
+  --admin-font-lg: clamp(0.8125rem, 0.647rem + 0.2585vw, 1.04rem);
+  --admin-font-xl: clamp(0.875rem, 0.6968rem + 0.2784vw, 1.12rem);
 }
 
 html.dark {
@@ -333,979 +395,1210 @@ html.dark body {
   font-family: var(--font-sans);
 }
 
-.surface-card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 0.75rem;
-}
+/* Everything below is a COMPONENT class, and it lives in @layer components
+   for one reason: unlayered CSS beats every layered rule, so while these sat
+   outside a layer they silently won against the Tailwind utility sitting next
+   to them on the same element. `range-display-stat hud-accent` rendered as
+   neither — the component class took the colour and the utility did nothing.
+   Tailwind puts utilities in @layer utilities, which is ordered after
+   components, so joining this layer restores the expected precedence:
+   a utility on the element beats the component class it is layered over.
 
-.surface-panel {
-  background: var(--color-surface-muted);
-  border: 1px solid var(--color-border);
-}
-
-.text-muted {
-  color: var(--color-text-secondary);
-}
-
-.glass-panel {
-  background: rgba(28, 31, 38, 0.75);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-html.light .glass-panel {
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid var(--color-border);
-}
-
-.scanline {
-  width: 100%;
-  height: 100px;
-  z-index: 9999;
-  position: absolute;
-  pointer-events: none;
-  background: linear-gradient(
-    to bottom,
-    rgba(255, 255, 255, 0),
-    rgba(255, 255, 255, 0) 50%,
-    rgba(0, 0, 0, 0.1) 50%,
-    rgba(0, 0, 0, 0.1)
-  );
-  background-size: 100% 4px;
-  animation: scanline 10s linear infinite;
-  opacity: 0.1;
-}
-
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-html.light ::-webkit-scrollbar-thumb {
-  background: #c5cdd6;
-  border-radius: 4px;
-}
-html.light ::-webkit-scrollbar-thumb:hover {
-  background: #378add;
-}
-html.dark ::-webkit-scrollbar-thumb {
-  background: #333538;
-  border-radius: 4px;
-}
-html.dark ::-webkit-scrollbar-thumb:hover {
-  background: #4494e7;
-}
-
-/* Tactical HUD interface — theme-aware via --hud-* tokens */
-.hud-text {
-  color: var(--hud-text);
-}
-.hud-text-muted {
-  color: var(--hud-text-muted);
-}
-.hud-text-subtle {
-  color: var(--hud-text-subtle);
-}
-.hud-text-secondary {
-  color: var(--hud-text-secondary);
-}
-.hud-accent {
-  color: var(--hud-accent);
-}
-.hud-success {
-  color: var(--hud-success);
-}
-.hud-warning {
-  color: var(--hud-warning);
-}
-.hud-danger {
-  color: var(--hud-danger);
-}
-.hud-timer {
-  color: var(--hud-timer);
-}
-
-.bg-hud-page {
-  background-color: var(--hud-page);
-}
-.bg-hud-rail {
-  background-color: var(--hud-rail);
-}
-.bg-hud-elevated {
-  background-color: var(--hud-elevated);
-}
-.bg-hud-target-stage {
-  background-color: var(--hud-target-stage);
-}
-
-.border-hud {
-  border-color: var(--hud-accent-border);
-}
-.border-hud-strong {
-  border-color: var(--hud-accent-border-strong);
-}
-
-.hud-panel {
-  background: linear-gradient(
-    180deg,
-    var(--hud-bg) 0%,
-    var(--hud-surface) 100%
-  );
-  color: var(--hud-text);
-}
-
-.hud-label {
-  font-family: var(--font-sans);
-  /* On the scale, not a hardcoded 0.625rem — these are on-screen labels an
-     operator reads at arm's length, and they were pinned below the smallest
-     size the rest of the admin UI uses. */
-  font-size: var(--admin-font-2xs);
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--hud-text-muted);
-}
-
-.admin-text-3xs { font-size: var(--admin-font-3xs); }
-.admin-text-2xs { font-size: var(--admin-font-2xs); }
-.admin-text-xs  { font-size: var(--admin-font-xs); }
-.admin-text-sm  { font-size: var(--admin-font-sm); }
-.admin-text-base{ font-size: var(--admin-font-base); }
-.admin-text-lg  { font-size: var(--admin-font-lg); }
-.admin-text-xl  { font-size: var(--admin-font-xl); }
-
-.hud-value {
-  font-family: var(--font-data);
-  font-weight: 500;
-  color: var(--hud-text);
-  font-variant-numeric: tabular-nums;
-}
-
-.hud-primary {
-  color: var(--hud-accent);
-}
-
-.hud-divider {
-  width: 1px;
-  background: linear-gradient(
-    180deg,
-    transparent,
-    var(--hud-divider) 30%,
-    var(--hud-divider) 70%,
-    transparent
-  );
-}
-
-.hud-scan-overlay {
-  pointer-events: none;
-  background: radial-gradient(
-    ellipse at center,
-    var(--hud-scan) 0%,
-    transparent 70%
-  );
-  animation: hud-scan 4s ease-in-out infinite;
-}
-
-.hud-glass {
-  background: var(--hud-glass-bg);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--hud-glass-border);
-  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
-}
-
-html.dark .hud-glass {
-  box-shadow: 0 0 20px rgba(0, 255, 209, 0.06);
-}
-
-html.light .hud-scan-overlay {
-  opacity: 0.35;
-}
-
-.hud-analysis-glow {
-  background: var(--hud-accent-bg-subtle);
-  border: 1px solid var(--hud-accent-border);
-  box-shadow: 0 0 30px rgba(13, 148, 136, 0.06);
-}
-
-html.dark .hud-analysis-glow {
-  box-shadow: 0 0 30px rgba(0, 255, 209, 0.08);
-}
-
-.hud-toolbar-btn--active {
-  color: var(--hud-accent);
-}
-.hud-toolbar-btn--idle {
-  color: var(--hud-text-subtle);
-}
-.hud-toolbar-btn--idle:hover {
-  color: var(--hud-text-secondary);
-}
-
-.hud-tab-well {
-  background: var(--hud-elevated);
-  border-radius: 0.5rem;
-  padding: 0.125rem;
-}
-
-.hud-tab--active {
-  background: var(--hud-accent-bg);
-  color: var(--hud-accent) !important;
-}
-
-.hud-tab--idle {
-  color: var(--hud-text-subtle) !important;
-}
-.hud-tab--idle:hover {
-  color: var(--hud-text-secondary) !important;
-}
-
-.hud-btn-resume {
-  background: var(--hud-accent-bg);
-  color: var(--hud-accent);
-}
-.hud-btn-resume:hover {
-  background: var(--hud-accent-bg-hover);
-}
-
-.hud-btn-pause {
-  background: var(--hud-warning-bg);
-  color: var(--hud-warning);
-}
-.hud-btn-pause:hover {
-  background: var(--hud-warning-bg-hover);
-}
-
-.hud-btn-end {
-  background: var(--hud-danger-bg);
-  color: var(--hud-danger);
-}
-.hud-btn-end:hover {
-  background: var(--hud-danger-bg-hover);
-}
-
-.hud-shot-row--selected {
-  border-color: var(--hud-accent);
-  background: var(--hud-accent-bg-subtle);
-  color: var(--hud-text);
-}
-.hud-shot-row--idle {
-  border-color: transparent;
-  color: var(--hud-text-secondary);
-}
-.hud-shot-row--idle:hover {
-  color: var(--hud-text-strong);
-  background: var(--hud-accent-bg-subtle);
-}
-
-.hud-lane-card,
-.hud-lane-card--selected,
-.hud-lane-card--live {
-  border-radius: 0.75rem;
-  overflow: hidden;
-}
-.hud-lane-card {
-  border-color: var(--hud-accent-border);
-  background: var(--hud-chip-bg);
-}
-.hud-lane-card:hover {
-  border-color: var(--hud-accent-border-strong);
-  background: var(--hud-accent-bg-subtle);
-}
-.hud-lane-card--selected {
-  border-color: color-mix(in srgb, var(--hud-accent) 40%, transparent);
-  background: var(--hud-accent-bg-subtle);
-}
-.hud-lane-card--live {
-  border-color: color-mix(in srgb, var(--hud-success) 50%, transparent);
-  background: color-mix(in srgb, var(--hud-success) 5%, transparent);
-  box-shadow: var(--hud-shadow-live);
-}
-.hud-lane-card--live:hover {
-  border-color: color-mix(in srgb, var(--hud-success) 70%, transparent);
-  background: color-mix(in srgb, var(--hud-success) 9%, transparent);
-}
-
-.hud-status-active {
-  color: var(--hud-success);
-  border-color: color-mix(in srgb, var(--hud-success) 40%, transparent);
-  background: color-mix(in srgb, var(--hud-success) 8%, transparent);
-}
-.hud-status-ready {
-  color: var(--hud-accent);
-  border-color: color-mix(in srgb, var(--hud-accent) 30%, transparent);
-  background: var(--hud-accent-bg-subtle);
-}
-.hud-status-paused,
-.hud-status-done {
-  color: var(--hud-warning);
-  border-color: color-mix(in srgb, var(--hud-warning) 30%, transparent);
-  background: var(--hud-warning-bg);
-}
-.hud-status-vacant {
-  color: var(--hud-text-subtle);
-  border-color: var(--hud-accent-border);
-  background: var(--hud-chip-bg);
-}
-
-.hud-alert-banner {
-  border-color: color-mix(in srgb, var(--hud-warning) 40%, transparent);
-  background: var(--hud-warning-bg);
-  color: var(--hud-warning);
-}
-
-.hud-form-input {
-  background: var(--hud-input-bg);
-  border: 1px solid var(--hud-input-border);
-  color: var(--hud-text);
-}
-.hud-form-input::placeholder {
-  color: var(--hud-text-subtle);
-}
-.hud-form-input:focus {
-  outline: none;
-  border-color: color-mix(in srgb, var(--hud-accent) 40%, transparent);
-}
-
-.hud-form-range {
-  accent-color: var(--hud-accent);
-  background: var(--hud-elevated);
-}
-.hud-form-range::-webkit-slider-thumb {
-  background: var(--hud-accent);
-}
-
-.hud-btn-secondary {
-  background: var(--hud-btn-secondary-bg);
-  color: var(--hud-text-secondary);
-}
-.hud-btn-secondary:hover {
-  background: var(--hud-btn-secondary-hover);
-}
-
-.hud-btn-primary {
-  background: var(--hud-accent);
-  color: var(--hud-btn-primary-text);
-}
-.hud-btn-primary:hover {
-  background: color-mix(in srgb, var(--hud-accent) 90%, transparent);
-}
-
-/* Full-screen shooting simulator */
-.sim-view-dark {
-  --sim-bg: linear-gradient(165deg, #05080d 0%, #0a1018 45%, #060b12 100%);
-  --sim-glass: rgba(15, 23, 42, 0.72);
-  --sim-glass-border: rgba(255, 255, 255, 0.09);
-  --sim-text: #e8edf5;
-  --sim-muted: rgba(232, 237, 245, 0.48);
-  --sim-accent: #00ffd1;
-  --sim-accent-soft: rgba(0, 255, 209, 0.12);
-  --sim-live: #34d399;
-  --sim-warm: #fbbf24;
-  --sim-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
-  --sim-toolbar: rgba(8, 12, 20, 0.82);
-}
-
-.sim-view-light {
-  --sim-bg: linear-gradient(165deg, #f4f7fb 0%, #e9f0f7 42%, #f8fafc 100%);
-  --sim-glass: rgba(255, 255, 255, 0.82);
-  --sim-glass-border: rgba(255, 255, 255, 0.95);
-  --sim-text: #1e293b;
-  --sim-muted: #64748b;
-  --sim-accent: #0d9488;
-  --sim-accent-soft: rgba(13, 148, 136, 0.1);
-  --sim-live: #059669;
-  --sim-warm: #d97706;
-  --sim-shadow:
-    0 12px 40px rgba(15, 23, 42, 0.07), 0 4px 12px rgba(15, 23, 42, 0.04);
-  --sim-toolbar: rgba(255, 255, 255, 0.9);
-}
-
-.sim-view {
-  background: var(--sim-bg);
-  color: var(--sim-text);
-}
-
-.sim-glass {
-  background: var(--sim-glass);
-  backdrop-filter: blur(20px) saturate(1.4);
-  -webkit-backdrop-filter: blur(20px) saturate(1.4);
-  border: 1px solid var(--sim-glass-border);
-  box-shadow: var(--sim-shadow);
-}
-
-.sim-label {
-  font-size: 0.65rem;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--sim-muted);
-}
-
-.sim-value {
-  font-family: var(--font-sans);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: var(--sim-text);
-}
-
-.sim-accent {
-  color: var(--sim-accent);
-}
-
-.sim-toolbar {
-  background: var(--sim-toolbar);
-  backdrop-filter: blur(24px) saturate(1.5);
-  -webkit-backdrop-filter: blur(24px) saturate(1.5);
-  border: 1px solid var(--sim-glass-border);
-  box-shadow: var(--sim-shadow);
-}
-
-/* Target scales to fit available flex space (square) */
-.target-stage {
-  container-type: size;
-  flex: 1 1 0%;
-  min-height: 0;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-@supports (width: 1cqw) {
-  .target-fit-box {
-    width: min(100cqw, 100cqh);
-    height: min(100cqw, 100cqh);
-    aspect-ratio: 1;
-    flex-shrink: 0;
-    overflow: visible;
+   The response/input rules further down stay OUTSIDE the layer deliberately —
+   they must beat utilities, and their transition list is a superset of what
+   `transition-colors` sets so nothing is lost by winning. */
+@layer components {
+  .surface-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 0.75rem;
   }
-}
 
-@supports not (width: 1cqw) {
-  .target-fit-box {
-    aspect-ratio: 1;
+  .surface-panel {
+    background: var(--color-surface-muted);
+    border: 1px solid var(--color-border);
+  }
+
+  .text-muted {
+    color: var(--color-text-secondary);
+  }
+
+  .glass-panel {
+    background: rgba(28, 31, 38, 0.75);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  html.light .glass-panel {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid var(--color-border);
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  html.light ::-webkit-scrollbar-thumb {
+    background: #c5cdd6;
+    border-radius: 4px;
+  }
+  html.light ::-webkit-scrollbar-thumb:hover {
+    background: #378add;
+  }
+  html.dark ::-webkit-scrollbar-thumb {
+    background: #333538;
+    border-radius: 4px;
+  }
+  html.dark ::-webkit-scrollbar-thumb:hover {
+    background: #4494e7;
+  }
+
+  .hud-panel {
+    background: linear-gradient(
+      180deg,
+      var(--hud-bg) 0%,
+      var(--hud-surface) 100%
+    );
+    color: var(--hud-text);
+  }
+
+  .hud-label {
+    font-family: var(--font-sans);
+    /* On the scale, not a hardcoded 0.625rem — these are on-screen labels an
+       operator reads at arm's length, and they were pinned below the smallest
+       size the rest of the admin UI uses. */
+    font-size: var(--admin-font-2xs);
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--hud-text-muted);
+  }
+
+  .admin-text-3xs {
+    font-size: var(--admin-font-3xs);
+  }
+  .admin-text-2xs {
+    font-size: var(--admin-font-2xs);
+  }
+  .admin-text-xs {
+    font-size: var(--admin-font-xs);
+  }
+  .admin-text-sm {
+    font-size: var(--admin-font-sm);
+  }
+  .admin-text-base {
+    font-size: var(--admin-font-base);
+  }
+  .admin-text-lg {
+    font-size: var(--admin-font-lg);
+  }
+  .admin-text-xl {
+    font-size: var(--admin-font-xl);
+  }
+
+  .hud-value {
+    font-family: var(--font-data);
+    font-weight: 500;
+    color: var(--hud-text);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .hud-primary {
+    color: var(--hud-accent);
+  }
+
+  .hud-divider {
+    width: 1px;
+    background: linear-gradient(
+      180deg,
+      transparent,
+      var(--hud-divider) 30%,
+      var(--hud-divider) 70%,
+      transparent
+    );
+  }
+
+  .hud-scan-overlay {
+    pointer-events: none;
+    background: radial-gradient(
+      ellipse at center,
+      var(--hud-scan) 0%,
+      transparent 70%
+    );
+    animation: hud-scan 4s ease-in-out infinite;
+  }
+
+  .hud-glass {
+    background: var(--hud-glass-bg);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--hud-glass-border);
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+  }
+
+  html.dark .hud-glass {
+    box-shadow: 0 0 20px rgba(0, 255, 209, 0.06);
+  }
+
+  html.light .hud-scan-overlay {
+    opacity: 0.35;
+  }
+
+  .hud-analysis-glow {
+    background: var(--hud-accent-bg-subtle);
+    border: 1px solid var(--hud-accent-border);
+    box-shadow: 0 0 30px rgba(13, 148, 136, 0.06);
+  }
+
+  html.dark .hud-analysis-glow {
+    box-shadow: 0 0 30px rgba(0, 255, 209, 0.08);
+  }
+
+  .hud-toolbar-btn--active {
+    color: var(--hud-accent);
+  }
+  .hud-toolbar-btn--idle {
+    color: var(--hud-text-subtle);
+  }
+  .hud-toolbar-btn--idle:hover {
+    color: var(--hud-text-secondary);
+  }
+
+  .hud-tab-well {
+    background: var(--hud-elevated);
+    border-radius: 0.5rem;
+    padding: 0.125rem;
+  }
+
+  .hud-tab--active {
+    background: var(--hud-accent-bg);
+    color: var(--hud-accent) !important;
+  }
+
+  .hud-tab--idle {
+    color: var(--hud-text-subtle) !important;
+  }
+  .hud-tab--idle:hover {
+    color: var(--hud-text-secondary) !important;
+  }
+
+  .hud-btn-resume {
+    background: var(--hud-accent-bg);
+    color: var(--hud-accent);
+  }
+  .hud-btn-resume:hover {
+    background: var(--hud-accent-bg-hover);
+  }
+
+  .hud-btn-pause {
+    background: var(--hud-warning-bg);
+    color: var(--hud-warning);
+  }
+  .hud-btn-pause:hover {
+    background: var(--hud-warning-bg-hover);
+  }
+
+  .hud-btn-end {
+    background: var(--hud-danger-bg);
+    color: var(--hud-danger);
+  }
+  .hud-btn-end:hover {
+    background: var(--hud-danger-bg-hover);
+  }
+
+  .hud-shot-row--selected {
+    border-color: var(--hud-accent);
+    background: var(--hud-accent-bg-subtle);
+    color: var(--hud-text);
+  }
+  .hud-shot-row--idle {
+    border-color: transparent;
+    color: var(--hud-text-secondary);
+  }
+  .hud-shot-row--idle:hover {
+    color: var(--hud-text-strong);
+    background: var(--hud-accent-bg-subtle);
+  }
+
+  .hud-lane-card,
+  .hud-lane-card--selected,
+  .hud-lane-card--live {
+    border-radius: 0.75rem;
+    overflow: hidden;
+  }
+  .hud-lane-card {
+    border-color: var(--hud-accent-border);
+    background: var(--hud-chip-bg);
+  }
+  .hud-lane-card:hover {
+    border-color: var(--hud-accent-border-strong);
+    background: var(--hud-accent-bg-subtle);
+  }
+  .hud-lane-card--selected {
+    border-color: color-mix(in srgb, var(--hud-accent) 40%, transparent);
+    background: var(--hud-accent-bg-subtle);
+  }
+  .hud-lane-card--live {
+    border-color: color-mix(in srgb, var(--hud-success) 50%, transparent);
+    background: color-mix(in srgb, var(--hud-success) 5%, transparent);
+    box-shadow: var(--hud-shadow-live);
+  }
+  .hud-lane-card--live:hover {
+    border-color: color-mix(in srgb, var(--hud-success) 70%, transparent);
+    background: color-mix(in srgb, var(--hud-success) 9%, transparent);
+  }
+
+  .hud-status-active {
+    color: var(--hud-success);
+    border-color: color-mix(in srgb, var(--hud-success) 40%, transparent);
+    background: color-mix(in srgb, var(--hud-success) 8%, transparent);
+  }
+  .hud-status-ready {
+    color: var(--hud-accent);
+    border-color: color-mix(in srgb, var(--hud-accent) 30%, transparent);
+    background: var(--hud-accent-bg-subtle);
+  }
+  .hud-status-paused,
+  .hud-status-done {
+    color: var(--hud-warning);
+    border-color: color-mix(in srgb, var(--hud-warning) 30%, transparent);
+    background: var(--hud-warning-bg);
+  }
+  .hud-status-vacant {
+    color: var(--hud-text-subtle);
+    border-color: var(--hud-accent-border);
+    background: var(--hud-chip-bg);
+  }
+
+  .hud-alert-banner {
+    border-color: color-mix(in srgb, var(--hud-warning) 40%, transparent);
+    background: var(--hud-warning-bg);
+    color: var(--hud-warning);
+  }
+
+  .hud-form-input {
+    background: var(--hud-input-bg);
+    border: 1px solid var(--hud-input-border);
+    color: var(--hud-text);
+  }
+  .hud-form-input::placeholder {
+    color: var(--hud-text-subtle);
+  }
+  .hud-form-input:focus {
+    outline: none;
+    border-color: color-mix(in srgb, var(--hud-accent) 40%, transparent);
+  }
+
+  .hud-form-range {
+    accent-color: var(--hud-accent);
+    background: var(--hud-elevated);
+  }
+  .hud-form-range::-webkit-slider-thumb {
+    background: var(--hud-accent);
+  }
+
+  .hud-btn-secondary {
+    background: var(--hud-btn-secondary-bg);
+    color: var(--hud-text-secondary);
+  }
+  .hud-btn-secondary:hover {
+    background: var(--hud-btn-secondary-hover);
+  }
+
+  .hud-btn-primary {
+    background: var(--hud-accent);
+    color: var(--hud-btn-primary-text);
+  }
+  .hud-btn-primary:hover {
+    background: color-mix(in srgb, var(--hud-accent) 90%, transparent);
+  }
+
+  /* Full-screen shooting simulator */
+  .sim-view-dark {
+    --sim-bg: linear-gradient(165deg, #05080d 0%, #0a1018 45%, #060b12 100%);
+    --sim-glass: rgba(15, 23, 42, 0.72);
+    --sim-glass-border: rgba(255, 255, 255, 0.09);
+    --sim-text: #e8edf5;
+    --sim-muted: rgba(232, 237, 245, 0.48);
+    --sim-accent: #00ffd1;
+    --sim-accent-soft: rgba(0, 255, 209, 0.12);
+    --sim-live: #34d399;
+    --sim-warm: #fbbf24;
+    --sim-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+    --sim-toolbar: rgba(8, 12, 20, 0.82);
+  }
+
+  .sim-view-light {
+    --sim-bg: linear-gradient(165deg, #f4f7fb 0%, #e9f0f7 42%, #f8fafc 100%);
+    --sim-glass: rgba(255, 255, 255, 0.82);
+    --sim-glass-border: rgba(255, 255, 255, 0.95);
+    --sim-text: #1e293b;
+    --sim-muted: #64748b;
+    --sim-accent: #0d9488;
+    --sim-accent-soft: rgba(13, 148, 136, 0.1);
+    --sim-live: #059669;
+    --sim-warm: #d97706;
+    --sim-shadow:
+      0 12px 40px rgba(15, 23, 42, 0.07), 0 4px 12px rgba(15, 23, 42, 0.04);
+    --sim-toolbar: rgba(255, 255, 255, 0.9);
+  }
+
+  .sim-view {
+    background: var(--sim-bg);
+    color: var(--sim-text);
+  }
+
+  .sim-glass {
+    background: var(--sim-glass);
+    backdrop-filter: blur(20px) saturate(1.4);
+    -webkit-backdrop-filter: blur(20px) saturate(1.4);
+    border: 1px solid var(--sim-glass-border);
+    box-shadow: var(--sim-shadow);
+  }
+
+  .sim-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--sim-muted);
+  }
+
+  .sim-value {
+    font-family: var(--font-sans);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--sim-text);
+  }
+
+  .sim-accent {
+    color: var(--sim-accent);
+  }
+
+  .sim-toolbar {
+    background: var(--sim-toolbar);
+    backdrop-filter: blur(24px) saturate(1.5);
+    -webkit-backdrop-filter: blur(24px) saturate(1.5);
+    border: 1px solid var(--sim-glass-border);
+    box-shadow: var(--sim-shadow);
+  }
+
+  /* Target scales to fit available flex space (square) */
+  .target-stage {
+    container-type: size;
+    flex: 1 1 0%;
+    min-height: 0;
+    width: 100%;
     height: 100%;
-    max-height: 100%;
-    max-width: 100%;
-    width: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  @supports (width: 1cqw) {
+    .target-fit-box {
+      width: min(100cqw, 100cqh);
+      height: min(100cqw, 100cqh);
+      aspect-ratio: 1;
+      flex-shrink: 0;
+      overflow: visible;
+    }
+  }
+
+  @supports not (width: 1cqw) {
+    .target-fit-box {
+      aspect-ratio: 1;
+      height: 100%;
+      max-height: 100%;
+      max-width: 100%;
+      width: auto;
+    }
+  }
+
+  /* Range control rail — unified typography */
+  .range-rail-label {
+    font-family: var(--font-display);
+    font-size: var(--admin-font-2xs);
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--hud-text-muted);
+  }
+
+  .range-rail-meta {
+    font-family: var(--font-sans);
+    font-size: var(--admin-font-sm);
+    line-height: 1.35;
+    color: var(--hud-text-secondary);
+  }
+
+  .range-rail-meta-value {
+    color: var(--hud-text-strong);
+    font-weight: 600;
+  }
+
+  .range-rail-stat {
+    font-family: var(--font-sans);
+    font-size: var(--admin-font-base);
+    font-weight: 700;
+    line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+    color: var(--hud-text);
+  }
+
+  .range-rail-hero {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 700;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    color: var(--hud-timer);
+  }
+
+  .range-rail-btn {
+    font-family: var(--font-sans);
+    font-size: var(--admin-font-sm);
+    font-weight: 700;
+  }
+
+  /* Trajan-style display type — readable at lane distance */
+  .range-display-label {
+    font-family: var(--font-display);
+    font-size: var(--admin-font-xs);
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--hud-text-strong);
+    line-height: 1.2;
+  }
+
+  /* Tracking is size-specific. The small uppercase labels above want the
+     positive tracking they have; these two do not — letters read further apart
+     as they grow, so display sizes tighten instead. The hero had +0.05em, which
+     pushed a 34px number apart exactly where it should have closed up. */
+  .range-display-stat {
+    font-family: var(--font-display);
+    font-size: clamp(1.35rem, 2.8vw, 2.25rem);
+    font-weight: 700;
+    line-height: 1.05;
+    letter-spacing: -0.015em;
+    font-variant-numeric: tabular-nums;
+    color: var(--hud-text-strong);
+  }
+
+  .range-display-hero {
+    font-family: var(--font-display);
+    font-size: clamp(1.5rem, 3.5vw, 2.6rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    color: var(--hud-timer);
+  }
+
+  html[lang="ar"] .range-display-label,
+  html[lang="ar"] .range-display-stat,
+  html[lang="ar"] .range-display-hero {
+    font-family: var(--font-sans);
+    letter-spacing: 0.06em;
+    font-weight: 700;
+  }
+
+  .shooter-rail {
+    font-family: var(--font-sans);
+  }
+
+  /* ── Mobile / tablet: full viewport + safe areas ── */
+  .h-dvh-screen {
+    height: calc(100dvh / var(--ui-zoom));
+    max-height: calc(100dvh / var(--ui-zoom));
+  }
+
+  @supports not (height: 100dvh) {
+    .h-dvh-screen {
+      height: calc(100vh / var(--ui-zoom));
+      max-height: calc(100vh / var(--ui-zoom));
+    }
+  }
+
+  .safe-area-inset-x {
+    padding-left: max(0.5rem, env(safe-area-inset-left, 0px));
+    padding-right: max(0.5rem, env(safe-area-inset-right, 0px));
+  }
+
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .touch-target {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .range-app-header {
+    height: calc(2.5rem + env(safe-area-inset-top, 0px));
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  @media (min-width: 640px) {
+    .range-app-header {
+      height: calc(2.75rem + env(safe-area-inset-top, 0px));
+    }
+  }
+
+  .range-app-body-offset {
+    padding-top: calc(2.5rem + env(safe-area-inset-top, 0px));
+  }
+
+  @media (min-width: 640px) {
+    .range-app-body-offset {
+      padding-top: calc(2.75rem + env(safe-area-inset-top, 0px));
+    }
+  }
+
+  .admin-app-header {
+    height: calc(4rem + env(safe-area-inset-top, 0px));
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  .admin-app-body-offset {
+    padding-top: calc(4rem + env(safe-area-inset-top, 0px));
+  }
+
+  .admin-app-top-offset {
+    top: calc(4rem + env(safe-area-inset-top, 0px));
+  }
+
+  .admin-active-lane-shell {
+    top: calc(4rem + env(safe-area-inset-top, 0px));
+    /* Only the viewport term is divided. 4rem and the safe-area inset are already
+       inside the zoomed subtree and scale with it, so dividing them too would
+       subtract a header that is 10% shorter than the one actually drawn. */
+    height: calc(
+      100dvh / var(--ui-zoom) - 4rem - env(safe-area-inset-top, 0px)
+    );
+    max-height: calc(
+      100dvh / var(--ui-zoom) - 4rem - env(safe-area-inset-top, 0px)
+    );
+  }
+
+  @supports not (height: 100dvh) {
+    .admin-active-lane-shell {
+      height: calc(
+        100vh / var(--ui-zoom) - 4rem - env(safe-area-inset-top, 0px)
+      );
+      max-height: calc(
+        100vh / var(--ui-zoom) - 4rem - env(safe-area-inset-top, 0px)
+      );
+    }
+  }
+
+  /* Target + rail — stack on phone portrait, side-by-side on landscape / tablet */
+  .range-layout-inner {
+    display: flex;
+    flex: 1 1 0%;
+    min-height: 0;
+    overflow: hidden;
+    flex-direction: column;
+  }
+
+  .range-layout-target {
+    flex: 1.15 1 0%;
+    min-height: 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .range-layout-rail {
+    flex: 1 1 0%;
+    min-height: 0;
+    min-width: 0;
+    width: 100%;
+    max-height: none;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-top: 1px solid var(--hud-accent-border);
+  }
+
+  @media (orientation: landscape) {
+    .range-layout-inner {
+      flex-direction: row;
+    }
+
+    .range-layout-target {
+      flex: 1.25 1 0%;
+    }
+
+    .range-layout-rail {
+      flex: 0 1 auto;
+      width: auto;
+      min-width: 10.5rem;
+      max-width: min(42vw, 22rem);
+      border-top: none;
+      border-left: 1px solid var(--hud-accent-border);
+    }
+  }
+
+  @media (min-width: 768px) {
+    .range-layout-inner {
+      flex-direction: row;
+    }
+
+    .range-layout-target {
+      flex: 1 1 0%;
+    }
+
+    .range-layout-rail {
+      flex: 0 0 auto;
+      width: min(28rem, 38vw);
+      min-width: 16rem;
+      max-width: 28rem;
+      border-top: none;
+      border-left: 1px solid var(--hud-accent-border);
+    }
+  }
+
+  @media (max-width: 767px) {
+    .admin-app-header {
+      height: calc(3rem + env(safe-area-inset-top, 0px));
+    }
+
+    .admin-app-body-offset {
+      padding-top: calc(3rem + env(safe-area-inset-top, 0px));
+    }
+
+    .admin-app-top-offset {
+      top: calc(3rem + env(safe-area-inset-top, 0px));
+    }
+  }
+
+  /* Phone portrait: one pane at a time (target OR rail), not a cramped 50/50 split */
+  @media (max-width: 767px) and (orientation: portrait) {
+    .range-layout-inner--pane > .range-layout-rail {
+      display: none;
+      flex: none;
+      border-top: none;
+    }
+
+    .range-layout-inner--pane > .range-layout-target {
+      flex: 1 1 0%;
+      min-height: 0;
+    }
+
+    .range-layout-inner--pane.range-layout-show-rail > .range-layout-target {
+      display: none;
+    }
+
+    .range-layout-inner--pane.range-layout-show-rail > .range-layout-rail {
+      display: flex;
+      flex: 1 1 0%;
+      width: 100%;
+      min-height: 0;
+      max-height: none;
+      border-top: none;
+    }
+  }
+
+  @media (min-width: 768px) {
+    .range-layout-inner--pane > .range-layout-target,
+    .range-layout-inner--pane > .range-layout-rail {
+      display: flex !important;
+    }
+  }
+
+  .mobile-range-tabbar {
+    z-index: 25;
+  }
+
+  @media (orientation: landscape) and (max-width: 767px) {
+    .mobile-range-tabbar {
+      display: none;
+    }
+  }
+
+  .mobile-range-tab--active {
+    color: var(--hud-accent);
+    background: var(--hud-accent-bg-subtle);
+    box-shadow: inset 0 2px 0 0 var(--hud-accent);
+  }
+
+  .mobile-range-tab--idle {
+    color: var(--hud-text-secondary);
+  }
+
+  .mobile-range-tab--idle:active {
+    background: var(--hud-accent-bg-subtle);
+  }
+
+  @media (max-width: 767px) {
+    .admin-lane-grid-panel {
+      padding: 0.75rem;
+    }
+  }
+
+  @media (min-width: 768px) {
+    .admin-lane-grid-panel {
+      padding: 1.5rem;
+    }
+  }
+
+  .rail-live-banner {
+    display: none;
+  }
+
+  @media (orientation: landscape) and (max-width: 767px), (min-width: 768px) {
+    .rail-live-banner {
+      display: flex;
+    }
+  }
+
+  .admin-range-rail {
+    height: 100%;
+    min-height: 0;
+    align-self: stretch;
+  }
+
+  .admin-range-rail .admin-shot-log-panel {
+    flex: 1 1 0%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .shooter-shot-row {
+    font-family: var(--font-sans);
+    font-size: clamp(1.125rem, 2.5vw, 1.5rem);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.04em;
+    min-height: 2.75rem;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html[lang="ar"] .shooter-shot-row {
+    letter-spacing: 0.01em;
+  }
+
+  .shooter-shot-score {
+    font-size: clamp(1.35rem, 3vw, 1.75rem);
+    min-width: 2.5ch;
+    text-align: right;
+  }
+
+  /* Overview side panels — match hud-panel centre column */
+  .hud-sidebar {
+    background: var(--hud-elevated);
+    color: var(--hud-text);
+    font-family: var(--font-sans);
+    border-color: var(--hud-accent-border);
+  }
+
+  .hud-sidebar-nav-btn {
+    font-family: var(--font-sans);
+    font-size: var(--admin-font-sm);
+    font-weight: 600;
+    transition:
+      background-color 0.15s,
+      color 0.15s;
+  }
+
+  .hud-sidebar-nav-btn--active {
+    background: var(--hud-accent-bg);
+    color: var(--hud-accent);
+    font-weight: 700;
+  }
+
+  .hud-sidebar-nav-btn--idle {
+    color: var(--hud-text-secondary);
+  }
+
+  .hud-sidebar-nav-btn--idle:hover {
+    background: var(--hud-accent-bg-subtle);
+    color: var(--hud-text-strong);
+  }
+
+  .hud-panel-contents {
+    font-family: var(--font-sans);
+    color: var(--hud-text);
+  }
+
+  .hud-panel-contents h4 {
+    font-family: var(--font-display);
+    font-size: var(--admin-font-2xs);
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--hud-accent);
+    border-bottom: 1px solid var(--hud-accent-border);
+    padding-bottom: 0.5rem;
+  }
+
+  .hud-panel-contents label {
+    font-size: var(--admin-font-2xs);
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--hud-text-muted);
+  }
+
+  .hud-panel-contents input:not([type="radio"]):not([type="checkbox"]),
+  .hud-panel-contents select,
+  .hud-panel-contents textarea {
+    background: var(--hud-input-bg);
+    border: 1px solid var(--hud-input-border);
+    color: var(--hud-text);
+    border-radius: 0.5rem;
+  }
+
+  .hud-panel-contents input:focus,
+  .hud-panel-contents select:focus,
+  .hud-panel-contents textarea:focus {
+    outline: none;
+    border-color: color-mix(in srgb, var(--hud-accent) 40%, transparent);
+  }
+
+  .hud-panel-contents .hud-info-card {
+    background: var(--hud-accent-bg-subtle);
+    border: 1px solid var(--hud-accent-border);
+    border-radius: 0.75rem;
+    font-size: var(--admin-font-sm);
+    color: var(--hud-text-secondary);
+  }
+
+  .hud-panel-contents .hud-info-card strong {
+    color: var(--hud-text);
+    font-weight: 700;
+  }
+
+  .hud-panel-contents .hud-btn-primary {
+    background: var(--hud-accent);
+    color: var(--hud-btn-primary-text);
+    font-family: var(--font-sans);
+    font-size: var(--admin-font-sm);
+    font-weight: 700;
+    border-radius: 0.5rem;
+  }
+
+  .hud-panel-contents .hud-btn-primary:hover {
+    background: color-mix(in srgb, var(--hud-accent) 90%, transparent);
+  }
+
+  .hud-panel-contents .hud-btn-secondary {
+    background: var(--hud-btn-secondary-bg);
+    color: var(--hud-text-secondary);
+    font-family: var(--font-sans);
+    font-size: var(--admin-font-sm);
+    font-weight: 700;
+    border-radius: 0.5rem;
+  }
+
+  .hud-panel-contents .hud-btn-secondary:hover {
+    background: var(--hud-btn-secondary-hover);
+  }
+
+  .hud-panel-contents .hud-btn-warn {
+    background: var(--hud-danger-bg);
+    color: var(--hud-danger);
+    font-family: var(--font-sans);
+    font-size: var(--admin-font-sm);
+    font-weight: 700;
+    border-radius: 0.5rem;
+  }
+
+  .hud-panel-contents .hud-btn-warn:hover {
+    background: var(--hud-danger-bg-hover);
+  }
+
+  .hud-panel-contents .hud-btn-pause {
+    background: var(--hud-warning-bg);
+    color: var(--hud-warning);
+    font-family: var(--font-sans);
+    font-size: var(--admin-font-sm);
+    font-weight: 700;
+    border-radius: 0.5rem;
+  }
+
+  .hud-panel-contents .hud-btn-pause:hover {
+    background: var(--hud-warning-bg-hover);
+  }
+
+  .hud-panel-contents .hud-chip-active {
+    background: var(--hud-accent-bg);
+    color: var(--hud-accent);
+    border-color: var(--hud-accent-border-strong);
+  }
+
+  .hud-panel-contents .hud-chip {
+    border: 1px solid var(--hud-accent-border);
+    color: var(--hud-text-secondary);
   }
 }
 
-/* Range control rail — unified typography */
-.range-rail-label {
-  font-family: var(--font-display);
-  font-size: var(--admin-font-2xs);
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--hud-text-muted);
+/* ─────────────────────────────────────────────────────────────────────────────
+   Response, input, and accessibility
+   ───────────────────────────────────────────────────────────────────────────*/
+
+/**
+ * Press feedback.
+ *
+ * The console has 168 buttons and seven of them had any pressed state. Every
+ * other control's only feedback was :hover — which does not exist on the
+ * tablet half of the deployment, so on a touch screen a range officer pressed
+ * "Start All Lanes" and the UI did nothing at all until the network answered.
+ *
+ * :active fires on pointer-DOWN, so this is acknowledged on contact rather
+ * than on release or on the result. One rule reaches every button; anything
+ * that opts out can set `data-no-press`.
+ */
+button:not(:disabled):not([data-no-press]),
+[role="button"]:not([aria-disabled="true"]):not([data-no-press]) {
+  -webkit-tap-highlight-color: transparent;
+  /* A superset of what `transition-colors` sets, not just transform. This rule
+     is unlayered so it beats that utility, and `transition` is a shorthand —
+     listing transform alone would have silently dropped the colour transition
+     from all 87 buttons that ask for one. */
+  transition:
+    transform 120ms cubic-bezier(0.2, 0, 0, 1),
+    color 150ms ease,
+    background-color 150ms ease,
+    border-color 150ms ease,
+    opacity 150ms ease,
+    box-shadow 150ms ease;
 }
 
-.range-rail-meta {
-  font-family: var(--font-sans);
-  font-size: var(--admin-font-sm);
-  line-height: 1.35;
-  color: var(--hud-text-secondary);
+button:not(:disabled):not([data-no-press]):active,
+[role="button"]:not([aria-disabled="true"]):not([data-no-press]):active {
+  transform: scale(0.97);
+  /* Snap in on the way down, ease back on the way up — the return is the
+     reverse path of the press, not a different animation. */
+  transition-duration: 60ms;
 }
 
-.range-rail-meta-value {
-  color: var(--hud-text-strong);
-  font-weight: 600;
+/* Large surfaces must not visibly shrink; a 0.97 on a full-width lane card
+   reads as the layout twitching rather than as a button being pressed. */
+.hud-lane-card:active,
+.hud-lane-card--selected:active,
+.hud-lane-card--live:active {
+  transform: scale(0.995);
 }
 
-.range-rail-stat {
-  font-family: var(--font-sans);
-  font-size: var(--admin-font-base);
-  font-weight: 700;
-  line-height: 1.2;
-  font-variant-numeric: tabular-nums;
-  color: var(--hud-text);
+/**
+ * Keyboard focus. There was no focus style anywhere in the app — the browser
+ * default outline is the only thing standing between an operator wearing
+ * gloves on a trackball and a completely invisible cursor. :focus-visible, so
+ * a mouse press never paints a ring.
+ */
+:focus-visible {
+  outline: 2px solid var(--hud-accent);
+  outline-offset: 2px;
+  border-radius: 0.35rem;
 }
 
-.range-rail-hero {
-  font-family: var(--font-display);
-  font-size: 1.25rem;
-  font-weight: 700;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-  color: var(--hud-timer);
+/**
+ * Touch. The scrollbars are 6px, which is fine under a mouse and impossible
+ * under a finger, and the pointer-coarse case is half this deployment.
+ */
+@media (pointer: coarse) {
+  ::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+
+  button,
+  [role="button"] {
+    touch-action: manipulation;
+  }
+
+  /**
+   * The 44px minimum, applied only where a finger is the pointer — the
+   * monitor layout is untouched by any of this.
+   *
+   * Only 23 of the app's 168 controls carried .touch-target, so most of them
+   * were tap targets in the 20-30px range on the tablet. Growing the box is
+   * deliberate rather than expanding the hit area past the painted edge with a
+   * pseudo-element: in a dense toolbar an overhanging hit area steals taps
+   * from the control next to it, which is a worse bug than the one it fixes.
+   * Growing pushes neighbours apart instead, which is what is wanted here.
+   *
+   * Height for everything, width only for buttons whose entire content is one
+   * icon — a wide text button does not need a 44px floor on its width, and
+   * forcing one would stretch table-cell actions.
+   */
+  button:not([data-dense]),
+  [role="button"]:not([data-dense]) {
+    min-height: 2.75rem;
+  }
+
+  button:has(> svg:only-child) {
+    min-width: 2.75rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
 }
 
-.range-rail-btn {
-  font-family: var(--font-sans);
-  font-size: var(--admin-font-sm);
-  font-weight: 700;
+/**
+ * Reduced motion.
+ *
+ * The app runs five infinite keyframe loops (scanline, pulse, hud-scan,
+ * impact-pulse, hud-glow) on a machine that is powered on for an entire range
+ * day. hud-scan in particular scales a large surface at 0.25 Hz — a slow
+ * full-field oscillation, which is the specific pattern that triggers
+ * vestibular symptoms. Reduced motion does not mean no feedback: the state
+ * colours and opacity below still change, only the movement stops.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* These are ambient only — they carry no state, so they are simply stilled
+     at a readable value rather than frozen on an arbitrary keyframe. */
+  .hud-scan-overlay {
+    display: none;
+  }
+
+  /* A pressed control must still acknowledge the press. Opacity is not
+     vestibular, so it replaces the scale rather than disappearing with it. */
+  button:not(:disabled):not([data-no-press]):active,
+  [role="button"]:not([aria-disabled="true"]):not([data-no-press]):active {
+    transform: none;
+    opacity: 0.75;
+  }
 }
 
-/* Trajan-style display type — readable at lane distance */
-.range-display-label {
+/**
+ * Reduced transparency. Every translucent surface becomes frosted rather than
+ * blurred — the blur is what costs legibility, not the tint.
+ */
+@media (prefers-reduced-transparency: reduce) {
+  .hud-glass,
+  .sim-glass,
+  .sim-toolbar,
+  .glass-panel {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  html.dark .hud-glass,
+  html.dark .glass-panel {
+    background: var(--hud-surface);
+  }
+
+  html.light .hud-glass,
+  html.light .glass-panel {
+    background: var(--hud-surface);
+  }
+}
+
+/**
+ * High contrast. Borders in this UI are mostly 8–12% alpha, which is a
+ * deliberate quiet — and unreadable to anyone who asked the OS for contrast.
+ */
+@media (prefers-contrast: more) {
+  :root {
+    --hud-accent-border: var(--hud-accent-border-strong);
+  }
+
+  .hud-glass,
+  .hud-lane-card,
+  .hud-form-input,
+  .surface-card,
+  .surface-panel {
+    border-width: 1px;
+    border-color: var(--hud-text-secondary);
+  }
+}
+
+/**
+ * Size-only companions to .range-display-label / .range-display-stat.
+ *
+ * Those two set `color`, and index.css is unlayered while Tailwind's
+ * utilities live in a cascade layer — so an unlayered `.range-display-stat`
+ * beats a `text-emerald-500` sitting right next to it on the same element,
+ * `!` modifier included. Anything that needs the display *scale* while
+ * keeping the colour it already had has to use these instead.
+ */
+.range-stat-label {
   font-family: var(--font-display);
   font-size: var(--admin-font-xs);
   font-weight: 600;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--hud-text-strong);
   line-height: 1.2;
 }
 
-.range-display-stat {
+.range-stat-value {
   font-family: var(--font-display);
-  font-size: clamp(1.35rem, 2.8vw, 1.875rem);
+  font-size: clamp(1.35rem, 2.8vw, 2.25rem);
   font-weight: 700;
-  line-height: 1.1;
+  line-height: 1.05;
+  letter-spacing: -0.015em;
   font-variant-numeric: tabular-nums;
-  color: var(--hud-text-strong);
 }
 
-.range-display-hero {
-  font-family: var(--font-display);
-  font-size: clamp(1.5rem, 3.5vw, 2.125rem);
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-  color: var(--hud-timer);
-}
-
-html[lang="ar"] .range-display-label,
-html[lang="ar"] .range-display-stat,
-html[lang="ar"] .range-display-hero {
+html[lang="ar"] .range-stat-label,
+html[lang="ar"] .range-stat-value {
   font-family: var(--font-sans);
   letter-spacing: 0.06em;
   font-weight: 700;
 }
 
-.shooter-rail {
-  font-family: var(--font-sans);
-}
+/* ─────────────────────────────────────────────────────────────────────────────
+   Large-display layout
+   ───────────────────────────────────────────────────────────────────────────*/
+@layer components {
+  /**
+   * The console's layout stopped at md:. Above 1024px every view kept the same
+   * arrangement at the same size and simply gained empty margin — a 16rem
+   * sidebar and a 28rem sign-in card on a 2560px monitor.
+   *
+   * These ramps use the same shape as the type scale: flat below 1024px so
+   * nothing on a tablet moves, growing to the cap around 2432px. Sizes stay in
+   * one place rather than being spelled out as xl:/2xl: pairs at each call site.
+   */
 
-/* ── Mobile / tablet: full viewport + safe areas ── */
-.h-dvh-screen {
-  height: calc(100dvh / var(--ui-zoom));
-  max-height: calc(100dvh / var(--ui-zoom));
-}
-
-@supports not (height: 100dvh) {
-  .h-dvh-screen {
-    height: calc(100vh / var(--ui-zoom));
-    max-height: calc(100vh / var(--ui-zoom));
-  }
-}
-
-.safe-area-inset-x {
-  padding-left: max(0.5rem, env(safe-area-inset-left, 0px));
-  padding-right: max(0.5rem, env(safe-area-inset-right, 0px));
-}
-
-.safe-area-bottom {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-}
-
-.touch-target {
-  min-height: 2.75rem;
-  min-width: 2.75rem;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.range-app-header {
-  height: calc(2.5rem + env(safe-area-inset-top, 0px));
-  padding-top: env(safe-area-inset-top, 0px);
-}
-
-@media (min-width: 640px) {
-  .range-app-header {
-    height: calc(2.75rem + env(safe-area-inset-top, 0px));
-  }
-}
-
-.range-app-body-offset {
-  padding-top: calc(2.5rem + env(safe-area-inset-top, 0px));
-}
-
-@media (min-width: 640px) {
-  .range-app-body-offset {
-    padding-top: calc(2.75rem + env(safe-area-inset-top, 0px));
-  }
-}
-
-.admin-app-header {
-  height: calc(4rem + env(safe-area-inset-top, 0px));
-  padding-top: env(safe-area-inset-top, 0px);
-}
-
-.admin-app-body-offset {
-  padding-top: calc(4rem + env(safe-area-inset-top, 0px));
-}
-
-.admin-app-top-offset {
-  top: calc(4rem + env(safe-area-inset-top, 0px));
-}
-
-.admin-active-lane-shell {
-  top: calc(4rem + env(safe-area-inset-top, 0px));
-  /* Only the viewport term is divided. 4rem and the safe-area inset are already
-     inside the zoomed subtree and scale with it, so dividing them too would
-     subtract a header that is 10% shorter than the one actually drawn. */
-  height: calc(100dvh / var(--ui-zoom) - 4rem - env(safe-area-inset-top, 0px));
-  max-height: calc(
-    100dvh / var(--ui-zoom) - 4rem - env(safe-area-inset-top, 0px)
-  );
-}
-
-@supports not (height: 100dvh) {
-  .admin-active-lane-shell {
-    height: calc(100vh / var(--ui-zoom) - 4rem - env(safe-area-inset-top, 0px));
-    max-height: calc(
-      100vh / var(--ui-zoom) - 4rem - env(safe-area-inset-top, 0px)
-    );
-  }
-}
-
-/* Target + rail — stack on phone portrait, side-by-side on landscape / tablet */
-.range-layout-inner {
-  display: flex;
-  flex: 1 1 0%;
-  min-height: 0;
-  overflow: hidden;
-  flex-direction: column;
-}
-
-.range-layout-target {
-  flex: 1.15 1 0%;
-  min-height: 0;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.range-layout-rail {
-  flex: 1 1 0%;
-  min-height: 0;
-  min-width: 0;
-  width: 100%;
-  max-height: none;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border-top: 1px solid var(--hud-accent-border);
-}
-
-@media (orientation: landscape) {
-  .range-layout-inner {
-    flex-direction: row;
-  }
-
-  .range-layout-target {
-    flex: 1.25 1 0%;
-  }
-
-  .range-layout-rail {
-    flex: 0 1 auto;
-    width: auto;
-    min-width: 10.5rem;
-    max-width: min(42vw, 22rem);
-    border-top: none;
-    border-left: 1px solid var(--hud-accent-border);
-  }
-}
-
-@media (min-width: 768px) {
-  .range-layout-inner {
-    flex-direction: row;
-  }
-
-  .range-layout-target {
-    flex: 1 1 0%;
-  }
-
-  .range-layout-rail {
-    flex: 0 0 auto;
-    width: min(28rem, 38vw);
-    min-width: 16rem;
-    max-width: 28rem;
-    border-top: none;
-    border-left: 1px solid var(--hud-accent-border);
-  }
-}
-
-@media (max-width: 767px) {
-  .admin-app-header {
-    height: calc(3rem + env(safe-area-inset-top, 0px));
-  }
-
-  .admin-app-body-offset {
-    padding-top: calc(3rem + env(safe-area-inset-top, 0px));
-  }
-
-  .admin-app-top-offset {
-    top: calc(3rem + env(safe-area-inset-top, 0px));
-  }
-}
-
-/* Phone portrait: one pane at a time (target OR rail), not a cramped 50/50 split */
-@media (max-width: 767px) and (orientation: portrait) {
-  .range-layout-inner--pane > .range-layout-rail {
-    display: none;
-    flex: none;
-    border-top: none;
-  }
-
-  .range-layout-inner--pane > .range-layout-target {
-    flex: 1 1 0%;
-    min-height: 0;
-  }
-
-  .range-layout-inner--pane.range-layout-show-rail > .range-layout-target {
-    display: none;
-  }
-
-  .range-layout-inner--pane.range-layout-show-rail > .range-layout-rail {
-    display: flex;
-    flex: 1 1 0%;
+  /* The sign-in / portal column: 28rem → 36rem. */
+  .portal-shell {
     width: 100%;
-    min-height: 0;
-    max-height: none;
-    border-top: none;
+    max-width: clamp(28rem, 23.18rem + 7.53vw, 34rem);
   }
-}
 
-@media (min-width: 768px) {
-  .range-layout-inner--pane > .range-layout-target,
-  .range-layout-inner--pane > .range-layout-rail {
-    display: flex !important;
+  /* Decorative range rings behind the auth screens. They were a fixed 550/380px,
+     so on a large monitor they sat as a small badge in the middle of the frame
+     instead of reading as the backdrop they are. Tied to the smaller viewport
+     axis so they stay circular and never drive the page wider. */
+  .portal-ring-outer {
+    width: clamp(550px, 46vmin, 900px);
+    height: clamp(550px, 46vmin, 900px);
   }
-}
-
-.mobile-range-tabbar {
-  z-index: 25;
-}
-
-@media (orientation: landscape) and (max-width: 767px) {
-  .mobile-range-tabbar {
-    display: none;
+  .portal-ring-inner {
+    width: clamp(380px, 32vmin, 620px);
+    height: clamp(380px, 32vmin, 620px);
   }
-}
 
-.mobile-range-tab--active {
-  color: var(--hud-accent);
-  background: var(--hud-accent-bg-subtle);
-  box-shadow: inset 0 2px 0 0 var(--hud-accent);
-}
-
-.mobile-range-tab--idle {
-  color: var(--hud-text-secondary);
-}
-
-.mobile-range-tab--idle:active {
-  background: var(--hud-accent-bg-subtle);
-}
-
-@media (max-width: 767px) {
-  .admin-lane-grid-panel {
-    padding: 0.75rem;
+  /* Documentation and other running prose. Without a cap these ran the full
+     width of the main column — a 1900px line length nobody can track back. */
+  .prose-measure {
+    max-width: 78ch;
   }
-}
 
-@media (min-width: 768px) {
-  .admin-lane-grid-panel {
-    padding: 1.5rem;
+  /* A viewport-relative stage for the report preview, which was pinned at
+     550px and left roughly 900px of a 1440px-tall screen unused. */
+  .report-stage-h {
+    height: clamp(24rem, 58vh, 46rem);
   }
-}
-
-.rail-live-banner {
-  display: none;
-}
-
-@media (orientation: landscape) and (max-width: 767px), (min-width: 768px) {
-  .rail-live-banner {
-    display: flex;
-  }
-}
-
-.admin-range-rail {
-  height: 100%;
-  min-height: 0;
-  align-self: stretch;
-}
-
-.admin-range-rail .admin-shot-log-panel {
-  flex: 1 1 0%;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.shooter-shot-row {
-  font-family: var(--font-sans);
-  font-size: clamp(1.125rem, 2.5vw, 1.5rem);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.04em;
-  min-height: 2.75rem;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-}
-
-html[lang="ar"] .shooter-shot-row {
-  letter-spacing: 0.01em;
-}
-
-.shooter-shot-score {
-  font-size: clamp(1.35rem, 3vw, 1.75rem);
-  min-width: 2.5ch;
-  text-align: right;
-}
-
-/* Overview side panels — match hud-panel centre column */
-.hud-sidebar {
-  background: var(--hud-elevated);
-  color: var(--hud-text);
-  font-family: var(--font-sans);
-  border-color: var(--hud-accent-border);
-}
-
-.hud-sidebar-nav-btn {
-  font-family: var(--font-sans);
-  font-size: var(--admin-font-sm);
-  font-weight: 600;
-  transition:
-    background-color 0.15s,
-    color 0.15s;
-}
-
-.hud-sidebar-nav-btn--active {
-  background: var(--hud-accent-bg);
-  color: var(--hud-accent);
-  font-weight: 700;
-}
-
-.hud-sidebar-nav-btn--idle {
-  color: var(--hud-text-secondary);
-}
-
-.hud-sidebar-nav-btn--idle:hover {
-  background: var(--hud-accent-bg-subtle);
-  color: var(--hud-text-strong);
-}
-
-.hud-panel-contents {
-  font-family: var(--font-sans);
-  color: var(--hud-text);
-}
-
-.hud-panel-contents h4 {
-  font-family: var(--font-display);
-  font-size: var(--admin-font-2xs);
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--hud-accent);
-  border-bottom: 1px solid var(--hud-accent-border);
-  padding-bottom: 0.5rem;
-}
-
-.hud-panel-contents label {
-  font-size: var(--admin-font-2xs);
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--hud-text-muted);
-}
-
-.hud-panel-contents input:not([type="radio"]):not([type="checkbox"]),
-.hud-panel-contents select,
-.hud-panel-contents textarea {
-  background: var(--hud-input-bg);
-  border: 1px solid var(--hud-input-border);
-  color: var(--hud-text);
-  border-radius: 0.5rem;
-}
-
-.hud-panel-contents input:focus,
-.hud-panel-contents select:focus,
-.hud-panel-contents textarea:focus {
-  outline: none;
-  border-color: color-mix(in srgb, var(--hud-accent) 40%, transparent);
-}
-
-.hud-panel-contents .hud-info-card {
-  background: var(--hud-accent-bg-subtle);
-  border: 1px solid var(--hud-accent-border);
-  border-radius: 0.75rem;
-  font-size: var(--admin-font-sm);
-  color: var(--hud-text-secondary);
-}
-
-.hud-panel-contents .hud-info-card strong {
-  color: var(--hud-text);
-  font-weight: 700;
-}
-
-.hud-panel-contents .hud-btn-primary {
-  background: var(--hud-accent);
-  color: var(--hud-btn-primary-text);
-  font-family: var(--font-sans);
-  font-size: var(--admin-font-sm);
-  font-weight: 700;
-  border-radius: 0.5rem;
-}
-
-.hud-panel-contents .hud-btn-primary:hover {
-  background: color-mix(in srgb, var(--hud-accent) 90%, transparent);
-}
-
-.hud-panel-contents .hud-btn-secondary {
-  background: var(--hud-btn-secondary-bg);
-  color: var(--hud-text-secondary);
-  font-family: var(--font-sans);
-  font-size: var(--admin-font-sm);
-  font-weight: 700;
-  border-radius: 0.5rem;
-}
-
-.hud-panel-contents .hud-btn-secondary:hover {
-  background: var(--hud-btn-secondary-hover);
-}
-
-.hud-panel-contents .hud-btn-warn {
-  background: var(--hud-danger-bg);
-  color: var(--hud-danger);
-  font-family: var(--font-sans);
-  font-size: var(--admin-font-sm);
-  font-weight: 700;
-  border-radius: 0.5rem;
-}
-
-.hud-panel-contents .hud-btn-warn:hover {
-  background: var(--hud-danger-bg-hover);
-}
-
-.hud-panel-contents .hud-btn-pause {
-  background: var(--hud-warning-bg);
-  color: var(--hud-warning);
-  font-family: var(--font-sans);
-  font-size: var(--admin-font-sm);
-  font-weight: 700;
-  border-radius: 0.5rem;
-}
-
-.hud-panel-contents .hud-btn-pause:hover {
-  background: var(--hud-warning-bg-hover);
-}
-
-.hud-panel-contents .hud-chip-active {
-  background: var(--hud-accent-bg);
-  color: var(--hud-accent);
-  border-color: var(--hud-accent-border-strong);
-}
-
-.hud-panel-contents .hud-chip {
-  border: 1px solid var(--hud-accent-border);
-  color: var(--hud-text-secondary);
 }

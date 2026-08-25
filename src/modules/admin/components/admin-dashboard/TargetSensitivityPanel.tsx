@@ -37,23 +37,23 @@ function hexToAscii(hex: string | null | undefined): string {
     .join("");
 }
 
-  const PAGES: WiperPage[] = ["A", "B"];
-  const WIPER_COUNT = 5;
+const PAGES: WiperPage[] = ["A", "B"];
+const WIPER_COUNT = 5;
 
-  /**
-   * Per-target sensitivity ("wiper position") reader/writer.
-   *
-   * Live only — nothing here is persisted anywhere but the board itself, and
-   * every open/refresh/page-switch is a fresh ~700-800ms UDP round trip. No
-   * polling: a board that might be arming a relay any minute should not have
-   * background traffic sent to it just because this panel is expanded.
-   *
-   * Wiper→physical-sensor mapping is not documented: there are 5 trimmers per
-   * page × 2 pages = 10 channels, and the device's separate diagnostic ('D')
-   * reports 8 sensors (L1-L4, R1-R4) — the counts do not even match. Channels
-   * are therefore addressed only as Calibration A1..A5 / Calibration B1..B5,
-   * never as "left sensor" or similar, anywhere this type is displayed.
-   */
+/**
+ * Per-target sensitivity ("wiper position") reader/writer.
+ *
+ * Live only — nothing here is persisted anywhere but the board itself, and
+ * every open/refresh/page-switch is a fresh ~700-800ms UDP round trip. No
+ * polling: a board that might be arming a relay any minute should not have
+ * background traffic sent to it just because this panel is expanded.
+ *
+ * Wiper→physical-sensor mapping is not documented: there are 5 trimmers per
+ * page × 2 pages = 10 channels, and the device's separate diagnostic ('D')
+ * reports 8 sensors (L1-L4, R1-R4) — the counts do not even match. Channels
+ * are therefore addressed only as Calibration A1..A5 / Calibration B1..B5,
+ * never as "left sensor" or similar, anywhere this type is displayed.
+ */
 export function TargetSensitivityPanel({
   target,
   isAr,
@@ -125,7 +125,6 @@ export function TargetSensitivityPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, target.id]);
 
-
   const requestCommitWiper = (wiperIndex: number, value: number) => {
     const current = values?.[wiperIndex];
     // Released on the value already on the board — no write needed, just drop
@@ -140,7 +139,6 @@ export function TargetSensitivityPanel({
     }
     setPendingCommit({ wiperIndex, value });
   };
-
 
   const doWriteWiper = async () => {
     if (!pendingCommit) return;
@@ -262,7 +260,6 @@ export function TargetSensitivityPanel({
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
           {Array.from({ length: WIPER_COUNT }, (_v, i) => i).map((i) => {
-    
             const busy = savingWiper === i || loading || pendingCommit !== null;
             const val = displayed(i);
             return (
@@ -299,15 +296,26 @@ export function TargetSensitivityPanel({
                   // back the per-target queue up for the better part of a
                   // minute for one drag.
                   onPointerUp={(e) =>
-                    void requestCommitWiper(i, Number((e.target as HTMLInputElement).value))
+                    void requestCommitWiper(
+                      i,
+                      Number((e.target as HTMLInputElement).value),
+                    )
                   }
                   onKeyUp={(e) => {
                     if (
-                      ["ArrowLeft", "ArrowRight", "Home", "End", "PageUp", "PageDown"].includes(
-                        e.key,
-                      )
+                      [
+                        "ArrowLeft",
+                        "ArrowRight",
+                        "Home",
+                        "End",
+                        "PageUp",
+                        "PageDown",
+                      ].includes(e.key)
                     ) {
-                      void requestCommitWiper(i, Number((e.target as HTMLInputElement).value));
+                      void requestCommitWiper(
+                        i,
+                        Number((e.target as HTMLInputElement).value),
+                      );
                     }
                   }}
                 />
@@ -325,9 +333,12 @@ export function TargetSensitivityPanel({
                       ),
                     )
                   }
-                  onBlur={(e) => void requestCommitWiper(i, Number(e.target.value) || 0)}
+                  onBlur={(e) =>
+                    void requestCommitWiper(i, Number(e.target.value) || 0)
+                  }
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                    if (e.key === "Enter")
+                      (e.target as HTMLInputElement).blur();
                   }}
                   className="w-full text-center admin-text-xs font-mono px-1.5 py-1 rounded border border-hud/40 bg-transparent hover:border-hud focus:border-[var(--hud-accent-border)] outline-none transition-colors disabled:opacity-50"
                 />

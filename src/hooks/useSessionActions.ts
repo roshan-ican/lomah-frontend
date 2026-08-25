@@ -423,10 +423,7 @@ export function useSessionActions({
       });
     } catch (err) {
       setCarriedCalibration((prev) => ({ ...prev, busy: false }));
-      fail(
-        err,
-        isAr ? "تعذّر تصفير المعايرة" : "Could not reset calibration",
-      );
+      fail(err, isAr ? "تعذّر تصفير المعايرة" : "Could not reset calibration");
       return;
     }
 
@@ -603,7 +600,10 @@ export function useSessionActions({
             : "Advanced to the next stage.",
       );
     } catch (err) {
-      fail(err, isAr ? "تعذّر الانتقال للمرحلة التالية" : "Could not advance stage");
+      fail(
+        err,
+        isAr ? "تعذّر الانتقال للمرحلة التالية" : "Could not advance stage",
+      );
     }
   };
 
@@ -650,7 +650,9 @@ export function useSessionActions({
     setDiscardConfirm({ open: false, channelId: null });
     await stopSession(
       chId,
-      isAr ? "تم إلغاء الجلسة وإعادة ضبط الحارة." : "Session discarded. Lane reset.",
+      isAr
+        ? "تم إلغاء الجلسة وإعادة ضبط الحارة."
+        : "Session discarded. Lane reset.",
     );
   };
 
@@ -706,7 +708,9 @@ export function useSessionActions({
       setChannels((prev) =>
         prev.map((ch) => (ch.id === chId ? toVacantLane(ch) : ch)),
       );
-      addAdminLog(`REVIEW: Session on Lane ${chId.replace("CH-", "")} finalized and saved.`);
+      addAdminLog(
+        `REVIEW: Session on Lane ${chId.replace("CH-", "")} finalized and saved.`,
+      );
       triggerSuccessBanner(
         isAr
           ? "تم حفظ التوجيهات وإنهاء الجلسة."

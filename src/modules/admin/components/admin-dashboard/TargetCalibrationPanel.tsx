@@ -201,9 +201,10 @@ export function TargetCalibrationPanel({
    * subtraction on the same quantities — not an independent guess that could
    * disagree with the value that actually lands.
    */
-  const derived = selectedRead && trueMarked
-    ? { x: trueX - selectedRead.sensorX, y: trueY - selectedRead.sensorY }
-    : null;
+  const derived =
+    selectedRead && trueMarked
+      ? { x: trueX - selectedRead.sensorX, y: trueY - selectedRead.sensorY }
+      : null;
 
   const toggleApply = (id: string) =>
     setApplyTo((prev) => {
@@ -550,115 +551,125 @@ export function TargetCalibrationPanel({
         </div>
 
         <div className="flex-1 min-w-[16rem] space-y-2.5">
-      <div className="flex items-end gap-3 flex-wrap">
-        <div>
-          <label className={labelCls}>{isAr ? "رقم الطلقة" : "Shot #"}</label>
-          <input
-            type="number"
-            min={1}
-            max={100}
-            value={shot}
-            disabled={busy !== null}
-            onChange={(e) =>
-              setShot(Math.max(1, Math.min(100, Number(e.target.value) || 1)))
-            }
-            className={numCls}
-          />
-        </div>
-        <div>
-          <label className={labelCls}>{isAr ? "س الحقيقي (مم)" : "True X (mm)"}</label>
-          <input
-            type="number"
-            value={trueX}
-            disabled={busy !== null}
-            onChange={(e) => {
-              setTrueX(Number(e.target.value) || 0);
-              setTrueMarked(true);
-              setApplied(null);
-            }}
-            className={numCls}
-          />
-        </div>
-        <div>
-          <label className={labelCls}>{isAr ? "ص الحقيقي (مم)" : "True Y (mm)"}</label>
-          <input
-            type="number"
-            value={trueY}
-            disabled={busy !== null}
-            onChange={(e) => {
-              setTrueY(Number(e.target.value) || 0);
-              setTrueMarked(true);
-              setApplied(null);
-            }}
-            className={numCls}
-          />
-        </div>
-        <button
-          type="button"
-          onClick={() => void readBack()}
-          disabled={busy !== null}
-          title={
-            isAr
-              ? "اقرأ ما رآه الجهاز لهذه الطلقة (معاينة فقط)"
-              : "Read back what the board saw for this shot (preview only)"
-          }
-          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded admin-text-xs font-mono font-bold hud-btn-secondary cursor-pointer disabled:opacity-50 transition-colors"
-        >
-          {busy === "read" ? (
-            <Loader2 className="w-3 h-3 animate-spin" />
-          ) : (
-            <Crosshair className="w-3 h-3" />
-          )}
-          {isAr ? "قراءة" : "Read back"}
-        </button>
-      </div>
+          <div className="flex items-end gap-3 flex-wrap">
+            <div>
+              <label className={labelCls}>
+                {isAr ? "رقم الطلقة" : "Shot #"}
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={100}
+                value={shot}
+                disabled={busy !== null}
+                onChange={(e) =>
+                  setShot(
+                    Math.max(1, Math.min(100, Number(e.target.value) || 1)),
+                  )
+                }
+                className={numCls}
+              />
+            </div>
+            <div>
+              <label className={labelCls}>
+                {isAr ? "س الحقيقي (مم)" : "True X (mm)"}
+              </label>
+              <input
+                type="number"
+                value={trueX}
+                disabled={busy !== null}
+                onChange={(e) => {
+                  setTrueX(Number(e.target.value) || 0);
+                  setTrueMarked(true);
+                  setApplied(null);
+                }}
+                className={numCls}
+              />
+            </div>
+            <div>
+              <label className={labelCls}>
+                {isAr ? "ص الحقيقي (مم)" : "True Y (mm)"}
+              </label>
+              <input
+                type="number"
+                value={trueY}
+                disabled={busy !== null}
+                onChange={(e) => {
+                  setTrueY(Number(e.target.value) || 0);
+                  setTrueMarked(true);
+                  setApplied(null);
+                }}
+                className={numCls}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => void readBack()}
+              disabled={busy !== null}
+              title={
+                isAr
+                  ? "اقرأ ما رآه الجهاز لهذه الطلقة (معاينة فقط)"
+                  : "Read back what the board saw for this shot (preview only)"
+              }
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded admin-text-xs font-mono font-bold hud-btn-secondary cursor-pointer disabled:opacity-50 transition-colors"
+            >
+              {busy === "read" ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <Crosshair className="w-3 h-3" />
+              )}
+              {isAr ? "قراءة" : "Read back"}
+            </button>
+          </div>
 
-      {/* One chip per bullet on the face. A commissioning pass is one or two
+          {/* One chip per bullet on the face. A commissioning pass is one or two
           shots; the chips are how the operator says which of them the offset
           is derived from, and the face follows the pick. */}
-      {reads.length > 0 && (
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="admin-text-2xs font-mono hud-text-subtle">
-            {isAr ? "الطلقات المقروءة" : "Reads"}
-          </span>
-          {reads.map((r) => {
-            const isSel = r.shot === shot;
-            return (
-              <span
-                key={r.shot}
-                className={`inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded border admin-text-2xs font-mono transition-colors ${
-                  isSel
-                    ? "border-amber-500/60 text-amber-700 dark:text-amber-300 bg-amber-500/10"
-                    : "border-hud/40 hud-text-subtle"
-                }`}
-              >
-                <button
-                  type="button"
-                  onClick={() => setShot(r.shot)}
-                  disabled={busy !== null}
-                  className="cursor-pointer disabled:cursor-not-allowed tabular-nums"
-                >
-                  #{r.shot} ({r.sensorX + target.offsetXmm},{" "}
-                  {r.sensorY + target.offsetYmm})
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setReads((prev) => prev.filter((p) => p.shot !== r.shot))
-                  }
-                  disabled={busy !== null}
-                  title={isAr ? "إزالة من اللوحة" : "Remove from the face"}
-                  className="p-0.5 rounded hover:bg-hud-elevated cursor-pointer disabled:cursor-not-allowed"
-                >
-                  <X className="w-2.5 h-2.5" />
-                </button>
+          {reads.length > 0 && (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="admin-text-2xs font-mono hud-text-subtle">
+                {isAr ? "الطلقات المقروءة" : "Reads"}
               </span>
-            );
-          })}
-        </div>
-      )}
+              {reads.map((r) => {
+                const isSel = r.shot === shot;
+                return (
+                  <span
+                    key={r.shot}
+                    className={`inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded border admin-text-2xs font-mono transition-colors ${
+                      isSel
+                        ? "border-amber-500/60 text-amber-700 dark:text-amber-300 bg-amber-500/10"
+                        : "border-hud/40 hud-text-subtle"
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setShot(r.shot)}
+                      disabled={busy !== null}
+                      className="cursor-pointer disabled:cursor-not-allowed tabular-nums"
+                    >
+                      #{r.shot} ({r.sensorX + target.offsetXmm},{" "}
+                      {r.sensorY + target.offsetYmm})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setReads((prev) =>
+                          prev.filter((p) => p.shot !== r.shot),
+                        )
+                      }
+                      disabled={busy !== null}
+                      title={isAr ? "إزالة من اللوحة" : "Remove from the face"}
+                      className="p-0.5 rounded hover:bg-hud-elevated cursor-pointer disabled:cursor-not-allowed"
+                    >
+                      <X className="w-2.5 h-2.5" />
+                    </button>
+                  </span>
+                );
+              })}
+            </div>
+          )}
 
-      {/* Done. Stated once, in place of the working-out — the derivation
+          {/* Done. Stated once, in place of the working-out — the derivation
           preview and the bench-read box below are both about a calibration
           that has not landed yet, and leaving them up after one has makes a
           finished board look like an unfinished one.
@@ -666,96 +677,101 @@ export function TargetCalibrationPanel({
           The amber markers stay on the face on purpose: they are held in
           sensor space, so applying the offset walks them onto the green mark,
           and that movement is the proof the calibration did what it claimed. */}
-      {applied && (
-        <div className="rounded border border-emerald-500/50 bg-emerald-500/10 p-2 space-y-1">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span className="admin-text-2xs font-mono font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
-              {isAr ? "تمت معايرة الهدف" : "Target calibrated"}
-            </span>
-          </div>
-          <p className="admin-text-2xs font-mono text-slate-800 dark:text-slate-200">
-            {isAr ? "الإزاحة" : "Offset"}{" "}
-            <span className="font-bold tabular-nums">
-              ({applied.offsetXmm}, {applied.offsetYmm}) mm
-            </span>{" "}
-            {isAr ? `من الطلقة رقم ${applied.shot}` : `from shot #${applied.shot}`}
-            {applied.carried > 0 &&
-              (isAr
-                ? ` — وطُبِّقت على ${applied.carried} هدف آخر`
-                : `, also applied to ${applied.carried} other target${
-                    applied.carried === 1 ? "" : "s"
-                  }`)}
-          </p>
-          <p className="admin-text-2xs font-mono hud-text-subtle">
-            {isAr
-              ? "اقرأ طلقة أخرى أو حدِّد نقطة جديدة لبدء معايرة أخرى."
-              : "Read another shot or mark a new point to start another calibration."}
-          </p>
-        </div>
-      )}
+          {applied && (
+            <div className="rounded border border-emerald-500/50 bg-emerald-500/10 p-2 space-y-1">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span className="admin-text-2xs font-mono font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                  {isAr ? "تمت معايرة الهدف" : "Target calibrated"}
+                </span>
+              </div>
+              <p className="admin-text-2xs font-mono text-slate-800 dark:text-slate-200">
+                {isAr ? "الإزاحة" : "Offset"}{" "}
+                <span className="font-bold tabular-nums">
+                  ({applied.offsetXmm}, {applied.offsetYmm}) mm
+                </span>{" "}
+                {isAr
+                  ? `من الطلقة رقم ${applied.shot}`
+                  : `from shot #${applied.shot}`}
+                {applied.carried > 0 &&
+                  (isAr
+                    ? ` — وطُبِّقت على ${applied.carried} هدف آخر`
+                    : `, also applied to ${applied.carried} other target${
+                        applied.carried === 1 ? "" : "s"
+                      }`)}
+              </p>
+              <p className="admin-text-2xs font-mono hud-text-subtle">
+                {isAr
+                  ? "اقرأ طلقة أخرى أو حدِّد نقطة جديدة لبدء معايرة أخرى."
+                  : "Read another shot or mark a new point to start another calibration."}
+              </p>
+            </div>
+          )}
 
-      {/* The offset this is about to write, before it is written. Same
+          {/* The offset this is about to write, before it is written. Same
           subtraction the server performs on its own re-read, so the number
           shown here is the number that lands. */}
-      {!applied && derived && (
-        <div className="rounded border border-emerald-500/40 bg-emerald-500/10 p-2 admin-text-2xs font-mono text-slate-800 dark:text-slate-200 space-y-0.5">
-          <p>
-            {isAr ? "الطلقة" : "Shot"} #{shot}:{" "}
-            {isAr ? "رآها الجهاز عند" : "board saw"}{" "}
-            <span className="font-bold tabular-nums">
-              ({selectedRead!.sensorX + target.offsetXmm},{" "}
-              {selectedRead!.sensorY + target.offsetYmm})
-            </span>{" "}
-            → {isAr ? "الحقيقي" : "true"}{" "}
-            <span className="font-bold tabular-nums">
-              ({trueX}, {trueY})
-            </span>{" "}
-            mm
-          </p>
-          <p>
-            {isAr ? "الإزاحة الناتجة" : "Derived offset"}{" "}
-            <span className="font-bold tabular-nums">
-              ({derived.x}, {derived.y}) mm
-            </span>{" "}
-            <span className="hud-text-subtle">
-              {isAr
-                ? `(الحالية ${target.offsetXmm}، ${target.offsetYmm})`
-                : `(currently ${target.offsetXmm}, ${target.offsetYmm})`}
-            </span>
-          </p>
-        </div>
-      )}
+          {!applied && derived && (
+            <div className="rounded border border-emerald-500/40 bg-emerald-500/10 p-2 admin-text-2xs font-mono text-slate-800 dark:text-slate-200 space-y-0.5">
+              <p>
+                {isAr ? "الطلقة" : "Shot"} #{shot}:{" "}
+                {isAr ? "رآها الجهاز عند" : "board saw"}{" "}
+                <span className="font-bold tabular-nums">
+                  ({selectedRead!.sensorX + target.offsetXmm},{" "}
+                  {selectedRead!.sensorY + target.offsetYmm})
+                </span>{" "}
+                → {isAr ? "الحقيقي" : "true"}{" "}
+                <span className="font-bold tabular-nums">
+                  ({trueX}, {trueY})
+                </span>{" "}
+                mm
+              </p>
+              <p>
+                {isAr ? "الإزاحة الناتجة" : "Derived offset"}{" "}
+                <span className="font-bold tabular-nums">
+                  ({derived.x}, {derived.y}) mm
+                </span>{" "}
+                <span className="hud-text-subtle">
+                  {isAr
+                    ? `(الحالية ${target.offsetXmm}، ${target.offsetYmm})`
+                    : `(currently ${target.offsetXmm}, ${target.offsetYmm})`}
+                </span>
+              </p>
+            </div>
+          )}
 
-      {/* Badged, not a bare message line. These readings are bench bullets
+          {/* Badged, not a bare message line. These readings are bench bullets
           pulled off the board's own counter for commissioning — they are never
           written as Shot rows and belong to no session, and an unlabelled pair
           of millimetres here is indistinguishable from a scored shot on the
           live board. The badge is the only thing saying which it is. */}
-      {!applied && reading && (
-        <div className="rounded border border-amber-500/40 bg-amber-500/10 p-2 space-y-1">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="px-1.5 py-0.5 rounded admin-text-2xs font-mono font-bold uppercase tracking-wider border border-amber-500/50 text-amber-700 dark:text-amber-300">
-              {isAr ? "طلقة معايرة" : "Calibration shot"}
-            </span>
-            <span className="admin-text-2xs font-mono hud-text-subtle">
-              #{reading.shot} · {isAr ? "غير مسجّلة في أي جلسة" : "not recorded in any session"}
-            </span>
-          </div>
-          {reading.xMm != null && reading.yMm != null ? (
-            <p className="admin-text-2xs font-mono text-slate-800 dark:text-slate-200">
-              {isAr ? "رآها الجهاز عند" : "Board saw it at"}{" "}
-              <span className="font-bold tabular-nums">
-                ({reading.xMm}, {reading.yMm}) mm
-              </span>
-            </p>
-          ) : (
-            <p className="admin-text-2xs font-mono break-words text-slate-800 dark:text-slate-200">
-              {reading.message}
-            </p>
+          {!applied && reading && (
+            <div className="rounded border border-amber-500/40 bg-amber-500/10 p-2 space-y-1">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="px-1.5 py-0.5 rounded admin-text-2xs font-mono font-bold uppercase tracking-wider border border-amber-500/50 text-amber-700 dark:text-amber-300">
+                  {isAr ? "طلقة معايرة" : "Calibration shot"}
+                </span>
+                <span className="admin-text-2xs font-mono hud-text-subtle">
+                  #{reading.shot} ·{" "}
+                  {isAr
+                    ? "غير مسجّلة في أي جلسة"
+                    : "not recorded in any session"}
+                </span>
+              </div>
+              {reading.xMm != null && reading.yMm != null ? (
+                <p className="admin-text-2xs font-mono text-slate-800 dark:text-slate-200">
+                  {isAr ? "رآها الجهاز عند" : "Board saw it at"}{" "}
+                  <span className="font-bold tabular-nums">
+                    ({reading.xMm}, {reading.yMm}) mm
+                  </span>
+                </p>
+              ) : (
+                <p className="admin-text-2xs font-mono break-words text-slate-800 dark:text-slate-200">
+                  {reading.message}
+                </p>
+              )}
+            </div>
           )}
-        </div>
-      )}
         </div>
       </div>
 

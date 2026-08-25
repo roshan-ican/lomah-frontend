@@ -290,8 +290,7 @@ export const RangeControlRail: React.FC<RangeControlRailProps> = ({
                 {channel.calibratedShotCount != null && (
                   <span className="hud-text-subtle">
                     {" "}
-                    · {channel.calibratedShotCount}{" "}
-                    {isAr ? "معايرة" : "recal"}
+                    · {channel.calibratedShotCount} {isAr ? "معايرة" : "recal"}
                   </span>
                 )}
               </div>

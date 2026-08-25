@@ -46,7 +46,10 @@ export interface AdminDashboardProps {
   setSelectedChannelId: (id: string) => void;
   handleAdminCommand: (channelId: string, cmd: AdminCommand) => void;
   /** Resolves true only on a confirmed server write — see SessionControlPanelProps. */
-  onCreateSession: (channelId: string, config: SessionConfig) => Promise<boolean>;
+  onCreateSession: (
+    channelId: string,
+    config: SessionConfig,
+  ) => Promise<boolean>;
   onPauseSession: (channelId: string) => void;
   onResumeSession: (channelId: string) => void;
   onStartAllSessions: () => void;
@@ -92,7 +95,11 @@ export interface AdminDashboardProps {
   calibrationLaneId: number | null;
   setCalibrationLaneId: (laneId: number | null) => void;
   onCalibrationDismiss: () => void;
-  onSetOffset: (laneId: number, offsetX: number, offsetY: number) => Promise<boolean>;
+  onSetOffset: (
+    laneId: number,
+    offsetX: number,
+    offsetY: number,
+  ) => Promise<boolean>;
   onRefreshShooters: () => void;
 }
 

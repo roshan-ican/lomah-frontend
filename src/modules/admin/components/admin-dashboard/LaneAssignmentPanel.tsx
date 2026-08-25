@@ -22,7 +22,11 @@ interface Props {
  * that demonstrably exists rather than typing an address they would have to go
  * read off the back of a tablet.
  */
-export function LaneAssignmentPanel({ isAr, triggerSuccessBanner, triggerErrorBanner }: Props) {
+export function LaneAssignmentPanel({
+  isAr,
+  triggerSuccessBanner,
+  triggerErrorBanner,
+}: Props) {
   const [devices, setDevices] = useState<ConnectedShooter[]>([]);
   const [lanes, setLanes] = useState<Lane[]>([]);
   const [loading, setLoading] = useState(false);
@@ -31,7 +35,9 @@ export function LaneAssignmentPanel({ isAr, triggerSuccessBanner, triggerErrorBa
 
   const loadDevices = async () => {
     try {
-      const rows = await api.get<ConnectedShooter[]>("/auth/connected-shooters");
+      const rows = await api.get<ConnectedShooter[]>(
+        "/auth/connected-shooters",
+      );
       setDevices(Array.isArray(rows) ? rows : []);
     } catch {
       /* polled list — a blip must not blank the panel */
@@ -95,7 +101,8 @@ export function LaneAssignmentPanel({ isAr, triggerSuccessBanner, triggerErrorBa
       );
       await loadDevices();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to assign device";
+      const msg =
+        err instanceof Error ? err.message : "Failed to assign device";
       triggerErrorBanner(msg);
       await loadDevices();
     } finally {
@@ -237,7 +244,11 @@ export function LaneAssignmentPanel({ isAr, triggerSuccessBanner, triggerErrorBa
                           disabled={takenByOther}
                         >
                           {isAr ? `حارة ${lane.id}` : `Lane ${lane.id}`}
-                          {takenByOther ? (isAr ? " (مشغولة)" : " (in use)") : ""}
+                          {takenByOther
+                            ? isAr
+                              ? " (مشغولة)"
+                              : " (in use)"
+                            : ""}
                         </option>
                       );
                     })}
@@ -291,11 +302,7 @@ export function LaneAssignmentPanel({ isAr, triggerSuccessBanner, triggerErrorBa
                         device ? "hud-text-muted" : "hud-text-subtle italic"
                       }`}
                     >
-                      {device
-                        ? device.ip
-                        : isAr
-                          ? "لا يوجد جهاز"
-                          : "No device"}
+                      {device ? device.ip : isAr ? "لا يوجد جهاز" : "No device"}
                     </p>
                   </div>
                 </div>

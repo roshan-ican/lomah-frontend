@@ -12,7 +12,13 @@
  * operator parks the panel relative to the target's edge, and a fraction would
  * slide it across the board every time the window changed size.
  */
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { GripHorizontal, X } from "lucide-react";
 
 interface DraggablePanelProps {
@@ -60,7 +66,9 @@ export function DraggablePanel({
   isAr = false,
 }: DraggablePanelProps) {
   const panelRef = useRef<HTMLDivElement | null>(null);
-  const [pos, setPos] = useState<Point>(() => readStored(storageKey) ?? defaultPosition);
+  const [pos, setPos] = useState<Point>(
+    () => readStored(storageKey) ?? defaultPosition,
+  );
 
   // Where inside the panel the pointer grabbed it. Without this the panel
   // jumps so its corner meets the cursor on the first move.

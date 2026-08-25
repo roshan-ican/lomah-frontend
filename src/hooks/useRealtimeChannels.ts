@@ -89,7 +89,7 @@ export function useRealtimeChannels({
 
   // ─── Sync helpers ──────────────────────────────────────────────────────────
 
-/** One-shot mount-time repaint from IndexedDB channel cache. Runs before HTTP sync so a relaunch shows last known lane state instantly. Only touches untouched channels; bails once serverSyncedRef flips so server data always wins. */
+  /** One-shot mount-time repaint from IndexedDB channel cache. Runs before HTTP sync so a relaunch shows last known lane state instantly. Only touches untouched channels; bails once serverSyncedRef flips so server data always wins. */
   const hydrateChannelsFromCache = async () => {
     try {
       const cached = await getCachedChannels();
@@ -121,7 +121,8 @@ export function useRealtimeChannels({
           // Remember that this lane's session is a cached guess. Without this
           // the HTTP sync cannot tell "session the server hasn't told us about
           // yet" from "session the server already ended", and keeps both.
-          if (laneHasSession(rest.sessionStatus)) cachePaintedRef.current.add(ch.id);
+          if (laneHasSession(rest.sessionStatus))
+            cachePaintedRef.current.add(ch.id);
           return { ...ch, ...rest, shots: ch.shots };
         });
       });
@@ -203,7 +204,7 @@ export function useRealtimeChannels({
     }
   };
 
-/** Cache-first hydrate: after HTTP sync paints server shots, merge IndexedDB-cached shots into matching channels (server wins on conflicts, cache fills gaps so the board never goes blank on reload). */
+  /** Cache-first hydrate: after HTTP sync paints server shots, merge IndexedDB-cached shots into matching channels (server wins on conflicts, cache fills gaps so the board never goes blank on reload). */
   const hydrateShotsFromCache = async (laneIds?: number[]) => {
     try {
       const channels = useSessionStore.getState().channels;
@@ -520,7 +521,8 @@ export function useRealtimeChannels({
     const socket = socketRef.current;
     const token = getAuthToken() ?? "";
     if (!socket) return;
-    const current = (socket.auth as { token?: string } | undefined)?.token ?? "";
+    const current =
+      (socket.auth as { token?: string } | undefined)?.token ?? "";
     if (current === token) return;
     socket.auth = { token };
     // disconnect().connect() forces a new handshake; without it socket.io keeps

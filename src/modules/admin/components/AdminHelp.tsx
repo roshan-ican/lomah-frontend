@@ -58,13 +58,7 @@ function GuideCard({
 }
 
 /** A labelled step / key-value line used inside guide cards. */
-function Step({
-  term,
-  children,
-}: {
-  term: string;
-  children: React.ReactNode;
-}) {
+function Step({ term, children }: { term: string; children: React.ReactNode }) {
   return (
     <li>
       <strong className="hud-text">{term}</strong>
@@ -262,7 +256,7 @@ function RangeOfficerGuide({ isAr }: { isAr: boolean }) {
           </p>
           <p className="mt-2 hud-warning">
             {isAr
-              ? "تنبيه: إذا كانت جلسة مباشرة تعمل والمستشعر متوقف، فلن تُسجَّل الطلقات. اضغط \"تحرير المستشعر\" لاستئناف القبول."
+              ? 'تنبيه: إذا كانت جلسة مباشرة تعمل والمستشعر متوقف، فلن تُسجَّل الطلقات. اضغط "تحرير المستشعر" لاستئناف القبول.'
               : 'Note: if a session is live while the sensor is held, shots will not register. Press "Release sensor" to resume.'}
           </p>
         </GuideCard>
@@ -358,7 +352,7 @@ function RangeOfficerGuide({ isAr }: { isAr: boolean }) {
         >
           <p>
             {isAr
-              ? "الأخضر = مباشر، البرتقالي = موقوف أو منتهٍ، الرمادي = شاغرة. شارة \"المستشعر\" الخضراء تعني قبول الطلقات."
+              ? 'الأخضر = مباشر، البرتقالي = موقوف أو منتهٍ، الرمادي = شاغرة. شارة "المستشعر" الخضراء تعني قبول الطلقات.'
               : 'Green = live, amber = paused or done, gray = vacant. A green "Sensor" badge means shots are being accepted.'}
           </p>
         </GuideCard>
@@ -384,7 +378,7 @@ function RangeOfficerGuide({ isAr }: { isAr: boolean }) {
                 {isAr ? "لا تُسجَّل الطلقات:" : "Shots not registering:"}
               </strong>{" "}
               {isAr
-                ? "تحقق من أن المستشعر \"نشط\" وليس \"متوقف\"، وأن الجلسة مباشرة."
+                ? 'تحقق من أن المستشعر "نشط" وليس "متوقف"، وأن الجلسة مباشرة.'
                 : 'Check the sensor badge reads "live" (not "hold") and the session is active.'}
             </p>
             <p>
@@ -436,9 +430,7 @@ function SuperAdminGuide({ isAr }: { isAr: boolean }) {
       >
         <ol className="space-y-1.5 list-decimal pl-4">
           <li>
-            {isAr
-              ? 'افتح "الحارات والأهداف".'
-              : 'Open "Lanes & Targets".'}
+            {isAr ? 'افتح "الحارات والأهداف".' : 'Open "Lanes & Targets".'}
           </li>
           <li>
             {isAr
@@ -480,7 +472,7 @@ function SuperAdminGuide({ isAr }: { isAr: boolean }) {
         </ul>
         <p className="mt-2 hud-text-muted">
           {isAr
-            ? "يُرسل أمر واحد فقط للوح في كل مرة — انتظر الاستجابة (شارة \"اختبار\") قبل إرسال أمر آخر."
+            ? 'يُرسل أمر واحد فقط للوح في كل مرة — انتظر الاستجابة (شارة "اختبار") قبل إرسال أمر آخر.'
             : 'Only one command goes to a board at a time — wait for the "Testing" badge to clear before sending another.'}
         </p>
       </GuideCard>
@@ -518,7 +510,7 @@ function SuperAdminGuide({ isAr }: { isAr: boolean }) {
         </ul>
         <p className="mt-2 hud-warning">
           {isAr
-            ? "انحراف كبير عن ذلك الموضع يستحق المراجعة حتى لو كانت النتيجة \"ناجحة\"."
+            ? 'انحراف كبير عن ذلك الموضع يستحق المراجعة حتى لو كانت النتيجة "ناجحة".'
             : 'A result far from that position is worth a second look even when it reports "success."'}
         </p>
       </GuideCard>
@@ -535,7 +527,7 @@ function SuperAdminGuide({ isAr }: { isAr: boolean }) {
         </p>
         <p className="mt-2 hud-warning">
           {isAr
-            ? "التغييرات تُطبَّق على اللوح فوراً ولا تُحفظ في أي مكان — لا يوجد \"تراجع\"."
+            ? 'التغييرات تُطبَّق على اللوح فوراً ولا تُحفظ في أي مكان — لا يوجد "تراجع".'
             : "Changes apply on the board immediately and are not saved anywhere — there's no undo."}
         </p>
         <p className="mt-2 hud-text-muted">
@@ -579,8 +571,8 @@ function SuperAdminGuide({ isAr }: { isAr: boolean }) {
         </p>
         <p className="mt-2 hud-text-muted">
           {isAr
-            ? "التعيين يعتمد على الجهاز أولاً — الرماة لا يسجّلون الدخول، فـ\"من هنا\" هو أي جهاز يتحدث مع الخادم."
-            : "Assignment is device-first — shooters have no accounts, so \"who is here\" is whichever tablet is talking to the server."}
+            ? 'التعيين يعتمد على الجهاز أولاً — الرماة لا يسجّلون الدخول، فـ"من هنا" هو أي جهاز يتحدث مع الخادم.'
+            : 'Assignment is device-first — shooters have no accounts, so "who is here" is whichever tablet is talking to the server.'}
         </p>
       </GuideCard>
 
@@ -626,7 +618,9 @@ function SuperAdminGuide({ isAr }: { isAr: boolean }) {
           </p>
           <p>
             <strong className="hud-text">
-              {isAr ? "استمرار فشل الاختبار الذاتي بعد تعديل الحساسية:" : "Self-test keeps failing after a sensitivity change:"}
+              {isAr
+                ? "استمرار فشل الاختبار الذاتي بعد تعديل الحساسية:"
+                : "Self-test keeps failing after a sensitivity change:"}
             </strong>{" "}
             {isAr
               ? "تراجع عن آخر قيمة وايبر غيّرتها — على الأرجح أنها زادت الأمر سوءاً."

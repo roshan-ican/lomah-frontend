@@ -95,7 +95,7 @@ export const ShooterSideRail: React.FC<ShooterSideRailProps> = ({
       )}
 
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden px-1 pb-1 pt-2">
-        <div className="shrink-0 text-center pb-2 border-b border-hud mb-1 bg-border-2">
+        <div className="shrink-0 text-center pb-2 border-b border-hud mb-1 ">
           <span className="range-display-label text-sm tracking-[0.22em] hud-text-strong">
             {t.shotLog}
           </span>

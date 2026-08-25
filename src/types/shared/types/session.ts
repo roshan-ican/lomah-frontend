@@ -2,12 +2,7 @@ import type { TargetProfileType } from "./lane";
 import type { Shot } from "./shot";
 
 export type SessionStatus =
-  | "CREATED"
-  | "ACTIVE"
-  | "PAUSED"
-  | "COMPLETED"
-  | "CANCELLED"
-  | "SUPERSEDED";
+  "CREATED" | "ACTIVE" | "PAUSED" | "COMPLETED" | "CANCELLED" | "SUPERSEDED";
 
 export type StageStatus = "PENDING" | "ACTIVE" | "COMPLETED";
 

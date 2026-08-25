@@ -11,8 +11,8 @@ export function useResponsiveNav(setActiveTab: (tab: AdminTab) => void) {
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 768px)");
     const handleViewPortChange = () => {
-      if (!mq.matches) setNavOpen(false)
-    }
+      if (!mq.matches) setNavOpen(false);
+    };
 
     mq.addEventListener("change", handleViewPortChange);
     return () => mq.removeEventListener("change", handleViewPortChange);

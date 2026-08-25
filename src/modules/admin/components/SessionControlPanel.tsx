@@ -39,7 +39,6 @@ import { TargetFacePreview } from "../../../components/common/TargetFacePreview"
 import type { Lane, Target } from "../../../types";
 import { getLaneIdFromChannelId } from "../../../utils/helper";
 
-
 /** 0 is "no clock" — see StageMonitorService, which skips those stages. */
 const DURATION_PRESETS = [
   { labelEn: "Open", labelAr: "مفتوح", seconds: 0 },
@@ -132,7 +131,7 @@ function scheduleTimeRange(startsAt: string, endsAt: string, isAr: boolean) {
 }
 
 /** Shape comes from the backend's ConnectedShootersService — a DEVICE that
- *  has announced itself, not a person with an account. */
+ * has announced itself, not a person with an account. */
 type ConnectedShooter = import("../../../types").ConnectedShooter;
 
 /**
@@ -177,8 +176,8 @@ const StageCard: React.FC<{
     >
       <div className="flex items-center justify-between gap-2">
         {/* min-w-0 + truncate: on narrow panes the title shrinks instead of
-            pushing the action buttons past the rail's overflow clip, which
-            would leave the drag handle off-screen on small viewports. */}
+ pushing the action buttons past the rail's overflow clip, which
+ would leave the drag handle off-screen on small viewports. */}
         <div className="min-w-0 truncate admin-text-2xs font-mono font-bold uppercase tracking-wider hud-accent">
           {isAr ? `المرحلة ${index + 1}` : `Stage ${index + 1}`}
           {tgt ? (
@@ -193,7 +192,7 @@ const StageCard: React.FC<{
             onPointerDown={(e) => dragControls.start(e)}
             title={isAr ? "اسحب لإعادة الترتيب" : "Drag to reorder"}
             aria-label={isAr ? "إعادة ترتيب المرحلة" : "Reorder stage"}
-            className="p-1.5 rounded cursor-grab active:cursor-grabbing touch-none bg-hud-elevated border border-hud hud-text-secondary hover:text-hud-accent hover:border-hud-strong transition-colors"
+            className="p-1.5 rounded cursor-grab active:cursor-grabbing touch-none bg-hud-elevated border border-hud hud-text-secondary hover:hud-accent hover:border-hud-strong transition-colors"
           >
             <GripVertical className="w-4 h-4" />
           </button>
@@ -211,11 +210,11 @@ const StageCard: React.FC<{
       </div>
 
       {/* The face beside the target, so a stage aimed at the
-          wrong scoring rings is caught before the relay runs
-          rather than after it is scored. The target itself is
-          fixed by the SUPER_ADMIN's lane configuration — the
-          admin sequences how many stages to run, not which
-          target each one engages. */}
+ wrong scoring rings is caught before the relay runs
+ rather than after it is scored. The target itself is
+ fixed by the SUPER_ADMIN's lane configuration — the
+ admin sequences how many stages to run, not which
+ target each one engages. */}
       <div className="flex items-center gap-2">
         {tgt && (
           <TargetFacePreview
@@ -229,12 +228,10 @@ const StageCard: React.FC<{
           {tgt ? (
             <>
               <span className="admin-text-xs font-mono font-bold hud-accent uppercase tracking-wider">
-                {slotCode(tgt.laneId, tgt.positionIndex)} ·{" "}
-                {tgt.distanceM}m
+                {slotCode(tgt.laneId, tgt.positionIndex)} · {tgt.distanceM}m
               </span>
               <span className="admin-text-2xs font-mono hud-text-muted block truncate">
-                {tgt.label} ·{" "}
-                {targetProfileLabel(tgt.profileType, language)}
+                {tgt.label} · {targetProfileLabel(tgt.profileType, language)}
               </span>
             </>
           ) : (
@@ -267,7 +264,7 @@ const StageCard: React.FC<{
               className="w-16 px-1.5 py-1.5 border rounded text-center hud-form-input"
             />
             {/* 0 is not a magic sentinel the admin has to know:
-                it is spelled out right next to the field. */}
+ it is spelled out right next to the field. */}
             <span className="admin-text-2xs hud-text-muted italic leading-tight">
               {stage.bulletLimit > 0
                 ? isAr
@@ -307,8 +304,8 @@ const StageCard: React.FC<{
       </div>
 
       {/* Says out loud what will actually end this stage. The
-          three combinations behave differently and none of it
-          is visible from the controls alone. */}
+ three combinations behave differently and none of it
+ is visible from the controls alone. */}
       <p className="admin-text-2xs font-mono hud-text-subtle leading-snug">
         {stage.bulletLimit > 0
           ? isAr
@@ -354,8 +351,7 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
     : undefined;
   const activeSchedule = channel
     ? activeLaneSchedules.find(
-        (schedule) =>
-          schedule.laneId === getLaneIdFromChannelId(channel.id),
+        (schedule) => schedule.laneId === getLaneIdFromChannelId(channel.id),
       )
     : undefined;
   const btnPrimary = isHud
@@ -384,15 +380,15 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
   const [notes, setNotes] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   /** In-flight guard for the create/save request. The submit buttons were
-   *  freely re-clickable while a POST was outstanding, and each click created
-   *  another session on the lane. */
+   * freely re-clickable while a POST was outstanding, and each click created
+   * another session on the lane. */
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [connectedShooters, setConnectedShooters] = useState<
     ConnectedShooter[]
   >([]);
   /** Last session whose stage plan was pre-rendered into the form, so the
-   *  realtime-driven re-runs of the seed effect below don't refetch (and
-   *  clobber edits) on every shot/state tick. */
+   * realtime-driven re-runs of the seed effect below don't refetch (and
+   * clobber edits) on every shot/state tick. */
   const seededSessionIdRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -448,11 +444,11 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
     );
 
   /** Default a new stage to the first commissioned target NOT already in the
-   *  plan. Originally this picked `laneTargets[prev.length]` — which is only
-   *  valid while the plan stays in lane order. Once the admin drags stages
-   *  around, position and target drift apart, so look up by "not used yet"
-   *  instead: the plan still has one stage per commissioned target, just in
-   *  whatever order the admin arranged. */
+   * plan. Originally this picked `laneTargets[prev.length]` — which is only
+   * valid while the plan stays in lane order. Once the admin drags stages
+   * around, position and target drift apart, so look up by "not used yet"
+   * instead: the plan still has one stage per commissioned target, just in
+   * whatever order the admin arranged. */
   const addStage = () =>
     setStages((prev) => {
       if (laneTargets.length === 0) return prev;
@@ -536,9 +532,7 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
           // been seeded blank would have wiped the stored text.
           if (session?.notes != null) setNotes(session.notes);
           if (!session?.stages?.length) return;
-          const ordered = [...session.stages].sort(
-            (a, b) => a.order - b.order,
-          );
+          const ordered = [...session.stages].sort((a, b) => a.order - b.order);
           setStages(
             ordered.map((s) => ({
               key: newStageKey(),
@@ -576,7 +570,7 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
   const status = channel.sessionStatus;
   if (status === "NONE" && activeSchedule?.access === "BUSY") {
     return (
-      <div className="p-4 rounded-lg border border-hud hud-warning-bg space-y-2">
+      <div className="p-4 rounded-lg border border-hud bg-[var(--hud-warning-bg)] space-y-2">
         <p className="font-mono admin-text-xs font-bold hud-warning uppercase tracking-wider">
           {isAr ? "الحارة محجوزة" : "Lane reserved"}
         </p>
@@ -599,7 +593,7 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
 
   const targetById = new Map(laneTargets.map((tgt) => [tgt.id, tgt]));
   /** Display only. The lane grid shows one distance, so it shows the first
-   *  stage's — the rest are visible in the plan itself. */
+   * stage's — the rest are visible in the plan itself. */
   const planDistance = (() => {
     const first = stages[0] && targetById.get(stages[0].targetId);
     return first ? `${first.distanceM}m` : channel.distance;
@@ -650,7 +644,7 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
         </h4>
 
         {activeSchedule?.access === "OWNER" && status === "NONE" && (
-          <div className="p-3 hud-accent-bg-subtle border border-hud rounded-xl space-y-1">
+          <div className="p-3 bg-[var(--hud-accent-bg-subtle)] border border-hud rounded-xl space-y-1">
             <p className="font-mono admin-text-2xs hud-accent uppercase tracking-wider">
               {isAr ? "الحجز النشط" : "Active reservation"}
             </p>
@@ -661,13 +655,17 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
                 isAr,
               )}{" "}
               • {activeSchedule.attendees.length}{" "}
-              {isAr ? "رامٍ مجدول" : activeSchedule.attendees.length === 1 ? "scheduled shooter" : "scheduled shooters"}
+              {isAr
+                ? "رامٍ مجدول"
+                : activeSchedule.attendees.length === 1
+                  ? "scheduled shooter"
+                  : "scheduled shooters"}
             </p>
           </div>
         )}
 
         {laneConnectedShooters.length > 0 && (
-          <div className="p-3 hud-accent-bg-subtle border border-hud rounded-xl space-y-2">
+          <div className="p-3 bg-[var(--hud-accent-bg-subtle)] border border-hud rounded-xl space-y-2">
             <p className="font-mono admin-text-2xs hud-accent uppercase tracking-wider flex items-center gap-1.5">
               <Users className="w-3 h-3" />
               {isAr ? "رامون متصلون" : "Connected Shooters"}
@@ -677,7 +675,7 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
                 key={idx}
                 className="flex items-center gap-2 font-mono admin-text-2xs"
               >
-                <Wifi className="w-3 h-3 hud-accent/60 shrink-0" />
+                <Wifi className="w-3 h-3 text-hud-accent/60 shrink-0" />
                 <span className="hud-text-secondary">{s.ip}</span>
                 <span className="hud-text-muted">→</span>
                 <span className="hud-success">
@@ -693,15 +691,14 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
             <label className="block hud-text-subtle mb-1 font-mono uppercase admin-text-2xs">
               {isAr ? "الحارة المستهدفة" : "Target Lane"}
             </label>
-<select
-                value={channel.id}
-                onChange={(e) => setSelectedChannelId(e.target.value)}
-                className="w-full px-2 py-1.5 border rounded-lg hud-form-input"
-              >
+            <select
+              value={channel.id}
+              onChange={(e) => setSelectedChannelId(e.target.value)}
+              className="w-full px-2 py-1.5 border rounded-lg hud-form-input"
+            >
               {channels.map((ch, idx) => {
                 const schedule = activeLaneSchedules.find(
-                  (item) =>
-                    item.laneId === getLaneIdFromChannelId(ch.id),
+                  (item) => item.laneId === getLaneIdFromChannelId(ch.id),
                 );
                 const emptyLaneLabel = schedule
                   ? schedule.access === "OWNER"
@@ -718,7 +715,9 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
                   <option
                     key={ch.id}
                     value={ch.id}
-                    disabled={ch.sessionStatus === "NONE" && schedule?.access === "BUSY"}
+                    disabled={
+                      ch.sessionStatus === "NONE" && schedule?.access === "BUSY"
+                    }
                   >
                     {isAr ? `حارة ${idx + 1}` : `Lane 0${idx + 1}`} (
                     {laneNeedsReview(ch.sessionStatus)
@@ -773,11 +772,7 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
                     channel.id,
                   );
                   return (
-                    <option
-                      key={s.id}
-                      value={s.name}
-                      disabled={!!occupiedLane}
-                    >
+                    <option key={s.id} value={s.name} disabled={!!occupiedLane}>
                       {s.name}
                       {occupiedLane
                         ? isAr
@@ -797,14 +792,13 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
                 className="w-full px-3 py-1.5 border rounded-lg hud-form-input"
               />
             )}
-
           </div>
 
           {/* ── FIRING PLAN ────────────────────────────────────────────────
               The targets listed here are exactly what SUPER_ADMIN commissioned
-              on this lane. This screen cannot add, rename or re-address one —
-              it only decides which of them get fired, in what order, and for
-              how many rounds and how long each. */}
+ on this lane. This screen cannot add, rename or re-address one —
+ it only decides which of them get fired, in what order, and for
+ how many rounds and how long each. */}
           <div>
             <div className="flex items-end justify-between mb-1 gap-2">
               <label className="block hud-text-subtle font-mono uppercase admin-text-2xs">
@@ -866,21 +860,21 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
             <label className="block hud-text-subtle mb-1 font-mono uppercase admin-text-2xs">
               {isAr ? "ملاحظات الجلسة" : "Session Notes"}
             </label>
-<input
-                type="text"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder={
-                  isAr
-                    ? "مثال: اتجاه الرياح، تفاصيل الوضعية"
-                    : "e.g. Wind direction, body positioning"
-                }
-                className="w-full px-3 py-1.5 border rounded-lg hud-form-input"
-              />
+            <input
+              type="text"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder={
+                isAr
+                  ? "مثال: اتجاه الرياح، تفاصيل الوضعية"
+                  : "e.g. Wind direction, body positioning"
+              }
+              className="w-full px-3 py-1.5 border rounded-lg hud-form-input"
+            />
           </div>
 
           {createBlockedReason && (
-            <p className="admin-text-2xs hud-warning font-mono hud-warning-bg border border-hud rounded-lg p-2.5">
+            <p className="admin-text-2xs hud-warning font-mono bg-[var(--hud-warning-bg)] border border-hud rounded-lg p-2.5">
               {createBlockedReason}
             </p>
           )}
@@ -951,12 +945,12 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
     );
   }
 
-   // ── CREATED: session configured, waiting to go ACTIVE ───────────────────
-   if (status === "CREATED" && !isEditing) {
-     return (
-       <div className="space-y-4">
-         <h4 className="font-mono admin-text-xs font-bold hud-text-muted uppercase tracking-wider flex items-center gap-1.5 border-b pb-2">
-           <Activity className="w-4 h-4 hud-warning" />
+  // ── CREATED: session configured, waiting to go ACTIVE ───────────────────
+  if (status === "CREATED" && !isEditing) {
+    return (
+      <div className="space-y-4">
+        <h4 className="font-mono admin-text-xs font-bold hud-text-muted uppercase tracking-wider flex items-center gap-1.5 border-b pb-2">
+          <Activity className="w-4 h-4 hud-warning" />
           {isAr
             ? "الجلسة مُعدّة — في انتظار الإطلاق"
             : "Session Ready — Awaiting Start"}
@@ -1001,10 +995,10 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
 
     return (
       <div className="space-y-4">
-       <h4 className="font-mono admin-text-xs font-bold hud-text-muted uppercase tracking-wider flex items-center gap-1.5 border-b pb-2">
-           <Activity
-             className={`w-4 h-4 hud-accent ${status === "ACTIVE" ? "animate-pulse" : ""}`}
-           />
+        <h4 className="font-mono admin-text-xs font-bold hud-text-muted uppercase tracking-wider flex items-center gap-1.5 border-b pb-2">
+          <Activity
+            className={`w-4 h-4 hud-accent ${status === "ACTIVE" ? "animate-pulse" : ""}`}
+          />
           {isAr ? "التحكم بالجلسة النشطة" : "Active Session Control"}
         </h4>
 
@@ -1027,10 +1021,10 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
         )}
 
         {/* Progress shows for every multi-stage relay, including its LAST
-            stage — "Stage 4 of 4" is exactly when an officer wants to know
-            where they are. Only the advance BUTTON is conditional: a final
-            stage has nothing to advance to, and advancing would just end the
-            session, which is what End Session is for. */}
+ stage — "Stage 4 of 4" is exactly when an officer wants to know
+ where they are. Only the advance BUTTON is conditional: a final
+ stage has nothing to advance to, and advancing would just end the
+ session, which is what End Session is for. */}
         {isMultiStage && (
           <div className="flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg border border-hud bg-hud-elevated">
             <span className="admin-text-2xs font-mono hud-text-subtle uppercase tracking-wider">
@@ -1126,8 +1120,8 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
   if (status === "CANCELLED") {
     return (
       <div className="space-y-3">
-         <h4 className="font-mono admin-text-xs font-bold hud-text-muted uppercase tracking-wider flex items-center gap-1.5 border-b pb-2">
-           <CheckCircle className="w-4 h-4 hud-accent" />
+        <h4 className="font-mono admin-text-xs font-bold hud-text-muted uppercase tracking-wider flex items-center gap-1.5 border-b pb-2">
+          <CheckCircle className="w-4 h-4 hud-accent" />
           {status === "CANCELLED"
             ? isAr
               ? "تم إلغاء الجلسة وحفظها"
@@ -1136,13 +1130,13 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
               ? "تم إغلاق الجلسة وحفظها"
               : "Session Reviewed & Closed"}
         </h4>
-         <div
-           className={`p-3 rounded-xl admin-text-xs font-mono text-center ${
-             isHud
-               ? "hud-info-card !text-[#00FFD1]"
-               : "hud-info-card !text-[#00FFD1]"
-           }`}
-         >
+        <div
+          className={`p-3 rounded-xl admin-text-xs font-mono text-center ${
+            isHud
+              ? "hud-info-card !text-[#00FFD1]"
+              : "hud-info-card !text-[#00FFD1]"
+          }`}
+        >
           {isAr
             ? "الحارة جاهزة للجلسة التالية."
             : "Lane is ready for the next shooter."}

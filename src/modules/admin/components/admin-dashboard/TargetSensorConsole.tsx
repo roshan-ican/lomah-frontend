@@ -106,7 +106,9 @@ export function TargetSensorConsole({
       <div className="hidden md:flex flex-col w-80 border-l border-hud bg-hud-elevated p-4 items-center justify-center text-center">
         <Activity className="w-8 h-8 hud-text-muted mb-2 opacity-50" />
         <p className="admin-text-xs hud-text-muted">
-          {isAr ? "اختر هدفاً لعرض البيانات المباشرة" : "Select a target to view live data"}
+          {isAr
+            ? "اختر هدفاً لعرض البيانات المباشرة"
+            : "Select a target to view live data"}
         </p>
       </div>
     );
@@ -121,9 +123,7 @@ export function TargetSensorConsole({
             <h3 className="admin-text-sm font-mono font-bold hud-text truncate">
               {target.label}
             </h3>
-            <p className="admin-text-2xs hud-text-subtle">
-              {target.ipAddress}
-            </p>
+            <p className="admin-text-2xs hud-text-subtle">{target.ipAddress}</p>
           </div>
           <div className="flex items-center gap-1 shrink-0">
             {isConnected ? (
@@ -143,7 +143,13 @@ export function TargetSensorConsole({
                 : "border-rose-500/30 text-rose-500 bg-rose-500/10"
             }`}
           >
-            {isConnected ? (isAr ? "متصل" : "Connected") : (isAr ? "منقطع" : "Offline")}
+            {isConnected
+              ? isAr
+                ? "متصل"
+                : "Connected"
+              : isAr
+                ? "منقطع"
+                : "Offline"}
           </span>
           <span
             className={`px-2 py-0.5 rounded border font-mono ${
@@ -152,7 +158,13 @@ export function TargetSensorConsole({
                 : "border-hud-text-subtle/30 text-hud-text-subtle bg-hud/10"
             }`}
           >
-            {isArmed ? (isAr ? "مسلَّح" : "Armed") : (isAr ? "معطّل" : "Disarmed")}
+            {isArmed
+              ? isAr
+                ? "مسلَّح"
+                : "Armed"
+              : isAr
+                ? "معطّل"
+                : "Disarmed"}
           </span>
           {isTesting && (
             <span className="px-2 py-0.5 rounded border font-mono border-blue-500/30 text-blue-500 bg-blue-500/10 animate-pulse">
@@ -194,18 +206,18 @@ export function TargetSensorConsole({
         </button>
       </div>
 
-{/* Diagnostic Buttons */}
-       <div className="border-b border-hud p-2 flex gap-1.5 text-2xs">
-         <button
-           type="button"
-           onClick={onHeartbeat}
-           disabled={isTesting}
-           title={COMMAND_TOOLTIPS.H}
-           className="flex-1 px-2 py-1 rounded admin-text-2xs font-mono hud-text-subtle hover:text-[var(--hud-accent)] hover:bg-[var(--hud-accent-bg)] disabled:opacity-50 transition-colors"
-         >
-           <Heart className="w-3 h-3 inline-block mr-0.5" />
-           {isAr ? "نبض" : "H"}
-         </button>
+      {/* Diagnostic Buttons */}
+      <div className="border-b border-hud p-2 flex gap-1.5 admin-text-2xs">
+        <button
+          type="button"
+          onClick={onHeartbeat}
+          disabled={isTesting}
+          title={COMMAND_TOOLTIPS.H}
+          className="flex-1 px-2 py-1 rounded admin-text-2xs font-mono hud-text-subtle hover:text-[var(--hud-accent)] hover:bg-[var(--hud-accent-bg)] disabled:opacity-50 transition-colors"
+        >
+          <Heart className="w-3 h-3 inline-block mr-0.5" />
+          {isAr ? "نبض" : "H"}
+        </button>
         {!isCommissioning && (
           <>
             <button
@@ -223,16 +235,18 @@ export function TargetSensorConsole({
               min="1"
               max="100"
               value={devShot}
-              onChange={(e) => setDevShot(Math.max(1, parseInt(e.target.value) || 1))}
+              onChange={(e) =>
+                setDevShot(Math.max(1, parseInt(e.target.value) || 1))
+              }
               title={isAr ? "رقم الطلقة" : "Shot number"}
               className="w-12 px-1 py-1 rounded admin-text-2xs font-mono bg-transparent border border-hud/40 hover:border-hud focus:border-[var(--hud-accent-border)] focus:bg-[var(--hud-elevated)] outline-none transition-colors disabled:opacity-50"
             />
           </>
         )}
         {/* No 'T' button here: each hardware row already carries a self-test
-            control that reports its own outcome (Test → Passed / Failed / No
-            reply). Two buttons firing the same 'T' round trip, one of which
-            showed no result, was the confusing half. */}
+ control that reports its own outcome (Test → Passed / Failed / No
+ reply). Two buttons firing the same 'T' round trip, one of which
+ showed no result, was the confusing half. */}
       </div>
 
       {/* Protocol Map */}
@@ -307,35 +321,37 @@ export function TargetSensorConsole({
                 className={`border rounded p-1.5 space-y-0.5 font-mono ${getStatusColor(packet.status)}`}
               >
                 <div className="flex items-center justify-between gap-1">
-                  <span className="text-2xs hud-text-subtle">
+                  <span className="admin-text-2xs hud-text-subtle">
                     {formatTime(packet.timestamp)}
                   </span>
                   <span className={`font-bold uppercase text-xs ${labelColor}`}>
                     {COMMAND_NAMES[packet.command] || packet.command}
                   </span>
                   <span
-                    className={`text-2xs px-1 rounded font-bold ${labelColor} ${
-                      packet.direction === "tx" ? "bg-current/15" : "bg-current/25"
+                    className={`admin-text-2xs px-1 rounded font-bold ${labelColor} ${
+                      packet.direction === "tx"
+                        ? "bg-current/15"
+                        : "bg-current/25"
                     }`}
                   >
                     {packet.direction === "tx" ? "→" : "←"}
                   </span>
                 </div>
                 <div className="space-y-0.5">
-                  <div className="text-2xs break-all">
+                  <div className="admin-text-2xs break-all">
                     <span className="hud-text-subtle">HEX: </span>
                     <span className="font-bold text-amber-700 dark:text-amber-300">
                       {packet.hex}
                     </span>
                   </div>
-                  <div className="text-2xs break-all">
+                  <div className="admin-text-2xs break-all">
                     <span className="hud-text-subtle">ASCII: </span>
                     <span className="font-semibold text-slate-800 dark:text-slate-200">
                       {packet.ascii}
                     </span>
                   </div>
                 </div>
-                <div className="text-2xs font-medium text-slate-900 dark:text-slate-100">
+                <div className="admin-text-2xs font-medium text-slate-900 dark:text-slate-100">
                   {packet.description}
                 </div>
               </div>
