@@ -35,6 +35,7 @@ export interface SessionCreatedEvent {
   laneId: number;
   sessionId: string;
   shooterName: string | null;
+  requiresFaceVerification: boolean;
 }
 
 export interface SessionStartedEvent {

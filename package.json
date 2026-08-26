@@ -13,15 +13,16 @@
     "build:backend": "cd ../lomah-nest && npm run build:dist",
     "icon": "node scripts/generate-icon.mjs",
     "electron:dev": "npm run build:native && cross-env NODE_ENV=development vite",
-    "electron:build": "npm run icon && npm run build:native && npm run build:backend && npm run build && electron-builder",
-    "electron:sync": "npm run build:native && npm run build:backend && npm run build && node scripts/sync-unpacked.mjs",
-    "electron:preview": "npm run build:native && npm run build:backend && npm run build && cross-env NODE_ENV=production electron .",
+    "electron:build": "npm run icon && npm run fetch:runtime && npm run build:native && npm run build:backend && npm run build && electron-builder",
+    "electron:sync": "npm run fetch:runtime && npm run build:native && npm run build:backend && npm run build && node scripts/sync-unpacked.mjs",
+    "electron:preview": "npm run fetch:runtime && npm run build:native && npm run build:backend && npm run build && cross-env NODE_ENV=production electron .",
     "clean": "rm -rf dist server.js dist-electron",
     "lint": "tsc --noEmit",
     "lint:es": "eslint src electron-app",
     "format": "prettier --write src electron-app",
     "format:check": "prettier --check src electron-app",
-    "build:native": "cd lomah-core && npm run build"
+    "build:native": "cd lomah-core && npm run build",
+    "fetch:runtime": "cd lomah-core && npm run fetch:runtime"
   },
   "dependencies": {
     "@fontsource/inter": "^5.3.0",
@@ -98,6 +99,10 @@
           "index.js",
           "package.json"
         ]
+      },
+      {
+        "from": "lomah-core/runtime",
+        "to": "app/native/runtime"
       },
       {
         "from": "dist",

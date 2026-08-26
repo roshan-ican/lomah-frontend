@@ -77,7 +77,10 @@ pub fn listen_for_beacon(
         // a datagram we discard (our own beacon, or noise from something else
         // on the range LAN) must not extend the overall deadline, and a silent
         // network must not delay noticing a cancellation.
-        if socket.set_read_timeout(Some(remaining.min(WAKEUP_INTERVAL))).is_err() {
+        if socket
+            .set_read_timeout(Some(remaining.min(WAKEUP_INTERVAL)))
+            .is_err()
+        {
             return None;
         }
 

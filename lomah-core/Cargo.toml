@@ -6,7 +6,9 @@ edition = "2021"
 license = "UNLICENSED"
 
 [lib]
-crate-type = ["cdylib", "staticlib"]
+# rlib as well as the napi output: integration tests and the model-inspection
+# example under examples/ can only link the crate as a Rust library.
+crate-type = ["cdylib", "staticlib", "rlib"]
 
 [build-dependencies]
 napi-build = "2"
@@ -25,3 +27,22 @@ socket2 = "0.6"
 # Enumerating this machine's own IPv4 addresses, so we can tell our own
 # broadcast beacon apart from a rival admin's.
 if-addrs = "0.14"
+# Camera frames arrive as JPEG. Keep image's broad default codec set off so
+# face recognition does not pull AVIF, TIFF, WebP, rayon, and their transitive
+# native/runtime weight into the desktop installer.
+image = { version = "0.25.8", default-features = false, features = ["jpeg"] }
+# CPU-only ONNX Runtime, loaded from the Microsoft DLL shipped in Electron's
+# extraResources. Dynamic loading avoids ort'''s generic Windows prebuilt, which
+# also carries DirectML even when no GPU provider is requested. Pin the release
+# candidate exactly so a future rc cannot silently change the C API underneath
+# us.
+#
+# "api-23" must match the ONNX Runtime minor version scripts/fetch-face-runtime.mjs
+# downloads (1.23.x): ort refuses at load time to run against a DLL OLDER than the
+# requested API. Raise both together or neither.
+ort = { version = "=2.0.0-rc.13", default-features = false, features = [
+  "std",
+  "ndarray",
+  "load-dynamic",
+  "api-23",
+] }

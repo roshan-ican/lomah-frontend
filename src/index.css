@@ -210,6 +210,7 @@ html[lang="ar"] {
 }
 
 html.light {
+  color-scheme: light;
   --color-page-bg: #f4f6f9;
   --color-surface: #ffffff;
   --color-surface-muted: #eef1f5;
@@ -331,6 +332,7 @@ html {
 }
 
 html.dark {
+  color-scheme: dark;
   --color-page-bg: #0f1115;
   --color-surface: #1c1f26;
   --color-surface-muted: #121417;
@@ -393,6 +395,22 @@ html.dark body {
   background-color: var(--color-page-bg);
   color: var(--color-text-primary);
   font-family: var(--font-sans);
+}
+
+/* Theme changes are large brightness changes, so surfaces cross-fade together
+   instead of flashing one layer at a time. The media rule below removes this
+   for people who ask the OS for reduced motion. */
+body,
+.hud-panel,
+.hud-sidebar,
+.hud-glass,
+.surface-card,
+.surface-panel {
+  transition:
+    background-color 180ms ease,
+    color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
 }
 
 /* Everything below is a COMPONENT class, and it lives in @layer components
@@ -536,6 +554,127 @@ html.dark body {
     backdrop-filter: blur(12px);
     border: 1px solid var(--hud-glass-border);
     box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+  }
+
+  .theme-switcher {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    border: 1px solid var(--hud-glass-border);
+    border-radius: 0.75rem;
+    color: var(--hud-accent-soft);
+    background: var(--hud-glass-bg);
+    backdrop-filter: blur(12px) saturate(140%);
+    box-shadow:
+      0 1px 2px rgba(15, 23, 42, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.45);
+    cursor: pointer;
+    overflow: hidden;
+  }
+
+  .theme-switcher:hover {
+    background: var(--hud-accent-bg-subtle);
+    border-color: var(--hud-accent-border-strong);
+  }
+
+  html.dark .theme-switcher {
+    color: #fde047;
+    box-shadow:
+      0 0 14px rgba(0, 255, 209, 0.05),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+
+  .theme-switcher__icons {
+    position: relative;
+    display: block;
+    width: 1rem;
+    height: 1rem;
+  }
+
+  .theme-switcher__icon {
+    position: absolute;
+    inset: 0;
+    width: 1rem;
+    height: 1rem;
+    opacity: 0;
+    transform: rotate(-35deg) scale(0.72);
+    transition:
+      opacity 160ms ease,
+      transform 220ms cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .theme-switcher__icon[data-active="true"] {
+    opacity: 1;
+    transform: rotate(0deg) scale(1);
+  }
+
+  /* Identity preference switch. The 44px outer box is the touch target; the
+     track and thumb have fixed geometry so the thumb cannot escape the rail. */
+  .identity-switch {
+    display: inline-flex;
+    width: 3.5rem;
+    height: 2.75rem;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 0.875rem;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .identity-switch:disabled {
+    cursor: wait;
+    opacity: 0.65;
+  }
+
+  .identity-switch__track {
+    position: relative;
+    display: block;
+    width: 3rem;
+    height: 1.75rem;
+    overflow: hidden;
+    border: 1px solid var(--hud-accent-border-strong);
+    border-radius: 999px;
+    background: var(--hud-btn-secondary-bg);
+    box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.18);
+    transition:
+      background-color 180ms ease,
+      border-color 180ms ease,
+      box-shadow 180ms ease;
+  }
+
+  .identity-switch__thumb {
+    position: absolute;
+    top: 0.1875rem;
+    left: 0.1875rem;
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 50%;
+    background: #f8fafc;
+    box-shadow:
+      0 1px 3px rgba(15, 23, 42, 0.35),
+      0 0 0 0.5px rgba(15, 23, 42, 0.14);
+    transform: translateX(0);
+    transition: transform 220ms cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .identity-switch[data-enabled="true"] .identity-switch__track {
+    border-color: var(--hud-accent);
+    background: color-mix(
+      in srgb,
+      var(--hud-accent) 76%,
+      var(--hud-surface)
+    );
+    box-shadow:
+      inset 0 1px 2px rgba(15, 23, 42, 0.12),
+      0 0 0 1px var(--hud-accent-bg-subtle);
+  }
+
+  .identity-switch[data-enabled="true"] .identity-switch__thumb {
+    transform: translateX(1.375rem);
   }
 
   html.dark .hud-glass {
@@ -1478,6 +1617,10 @@ button:not(:disabled):not([data-no-press]):active,
     transform: none;
     opacity: 0.75;
   }
+
+  .theme-switcher__icon {
+    transform: none;
+  }
 }
 
 /**
@@ -1491,6 +1634,13 @@ button:not(:disabled):not([data-no-press]):active,
   .glass-panel {
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
+  }
+
+
+  .theme-switcher {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: var(--hud-surface);
   }
 
   html.dark .hud-glass,

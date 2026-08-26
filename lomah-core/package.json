@@ -16,7 +16,8 @@
   },
   "scripts": {
     "build": "napi build --platform --release artifacts && node scripts/stamp-cjs.mjs",
-    "clean": "rm -rf artifacts target"
+    "clean": "rm -rf artifacts target",
+    "fetch:runtime": "node scripts/fetch-face-runtime.mjs"
   },
   "devDependencies": {
     "@napi-rs/cli": "^2.18.4"

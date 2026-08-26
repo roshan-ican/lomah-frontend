@@ -10,13 +10,28 @@ export const ThemeSwitcher: React.FC<ThemeSwitcherProps> = ({
   isDarkMode,
   setIsDarkMode,
 }) => {
+  const nextThemeLabel = isDarkMode
+    ? "Switch to light mode"
+    : "Switch to dark mode";
+
   return (
     <button
+      type="button"
       onClick={() => setIsDarkMode(!isDarkMode)}
-      className="touch-target inline-flex items-center justify-center rounded border transition-all border-gray-200 dark:border-glass-border text-orange-600 dark:text-yellow-400 bg-white dark:bg-[#1C1F26] hover:bg-gray-100 dark:hover:bg-[#2A2E37]"
-      title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+      className="theme-switcher touch-target"
+      aria-label={nextThemeLabel}
+      title={nextThemeLabel}
     >
-      {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+      <span className="theme-switcher__icons" aria-hidden="true">
+        <Sun
+          className="theme-switcher__icon"
+          data-active={isDarkMode ? "true" : "false"}
+        />
+        <Moon
+          className="theme-switcher__icon"
+          data-active={isDarkMode ? "false" : "true"}
+        />
+      </span>
     </button>
   );
 };

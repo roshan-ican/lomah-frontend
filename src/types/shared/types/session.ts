@@ -52,6 +52,8 @@ export interface Session {
   status: SessionStatus;
   shooterId: string | null;
   shooterName: string | null;
+  /** Snapshot of the creating admin's preference for this session. */
+  requiresFaceVerification: boolean;
   /** When the current pause began, null when running. Paired with
    *  totalPausedMs so the stage clock can exclude paused time. */
   pausedAt: string | null;

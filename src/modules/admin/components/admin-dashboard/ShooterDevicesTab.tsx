@@ -1,5 +1,13 @@
-import { useState } from "react";
-import { UserPlus, Pencil, Trash2, Check, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import {
+  UserPlus,
+  Pencil,
+  Trash2,
+  Check,
+  X,
+  ScanFace,
+  LoaderCircle,
+} from "lucide-react";
 import type { Shooter } from "../../../../types";
 import { api, ApiError } from "../../../../utils/api";
 import { LaneAssignmentPanel } from "./LaneAssignmentPanel";
@@ -12,6 +20,10 @@ interface Props {
   /** Failures. Rendered red with a warning icon — routing them through
    * triggerSuccessBanner produced a green checkmark on the word "Error". */
   triggerErrorBanner: (msg: string) => void;
+}
+
+interface AdminPreferences {
+  faceRecognitionEnabled: boolean;
 }
 
 export function ShooterDevicesTab({
@@ -34,6 +46,70 @@ export function ShooterDevicesTab({
   const [editBadge, setEditBadge] = useState("");
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [faceRecognitionEnabled, setFaceRecognitionEnabled] = useState<
+    boolean | null
+  >(null);
+  const [savingFacePreference, setSavingFacePreference] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .get<AdminPreferences>("/users/me/preferences")
+      .then((preferences) => {
+        if (!cancelled) {
+          setFaceRecognitionEnabled(preferences.faceRecognitionEnabled);
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          triggerErrorBanner(
+            error instanceof Error
+              ? error.message
+              : isAr
+                ? "تعذر تحميل إعداد التحقق من الهوية."
+                : "Identity verification preference could not be loaded.",
+          );
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isAr, triggerErrorBanner]);
+
+  const toggleFaceRecognition = async () => {
+    if (faceRecognitionEnabled === null || savingFacePreference) return;
+
+    const previous = faceRecognitionEnabled;
+    const next = !previous;
+    // Respond immediately; roll back only if the server rejects the change.
+    setFaceRecognitionEnabled(next);
+    setSavingFacePreference(true);
+    try {
+      await api.patch<AdminPreferences>("/users/me/preferences", {
+        faceRecognitionEnabled: next,
+      });
+      triggerSuccessBanner(
+        next
+          ? isAr
+            ? "تم تفعيل التحقق من الوجه للجلسات الجديدة."
+            : "Face verification enabled for new sessions."
+          : isAr
+            ? "تم إيقاف التحقق من الوجه للجلسات الجديدة."
+            : "Face verification disabled for new sessions.",
+      );
+    } catch (error) {
+      setFaceRecognitionEnabled(previous);
+      triggerErrorBanner(
+        error instanceof Error
+          ? error.message
+          : isAr
+            ? "تعذر حفظ إعداد التحقق من الهوية."
+            : "Identity verification preference could not be saved.",
+      );
+    } finally {
+      setSavingFacePreference(false);
+    }
+  };
 
   const handleAddShooter = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -136,6 +212,81 @@ export function ShooterDevicesTab({
 
   return (
     <div className="space-y-6">
+      <section
+        className="hud-glass rounded-xl p-4 sm:p-5"
+        aria-labelledby="identity-verification-heading"
+      >
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-start gap-3 min-w-0">
+            <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--hud-accent-bg)] hud-accent">
+              <ScanFace className="h-4.5 w-4.5" aria-hidden="true" />
+            </span>
+            <div>
+              <h2
+                id="identity-verification-heading"
+                className="admin-text-lg font-semibold hud-text"
+              >
+                {isAr
+                  ? "التحقق من هوية الرامي"
+                  : "Shooter identity verification"}
+              </h2>
+              <p className="admin-text-xs hud-text-muted mt-1 max-w-2xl leading-relaxed">
+                {isAr
+                  ? "عند التفعيل، تتطلب كل جلسة جديدة تسجيل الوجه والتحقق منه على جهاز الرامي. الجلسات الحالية لا تتغير."
+                  : "When enabled, every new session requires face registration and verification on the shooter device. Existing sessions are unchanged."}
+              </p>
+            </div>
+          </div>
+
+          {faceRecognitionEnabled === null ? (
+            <span className="flex h-11 shrink-0 items-center gap-2 self-end hud-text-muted sm:self-auto">
+              <LoaderCircle
+                className="h-4 w-4 animate-spin"
+                aria-label={isAr ? "جار التحميل" : "Loading preference"}
+              />
+              <span className="admin-text-xs font-semibold">
+                {isAr ? "جار التحميل" : "Loading"}
+              </span>
+            </span>
+          ) : (
+            <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
+              <span
+                className={`admin-text-xs font-semibold ${
+                  faceRecognitionEnabled ? "hud-accent" : "hud-text-muted"
+                }`}
+                aria-live="polite"
+              >
+                {faceRecognitionEnabled
+                  ? isAr
+                    ? "مطلوب"
+                    : "Required"
+                  : isAr
+                    ? "متوقف"
+                    : "Off"}
+              </span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={faceRecognitionEnabled}
+                aria-label={
+                  isAr
+                    ? "التحقق من هوية الرامي"
+                    : "Shooter identity verification"
+                }
+                data-enabled={faceRecognitionEnabled ? "true" : "false"}
+                onClick={() => void toggleFaceRecognition()}
+                disabled={savingFacePreference}
+                className="identity-switch"
+              >
+                <span className="identity-switch__track" aria-hidden="true">
+                  <span className="identity-switch__thumb" />
+                </span>
+              </button>
+            </div>
+          )}
+        </div>
+      </section>
+
       {/* ── Shooters Roster Section ───────────────────────────── */}
       <div>
         <div className="flex items-center justify-between mb-3">

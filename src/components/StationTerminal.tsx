@@ -18,7 +18,6 @@ import {
   mapRawShotToDisplay,
   mergeDisplayShots,
 } from "../utils/shotCoordinates";
-import { applyCalibratedShots } from "../store/channelMutations";
 import { targetProfileFromTargetId } from "../utils/targetProfile";
 import { clickToSensorCoords } from "../utils/shotCoordinates";
 import {
@@ -35,18 +34,13 @@ import { useSessionStore } from "../store/sessionStore";
 import { useLaneOffsets } from "../hooks/useLaneOffsets";
 import { clampTargetZoom } from "../utils/targetZoom";
 
-/**
- * There is no `session:sync` event any more — the gateway pushes lifecycle
- * events only, and the full session record is fetched over HTTP. This is the
- * shape this screen keeps locally, folded from GET /sessions/:id.
- */
+
 interface StationSession {
   status: "IDLE" | "ACTIVE" | "PAUSED" | "COMPLETED";
   laneId: number;
   sessionId: string | null;
   shooterName: string | null;
-  /** Whichever stage is live — bullet limit, duration and target are all
-   *  per-stage now, not per-session. */
+  requiresFaceVerification?: boolean;
   stageId?: string;
   stageOrder?: number;
   targetId?: string;
@@ -73,6 +67,7 @@ interface FaceRecognitionResult {
 type FaceRegistrationView = "front" | "side";
 type FaceGateMode = "loading" | "register" | "verify";
 const REGISTRATION_CAPTURE_ATTEMPTS = 5;
+const VERIFICATION_CAPTURE_ATTEMPTS = 5;
 
 interface FaceRegistrationStatus {
   registered: boolean;
@@ -179,7 +174,7 @@ function FaceVerificationGate({
             </div>
           </div>
           <span className="px-2.5 py-1 rounded-md border border-zinc-700 bg-zinc-950 text-xs text-zinc-400">
-            {mode === "register" ? registrationView.toUpperCase() : "CAM 0"}
+            {mode === "register" ? registrationView.toUpperCase() : "FRONT CAMERA"}
           </span>
         </div>
 
@@ -308,6 +303,7 @@ export function StationTerminal() {
     window.location.pathname.split("/station/")[1] || "1",
     10,
   );
+  const faceVerificationStorageKey = `lomah_face_verified_session:${laneId}`;
 
   const { waitForLaneOffsets } = useLaneOffsets();
 
@@ -327,8 +323,8 @@ export function StationTerminal() {
     createDefaultChannel(laneId),
   );
   const [bannerMsg, setBannerMsg] = useState<string | null>(null);
-  const [verifiedSessionId, setVerifiedSessionId] = useState<string | null>(
-    null,
+  const [verifiedSessionId, setVerifiedSessionId] = useState<string | null>(() =>
+    sessionStorage.getItem(faceVerificationStorageKey),
   );
   const [verificationState, setVerificationState] =
     useState<VerificationState>("idle");
@@ -361,7 +357,6 @@ export function StationTerminal() {
   }, [activeChannel]);
 
   useEffect(() => {
-    setVerifiedSessionId(null);
     setVerificationState("idle");
     setVerificationMessage(null);
     setFaceGateMode("loading");
@@ -460,6 +455,7 @@ export function StationTerminal() {
         laneId,
         sessionId: record.id,
         shooterName: record.shooterName,
+        requiresFaceVerification: record.requiresFaceVerification,
         stageId: stage?.id,
         stageOrder: stage?.order,
         targetId: stage?.targetId,
@@ -720,6 +716,7 @@ export function StationTerminal() {
           laneId,
           sessionId: data.sessionId,
           shooterName: data.shooterName,
+          requiresFaceVerification: data.requiresFaceVerification,
         });
         refetch();
         return;
@@ -969,7 +966,22 @@ export function StationTerminal() {
       activeChannel.sessionStatus === "ACTIVE" ||
       activeChannel.sessionStatus === "PAUSED");
   const requiresFaceVerification =
-    sessionRequiresIdentity && verifiedSessionId !== currentSessionId;
+    (session?.requiresFaceVerification ?? true) &&
+    sessionRequiresIdentity &&
+    verifiedSessionId !== currentSessionId;
+
+  useEffect(() => {
+    if (!currentSessionId) return;
+
+    const storedSessionId = sessionStorage.getItem(faceVerificationStorageKey);
+    if (storedSessionId === currentSessionId) {
+      setVerifiedSessionId(currentSessionId);
+      return;
+    }
+
+    sessionStorage.removeItem(faceVerificationStorageKey);
+    setVerifiedSessionId(null);
+  }, [currentSessionId, faceVerificationStorageKey]);
 
   useEffect(() => {
     if (!requiresFaceVerification || !expectedShooter) return;
@@ -1048,39 +1060,14 @@ export function StationTerminal() {
     const openCamera = async () => {
       let stream: MediaStream | null = null;
       try {
-        const knownDevices = await navigator.mediaDevices.enumerateDevices();
-        const knownIriun = knownDevices.find(
-          (device) =>
-            device.kind === "videoinput" && /iriun/i.test(device.label),
-        );
-
-        if (knownIriun) {
-          stream = await navigator.mediaDevices.getUserMedia({
-            audio: false,
-            video: { deviceId: { exact: knownIriun.deviceId } },
-          });
-        } else {
-          stream = await navigator.mediaDevices.getUserMedia({
-            audio: false,
-            video: true,
-          });
-
-          const devices = await navigator.mediaDevices.enumerateDevices();
-          const iriun = devices.find(
-            (device) =>
-              device.kind === "videoinput" && /iriun/i.test(device.label),
-          );
-          const activeLabel = stream.getVideoTracks()[0]?.label ?? "";
-          if (iriun && !/iriun/i.test(activeLabel)) {
-            stopCamera(stream);
-            stream = null;
-            await new Promise((resolve) => window.setTimeout(resolve, 500));
-            stream = await navigator.mediaDevices.getUserMedia({
-              audio: false,
-              video: { deviceId: { exact: iriun.deviceId } },
-            });
-          }
-        }
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: {
+            facingMode: { exact: "user" },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+        });
 
         if (cancelled) {
           stopCamera(stream);
@@ -1109,8 +1096,8 @@ export function StationTerminal() {
               ? "تم رفض إذن الكاميرا. اسمح للموقع باستخدام الكاميرا ثم أعد تحميل الصفحة."
               : "Camera permission was denied. Allow camera access and reload the page."
             : isAr
-              ? `تعذر فتح كاميرا إيريون على جهاز الرامي: ${browserError}`
-              : `Could not open Iriun on the shooter device: ${browserError}`,
+              ? `تعذر فتح الكاميرا الأمامية على جهاز الرامي: ${browserError}`
+              : `Could not open the front camera on the shooter device: ${browserError}`,
         );
       }
     };
@@ -1248,18 +1235,30 @@ export function StationTerminal() {
         return;
       }
 
-      const frame = await captureFaceFrame();
-      const result = await apiFetchJson<FaceRecognitionResult>(
-        `/api/face-recognition/check-frame/${laneId}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "image/jpeg",
-            "X-Device-Id": deviceId,
+      let result: FaceRecognitionResult | null = null;
+      for (let attempt = 0; attempt < VERIFICATION_CAPTURE_ATTEMPTS; attempt++) {
+        const frame = await captureFaceFrame();
+        result = await apiFetchJson<FaceRecognitionResult>(
+          `/api/face-recognition/check-frame/${laneId}`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "image/jpeg",
+              "X-Device-Id": deviceId,
+            },
+            body: frame,
           },
-          body: frame,
-        },
-      );
+        );
+
+        if (
+          result.status !== "no_face" ||
+          attempt === VERIFICATION_CAPTURE_ATTEMPTS - 1
+        ) {
+          break;
+        }
+        await new Promise((resolve) => window.setTimeout(resolve, 220));
+      }
+      if (!result) throw new Error("Could not capture a usable face image");
       const recognized = result.person?.trim() ?? "";
       const identityMatches =
         recognized.toLowerCase() === expectedShooter.toLowerCase();
@@ -1278,6 +1277,7 @@ export function StationTerminal() {
         );
         await new Promise((resolve) => window.setTimeout(resolve, 900));
         if (activeChannelRef.current.sessionId === currentSessionId) {
+          sessionStorage.setItem(faceVerificationStorageKey, currentSessionId);
           setVerifiedSessionId(currentSessionId);
         }
         return;

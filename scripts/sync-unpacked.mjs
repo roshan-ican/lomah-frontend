@@ -49,6 +49,13 @@ const copies = [
   // from an asar), so unlike main.ts this script can refresh it — which means a
   // change to lomah-core/src does reach the unpacked install through here.
   [join(ROOT, "lomah-core", "artifacts"), join(APP_DIR, "native")],
+  // ONNX Runtime and the two face models, downloaded by
+  // `npm run fetch:runtime`. They sit INSIDE native/ so FaceEngineService
+  // finds them as <native>/runtime without a second path to configure.
+  [
+    join(ROOT, "lomah-core", "runtime"),
+    join(APP_DIR, "native", "runtime"),
+  ],
 ];
 
 for (const [from, to] of copies) {

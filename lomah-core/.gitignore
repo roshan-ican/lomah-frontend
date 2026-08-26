@@ -1,3 +1,7 @@
 target/
 artifacts/
 node_modules/
+
+# Downloaded face models and ONNX Runtime DLL (~10 MB of binaries).
+# Recreate with: node scripts/fetch-face-runtime.mjs
+runtime/

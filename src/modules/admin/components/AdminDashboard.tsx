@@ -119,11 +119,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   return (
     <div
-      className={`h-dvh-screen overflow-hidden flex flex-col transition-colors duration-200 ${
-        isDarkMode
-          ? "bg-[#0f1115] text-[#e2e2e6]"
-          : "bg-[#F4F6F9] text-gray-900"
-      }`}
+      className="h-dvh-screen overflow-hidden flex flex-col bg-[var(--color-page-bg)] text-[var(--color-text-primary)]"
     >
       <AdminHeader
         t={t}

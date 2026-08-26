@@ -165,7 +165,10 @@ mod tests {
         // And writes it back the same way, so downgrading to the Electron
         // build still works while both shells exist.
         assert_eq!(
-            serde_json::to_string(&ModeFile { mode: Mode::Shooter }).unwrap(),
+            serde_json::to_string(&ModeFile {
+                mode: Mode::Shooter
+            })
+            .unwrap(),
             r#"{"mode":"shooter"}"#
         );
     }
