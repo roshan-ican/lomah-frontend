@@ -10,23 +10,41 @@ export function goToShooterScan(): void {
 }
 
 /** Post-assignment destination for a shooter tablet.
- *  http(s) origin → the origin the UI is already served from (Vite dev on
- *  :3000, or the backend's SPA on :3001 in web deployment) — jumping to a
- *  hardcoded backend port is what used to strand a dev shooter on a stale
- *  built screen. The Electron shooter bootstrap runs off a file:// URL, which
- *  can't host the SPA, so that case keeps the admin backend URL instead. */
+ *  http(s) origin → keep the existing web origin. Packaged Electron starts
+ *  from a trusted file:// bootstrap; keep that local origin for camera access
+ *  and carry the remote admin endpoint in its query string. */
 export function stationUrl(
   laneId: number,
   adminHost?: string,
   adminPort?: number,
 ): string {
   if (window.location.protocol === "file:") {
-    // Only the Electron shooter bootstrap (ShooterWait) ever runs off file://,
-    // and it always supplies the admin host/port. Defensive fallback in case a
-    // future caller forgets: loopback admin is the only sensible guess.
-    const host = adminHost || "127.0.0.1";
-    const port = adminPort || DEFAULT_ADMIN_PORT;
-    return `http://${host}:${port}/station/${laneId}`;
+    const current = new URL(window.location.href);
+    const host =
+      adminHost || current.searchParams.get("adminHost") || "127.0.0.1";
+    const port =
+      adminPort ||
+      Number(current.searchParams.get("adminPort")) ||
+      DEFAULT_ADMIN_PORT;
+    current.search = "";
+    current.hash = "";
+    current.searchParams.set("lomahMode", "station");
+    current.searchParams.set("laneId", String(laneId));
+    current.searchParams.set("adminHost", host);
+    current.searchParams.set("adminPort", String(port));
+    return current.toString();
   }
   return `${window.location.origin}/station/${laneId}`;
+}
+
+/** Return a released packaged shooter to its local discovery screen. */
+export function shooterWaitUrl(): string {
+  if (window.location.protocol !== "file:") {
+    return `${window.location.origin}/station/unassigned`;
+  }
+  const current = new URL(window.location.href);
+  current.search = "";
+  current.hash = "";
+  current.searchParams.set("lomahMode", "shooter");
+  return current.toString();
 }

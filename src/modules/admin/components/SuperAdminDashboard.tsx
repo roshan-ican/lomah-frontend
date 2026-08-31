@@ -68,7 +68,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
     {
       tab: "DEVICES",
       icon: <Wifi className="w-4 h-4 shrink-0" />,
-      label: isAr ? "أجهزة الرماة" : "Shooter Devices",
+      label: isAr ? "أجهزة الرماة" : "Devices",
     },
     {
       tab: "USERS",

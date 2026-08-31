@@ -24,16 +24,16 @@ import {
   api,
   ApiError,
   apiFetchJson,
+  BACKEND_URL,
   getAuthToken,
   syncServerClock,
 } from "../utils/api";
-import { stationUrl } from "../utils/shooterNavigation";
+import { shooterWaitUrl, stationUrl } from "../utils/shooterNavigation";
 import { getOrCreateDeviceId } from "../utils/deviceIdentity";
 import { ShooterDashboard } from "../modules/shooter/components/ShooterDashboard";
 import { useSessionStore } from "../store/sessionStore";
 import { useLaneOffsets } from "../hooks/useLaneOffsets";
 import { clampTargetZoom } from "../utils/targetZoom";
-
 
 interface StationSession {
   status: "IDLE" | "ACTIVE" | "PAUSED" | "COMPLETED";
@@ -174,7 +174,9 @@ function FaceVerificationGate({
             </div>
           </div>
           <span className="px-2.5 py-1 rounded-md border border-zinc-700 bg-zinc-950 text-xs text-zinc-400">
-            {mode === "register" ? registrationView.toUpperCase() : "FRONT CAMERA"}
+            {mode === "register"
+              ? registrationView.toUpperCase()
+              : "FRONT CAMERA"}
           </span>
         </div>
 
@@ -299,8 +301,11 @@ function createDefaultChannel(laneId: number): ActiveShooterChannel {
 }
 
 export function StationTerminal() {
+  const bootstrapLaneId = new URLSearchParams(window.location.search).get(
+    "laneId",
+  );
   const laneId = parseInt(
-    window.location.pathname.split("/station/")[1] || "1",
+    bootstrapLaneId || window.location.pathname.split("/station/")[1] || "1",
     10,
   );
   const faceVerificationStorageKey = `lomah_face_verified_session:${laneId}`;
@@ -323,8 +328,8 @@ export function StationTerminal() {
     createDefaultChannel(laneId),
   );
   const [bannerMsg, setBannerMsg] = useState<string | null>(null);
-  const [verifiedSessionId, setVerifiedSessionId] = useState<string | null>(() =>
-    sessionStorage.getItem(faceVerificationStorageKey),
+  const [verifiedSessionId, setVerifiedSessionId] = useState<string | null>(
+    () => sessionStorage.getItem(faceVerificationStorageKey),
   );
   const [verificationState, setVerificationState] =
     useState<VerificationState>("idle");
@@ -586,7 +591,7 @@ export function StationTerminal() {
 
   useEffect(() => {
     const WS_URL =
-      import.meta.env.VITE_WS_URL ??
+      (import.meta.env.VITE_WS_URL ?? BACKEND_URL) ||
       `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}`;
 
     // Default socket.io path (the old backend's custom "/ws" would 404), and a
@@ -652,7 +657,7 @@ export function StationTerminal() {
         if (event?.key && event.key !== deviceKeyRef.current) return;
         if (event?.laneId == null) {
           // Released — the admin gave this device's lane away. Back to waiting.
-          window.location.href = `${window.location.origin}/station/unassigned`;
+          window.location.href = shooterWaitUrl();
           return;
         }
         if (event.laneId !== laneId) {
@@ -1047,9 +1052,13 @@ export function StationTerminal() {
     if (!navigator.mediaDevices?.getUserMedia) {
       setCameraState("error");
       setCameraMessage(
-        isAr
-          ? `تم حظر الكاميرا على ${window.location.origin}. اعتبر هذا العنوان آمناً في إعدادات Chrome أو Edge ثم أعد تشغيل المتصفح.`
-          : `Edge has not exposed camera access on ${window.location.origin}. Confirm the exact origin is enabled under “Insecure origins treated as secure”, fully close Edge, then reopen it.`,
+        window.electronAPI?.isElectron
+          ? isAr
+            ? "لم يتمكن تطبيق LOMAH من تشغيل الكاميرا. تحقق من إذن كاميرا Windows ثم أعد فتح التطبيق."
+            : "LOMAH could not expose the camera. Check Windows camera permission for desktop apps, then reopen LOMAH."
+          : isAr
+            ? `تم حظر الكاميرا على ${window.location.origin}. افتح صفحة الرامي عبر HTTPS.`
+            : `Camera access is blocked on insecure ${window.location.origin}. Open the shooter page over HTTPS or use the packaged LOMAH shooter app.`,
       );
       return;
     }
@@ -1236,7 +1245,11 @@ export function StationTerminal() {
       }
 
       let result: FaceRecognitionResult | null = null;
-      for (let attempt = 0; attempt < VERIFICATION_CAPTURE_ATTEMPTS; attempt++) {
+      for (
+        let attempt = 0;
+        attempt < VERIFICATION_CAPTURE_ATTEMPTS;
+        attempt++
+      ) {
         const frame = await captureFaceFrame();
         result = await apiFetchJson<FaceRecognitionResult>(
           `/api/face-recognition/check-frame/${laneId}`,

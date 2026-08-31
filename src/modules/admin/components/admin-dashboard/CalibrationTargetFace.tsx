@@ -8,6 +8,7 @@ import {
   TARGET_HALF_WIDTH_MM,
 } from "@shared/coordinates";
 import type { TargetProfileType } from "../../../../types";
+import { FIGURE_TARGET_IMAGE_URL } from "../../../../utils/targetProfile";
 
 /**
  * One bench read, held in SENSOR space — the millimetres the board itself
@@ -184,7 +185,7 @@ export function CalibrationTargetFace({
         // to exactly the paper rect below, so the picture and the coordinate
         // space agree pixel for pixel.
         <image
-          href="/Fig11Target.jpg"
+          href={FIGURE_TARGET_IMAGE_URL}
           x={40}
           y={0}
           width={320}

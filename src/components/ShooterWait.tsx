@@ -15,7 +15,13 @@ import { stationUrl } from "../utils/shooterNavigation";
 import { getOrCreateDeviceId } from "../utils/deviceIdentity";
 
 type Status =
-  "idle" | "scanning" | "connecting" | "connected" | "manual" | "error";
+  | "idle"
+  | "scanning"
+  | "connecting"
+  | "connected"
+  | "manual"
+  | "switching-admin"
+  | "error";
 
 export function ShooterWait() {
   const [status, setStatus] = useState<Status>("idle");
@@ -260,12 +266,19 @@ export function ShooterWait() {
   };
 
   const backToAdmin = async () => {
+    setError("");
+    setStatus("switching-admin");
     try {
       await window.electronAPI?.cancelDiscovery();
+      await window.electronAPI!.setMode("admin");
     } catch {
-      /* ignore */
+      setError(
+        isAr
+          ? "تعذر بدء وضع المشرف. حاول مرة أخرى أو أعد تشغيل التطبيق."
+          : "Admin mode could not start. Try again or restart the app.",
+      );
+      setStatus("idle");
     }
-    await window.electronAPI!.setMode("admin");
   };
 
   const handleManualConnect = async () => {
@@ -365,6 +378,22 @@ export function ShooterWait() {
             animate={{ opacity: 1, scale: 1 }}
             className={cardClass}
           >
+            {status === "switching-admin" && (
+              <div className="flex flex-col items-center gap-4 py-6 text-center">
+                <Loader2 className="w-10 h-10 text-emerald-500 animate-spin" />
+                <div>
+                  <p className="admin-text-lg font-mono font-bold text-emerald-500">
+                    {isAr ? "جاري بدء وضع المشرف..." : "Starting admin mode..."}
+                  </p>
+                  <p className="admin-text-sm font-mono text-gray-500 dark:text-gray-400 mt-2">
+                    {isAr
+                      ? "يتم التحقق من الشبكة وتشغيل خدمات المشرف. قد يستغرق ذلك بضع ثوانٍ."
+                      : "Checking the network and starting admin services. This may take a few seconds."}
+                  </p>
+                </div>
+              </div>
+            )}
+
             {status === "idle" && (
               <div className="space-y-4">
                 <p className="text-center admin-text-lg font-mono text-gray-500 dark:text-gray-400">
@@ -496,9 +525,16 @@ export function ShooterWait() {
             <button
               type="button"
               onClick={() => void backToAdmin()}
-              className="px-4 py-2 rounded-lg admin-text-lg font-mono font-bold text-gray-500 dark:text-gray-400 hover:text-emerald-500 border border-gray-200 dark:border-glass-border hover:border-emerald-500/30"
+              disabled={status === "switching-admin"}
+              className="px-4 py-2 rounded-lg admin-text-lg font-mono font-bold text-gray-500 dark:text-gray-400 hover:text-emerald-500 border border-gray-200 dark:border-glass-border hover:border-emerald-500/30 disabled:opacity-50 disabled:cursor-wait"
             >
-              {isAr ? "← وضع المشرف" : "← Admin Mode"}
+              {status === "switching-admin"
+                ? isAr
+                  ? "جاري البدء..."
+                  : "Starting..."
+                : isAr
+                  ? "← وضع المشرف"
+                  : "← Admin Mode"}
             </button>
             <button
               type="button"

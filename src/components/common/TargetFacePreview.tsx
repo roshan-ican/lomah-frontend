@@ -1,4 +1,5 @@
 import type { TargetProfileType } from "../../types";
+import { FIGURE_TARGET_IMAGE_URL } from "../../utils/targetProfile";
 
 interface Props {
   profileType: TargetProfileType;
@@ -30,7 +31,7 @@ export function TargetFacePreview({
   if (profileType === "FIGURE") {
     return (
       <img
-        src="/Fig11Target.jpg"
+        src={FIGURE_TARGET_IMAGE_URL}
         alt={title ?? "Silhouette target"}
         title={title}
         style={box}

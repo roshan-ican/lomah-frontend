@@ -40,11 +40,13 @@ const params = new URLSearchParams(window.location.search);
 const isStationRoute = /^\/station\/\d+/.test(path);
 const isUnassigned = path === "/station/unassigned";
 const isShooterBootstrap = params.get("lomahMode") === "shooter";
+const isStationBootstrap = params.get("lomahMode") === "station";
 const isRoleSetup = params.get("lomahMode") === "picker";
 
 function Root() {
   if (isRoleSetup) return <RoleSetup />;
   if (isShooterBootstrap) return <ShooterWait />;
+  if (isStationBootstrap) return <StationTerminal />;
   if (isStationRoute) return <StationTerminal />;
   if (isUnassigned) return <ShooterWait />;
   return <App />;

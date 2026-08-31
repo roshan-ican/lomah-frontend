@@ -413,6 +413,23 @@ pub fn verify_face(
     }))
 }
 
+/// Compares two already-created SFace embeddings without running inference
+/// again. Registration uses this to prevent one physical person from being
+/// enrolled under a second shooter name.
+#[napi(js_name = "faceEmbeddingDistance")]
+pub fn face_embedding_distance(candidate: Buffer, reference: Buffer) -> Result<f64> {
+    let candidate = buffer_to_embedding(&candidate)?;
+    let reference = buffer_to_embedding(&reference)?;
+    face::euclidean_distance(&candidate, &reference)
+        .map(f64::from)
+        .map_err(|error| {
+            Error::new(
+                Status::InvalidArg,
+                format!("invalid face embedding: {error:?}"),
+            )
+        })
+}
+
 fn embedding_to_buffer(embedding: Vec<f32>) -> Buffer {
     let mut bytes = Vec::with_capacity(embedding.len() * size_of::<f32>());
     for value in embedding {

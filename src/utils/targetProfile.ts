@@ -1,4 +1,12 @@
 import type { TargetProfileType } from "@shared/coordinates";
+import { BACKEND_URL } from "./api";
+
+/**
+ * Public assets are root-relative in the web build. The packaged shooter stays
+ * on file:// for camera access, so its root would incorrectly become
+ * file:///Fig11Target.jpg; use the connected admin backend as the asset origin.
+ */
+export const FIGURE_TARGET_IMAGE_URL = `${BACKEND_URL}/Fig11Target.jpg`;
 
 /** Map session targetId / targetName to the board profile shown in TargetView. */
 export function targetProfileFromTargetId(

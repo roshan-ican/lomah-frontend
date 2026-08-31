@@ -15,6 +15,7 @@ import { ShotMarker } from "./target-view/ShotMarker";
 import { ShotListHighlight } from "./target-view/ShotListHighlight";
 import { usePanZoom } from "./target-view/usePanZoom";
 import { CLICK_TO_FIRE_ENABLED } from "../../../utils/featureFlags";
+import { FIGURE_TARGET_IMAGE_URL } from "../../../utils/targetProfile";
 
 /**
  * Pull a shot that missed the paper in to the edge of the current view so it
@@ -438,7 +439,7 @@ export const TargetView: React.FC<TargetViewProps> = ({
             {profileType === "FIGURE" ? (
               <g>
                 <image
-                  href="/Fig11Target.jpg"
+                  href={FIGURE_TARGET_IMAGE_URL}
                   x="40"
                   y="0"
                   width="320"

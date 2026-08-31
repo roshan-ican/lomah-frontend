@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell } from "electron";
+import { app, BrowserWindow, ipcMain, session, shell } from "electron";
 import path from "node:path";
 import fs from "node:fs";
 import crypto from "node:crypto";
@@ -568,6 +568,38 @@ ipcMain.handle("get-logs-path", async () => {
 // ── BrowserWindow ─────────────────────────────────────────────────────────────
 let win: BrowserWindow | null = null;
 
+/**
+ * Camera capture belongs only to the packaged shooter bootstrap. Keep
+ * Electron's media permission narrow: our generated local file may request
+ * video, while remote HTTP pages and every other permission stay denied.
+ */
+function configureShooterCameraPermission(): void {
+  const shooterBootstrap = pathToFileURL(
+    path.join(USER_DATA, "shooter-bootstrap.html"),
+  ).toString();
+  const isShooterPage = (url: string) => url.startsWith(shooterBootstrap);
+
+  session.defaultSession.setPermissionCheckHandler(
+    (webContents, permission, _origin, details) =>
+      permission === "media" &&
+      details.mediaType !== "audio" &&
+      webContents !== null &&
+      isShooterPage(webContents.getURL()),
+  );
+  session.defaultSession.setPermissionRequestHandler(
+    (webContents, permission, callback, details) => {
+      const videoOnly =
+        !("mediaTypes" in details) || !details.mediaTypes?.includes("audio");
+      callback(
+        permission === "media" &&
+          videoOnly &&
+          webContents !== null &&
+          isShooterPage(webContents.getURL()),
+      );
+    },
+  );
+}
+
 function createWindow(url: string) {
   win = new BrowserWindow({
     // Only the restore-down size. The window opens full screen (below), so
@@ -873,6 +905,8 @@ if (!gotLock) {
 
   // ── App lifecycle ─────────────────────────────────────────────────────────────
   app.whenReady().then(async () => {
+    configureShooterCameraPermission();
+
     if (currentMode === null) {
       // First run, no role decided. Show the picker and stop — no backend, no
       // firewall rules, no admin claim until the operator actually chooses.

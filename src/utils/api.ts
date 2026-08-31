@@ -1,4 +1,24 @@
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? "";
+/**
+ * Web/admin pages are served by the backend, so relative URLs are correct.
+ * The packaged shooter deliberately stays on its local file:// page so camera
+ * access remains available; its bootstrap URL carries the remote admin
+ * endpoint that API and Socket.IO calls must use.
+ */
+function runtimeBackendUrl(): string {
+  const configured = import.meta.env.VITE_BACKEND_URL;
+  if (configured) return configured.replace(/\/$/, "");
+
+  if (window.location.protocol !== "file:") return "";
+
+  const params = new URLSearchParams(window.location.search);
+  const host = params.get("adminHost")?.trim();
+  const port = Number(params.get("adminPort"));
+  if (!host || !Number.isInteger(port) || port < 1 || port > 65535) return "";
+
+  return `http://${host}:${port}`;
+}
+
+const BACKEND_URL = runtimeBackendUrl();
 
 /** Every route lives under /api except /health, which main.ts excludes from
  *  the global prefix. */
