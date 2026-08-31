@@ -33,21 +33,10 @@ impl Mode {
     }
 }
 
-/// %APPDATA%\LOMAH — deliberately built by hand.
-///
-/// Tauri's app_data_dir() resolves to %APPDATA%\<identifier>, which here would
-/// be %APPDATA%\com.lomah.app. Using it would point a tablet upgrading from the
-/// Electron build at an empty folder beside its real one: the range's whole
-/// history would look lost, the app would seed a fresh admin account, and
-/// nothing would report an error. The Electron shell pinned this name with a
-/// DO-NOT-CHANGE comment for exactly that reason, and the name has to survive
-/// the shell being replaced under it.
+
 pub fn data_dir() -> PathBuf {
     match std::env::var_os("APPDATA") {
         Some(appdata) => PathBuf::from(appdata).join("LOMAH"),
-        // Only reachable if APPDATA is unset, which on Windows means something
-        // is badly wrong. Falling back beside the executable keeps the app
-        // usable rather than panicking at startup.
         None => std::env::current_exe()
             .ok()
             .and_then(|p| p.parent().map(|d| d.join("data")))
@@ -73,9 +62,6 @@ struct AdminHostFile {
     host: String,
 }
 
-/// The JSON shapes are Electron's, unchanged: {"mode":"admin"} and
-/// {"host":"192.168.1.51"}. A tablet that has been running the Electron build
-/// keeps its role across the upgrade instead of dropping back to the picker.
 pub fn stored_mode() -> Option<Mode> {
     let raw = fs::read_to_string(mode_file()).ok()?;
     serde_json::from_str::<ModeFile>(&raw).ok().map(|f| f.mode)
@@ -100,16 +86,6 @@ pub fn set_admin_host(host: &str) -> io::Result<()> {
     write_json(&admin_host_file(), &AdminHostFile { host })
 }
 
-/// Reduces whatever we were handed to a bare address the frontend can put in a
-/// URL: an IPv4-mapped IPv6 address (::ffff:192.168.1.51) from a UDP packet, or
-/// a host:port pair typed into the manual-connect box.
-///
-/// A deliberate deviation from the Electron shell, which did
-/// `host.replace(/^.*:/, "")` — that keeps everything after the LAST colon, so
-/// "192.168.1.51:3001" became "3001" and the tablet then tried to reach a
-/// server at host "3001". Unreachable from a UDP beacon, whose source address
-/// never carries a port, but reachable from the manual-connect field, where a
-/// user typing the address with its port is the obvious thing to do.
 fn normalize_host(raw: &str) -> String {
     let trimmed = raw.trim();
     if trimmed.is_empty() {
