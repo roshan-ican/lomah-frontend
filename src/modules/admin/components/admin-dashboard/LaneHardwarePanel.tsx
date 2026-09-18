@@ -11,14 +11,15 @@ import {
   AlertCircle,
   AlertTriangle,
   SlidersHorizontal,
-  Target as TargetIcon,
 } from "lucide-react";
 import { api, ApiError } from "../../../../utils/api";
 import { TargetFacePreview } from "../../../../components/common/TargetFacePreview";
 import { ConfirmDialog } from "../../../../components/common/ConfirmDialog";
 import { TargetSensitivityPanel } from "./TargetSensitivityPanel";
-import { TargetCalibrationPanel } from "./TargetCalibrationPanel";
 import { TargetSensorConsole, type SensorPacket } from "./TargetSensorConsole";
+import { TELEMETRY_ONLINE_MS } from "./useConnectedLanes";
+import { PageHeader } from "./PageHeader";
+import { TargetLiftSwitch, liftAllTargets } from "./TargetLiftSwitch";
 import type {
   Lane,
   LaneStatus,
@@ -109,6 +110,46 @@ export function LaneHardwarePanel({
   const [testing, setTesting] = useState<Set<string>>(new Set());
   const [ipDrafts, setIpDrafts] = useState<Map<string, string>>(new Map());
   const [selectedTargetId, setSelectedTargetId] = useState<string | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+  const [liftVersion, setLiftVersion] = useState(0);
+  const [liftAllBusy, setLiftAllBusy] = useState<"UP" | "DOWN" | null>(null);
+
+  const liftAll = async (position: "UP" | "DOWN") => {
+    setLiftAllBusy(position);
+    try {
+      const r = await liftAllTargets(position);
+      const verb =
+        position === "UP"
+          ? isAr
+            ? "رُفعت"
+            : "raised"
+          : isAr
+            ? "خُفضت"
+            : "lowered";
+      if (r.failed.length === 0) {
+        triggerSuccessBanner(
+          isAr
+            ? `${verb} كل الأهداف (${r.moved})`
+            : `All ${r.moved} targets ${verb}`,
+        );
+      } else {
+        triggerErrorBanner(
+          isAr
+            ? `${verb} ${r.moved}/${r.total} — تعذّر: ${r.failed.join(", ")}`
+            : `${r.moved}/${r.total} ${verb}. No answer from: ${r.failed.join(", ")}`,
+        );
+      }
+    } catch (err) {
+      triggerErrorBanner(err instanceof Error ? err.message : "Failed");
+    } finally {
+      setLiftAllBusy(null);
+      setLiftVersion((v) => v + 1);
+    }
+  };
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 5000);
+    return () => clearInterval(id);
+  }, []);
   const [packetLogs, setPacketLogs] = useState<Map<string, SensorPacket[]>>(
     new Map(),
   );
@@ -160,25 +201,6 @@ export function LaneHardwarePanel({
       return next;
     });
   };
-
-  /** Rows with the calibration panel expanded. Same default-hidden reasoning
-   *  as the sensitivity panel: it arms live hardware on demand. */
-  const [calOpen, setCalOpen] = useState<Set<string>>(new Set());
-  const toggleCal = (targetId: string) => {
-    if (!calOpen.has(targetId)) setSelectedTargetId(targetId);
-    setCalOpen((prev) => {
-      const next = new Set(prev);
-      if (next.has(targetId)) next.delete(targetId);
-      else next.add(targetId);
-      return next;
-    });
-  };
-
-  /** Every commissioned target except this one — the "apply the same offset
-   *  here too" list. Flattened across lanes: a mounting correction is a
-   *  property of how the boards are hung, not of one lane. */
-  const otherTargets = (targetId: string): Target[] =>
-    lanes.flatMap((l) => (l.targets ?? []).filter((t) => t.id !== targetId));
 
   const setCmdDraft = (target: Target, field: "host" | "port", value: string) =>
     setCmdDrafts((prev) => {
@@ -461,7 +483,7 @@ export function LaneHardwarePanel({
         result.outcome === "PASSED" ? "success" : "error",
         result.message,
       );
-      triggerSuccessBanner(
+      (result.outcome === "PASSED" ? triggerSuccessBanner : triggerErrorBanner)(
         isAr
           ? result.outcome === "PASSED"
             ? `${target.label} اجتاز الاختبار الذاتي ✓`
@@ -868,56 +890,73 @@ export function LaneHardwarePanel({
   const readonlyCellCls =
     "admin-text-sm font-mono px-2.5 py-2 rounded border truncate";
   const labelCls =
-    "admin-text-xs font-mono hud-text-subtle uppercase tracking-wider mb-1 block";
+    "admin-text-2xs font-semibold hud-text-muted uppercase tracking-[0.14em] mb-1 block";
   // Leading `auto` column is the target face — a visual anchor that makes a
   // wrong profile obvious while scanning, before anyone reads a word.
   const gridCls =
-    "grid grid-cols-[auto_1fr] md:grid-cols-[auto_0.9fr_0.9fr_1.1fr_1.4fr_0.8fr_auto] gap-2 md:gap-3 items-center";
+    "grid grid-cols-2 lg:grid-cols-[3rem_0.9fr_0.9fr_1.1fr_1.4fr_0.8fr_17rem] gap-2 lg:gap-3 items-center";
 
   return (
-    <div className="flex h-full gap-0">
-      <div className="flex-1 overflow-y-auto">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h2 className="admin-text-lg font-semibold hud-text">
-              {isAr ? "إدارة عتاد الحارات" : "Lane Hardware Management"}
-            </h2>
-            <p className="admin-text-xs hud-text-muted font-mono mt-0.5">
-              {isAr
-                ? "تهيئة الحارات والأهداف الفعلية المركّبة عليها"
-                : "Commission lanes and the physical targets mounted on them"}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {!readOnly && (
-              <button
-                type="button"
-                onClick={() => void addLane()}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg admin-text-xs font-mono font-bold hud-btn-secondary cursor-pointer transition-colors"
-              >
-                <Plus className="w-3 h-3 shrink-0" />
-                {isAr ? "إضافة حارة" : "Add Lane"}
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => void load()}
-              disabled={loading}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg admin-text-xs font-mono font-bold hud-btn-secondary cursor-pointer transition-colors disabled:opacity-50"
-            >
-              <RefreshCw
-                className={`w-3 h-3 shrink-0 ${loading ? "animate-spin" : ""}`}
-              />
-              {isAr ? "تحديث" : "Refresh"}
-            </button>
-          </div>
+    <div className="flex flex-col lg:flex-row h-full gap-4 lg:gap-0">
+      <div className="flex-1 min-w-0 lg:overflow-y-auto">
+        <div className="mb-5">
+          <PageHeader
+            eyebrow={isAr ? "تشغيل العتاد" : "Hardware commissioning"}
+            title={isAr ? "الحارات والأهداف" : "Lanes & Targets"}
+            subtitle={
+              readOnly
+                ? undefined
+                : isAr
+                  ? `العناوين تُشتق تلقائياً على ${RANGE_SUBNET}.x`
+                  : `Addresses are assigned automatically on ${RANGE_SUBNET}.x`
+            }
+            isAr={isAr}
+            loading={loading}
+            onRefresh={() => void load()}
+            actions={
+              <>
+                <div className="inline-flex items-center rounded-xl hud-glass p-1 gap-1">
+                  <button
+                    type="button"
+                    onClick={() => void liftAll("UP")}
+                    disabled={liftAllBusy !== null}
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg admin-text-xs font-semibold text-emerald-500 hover:bg-emerald-500/10 transition-colors active:scale-[0.97] disabled:opacity-50"
+                  >
+                    {liftAllBusy === "UP" ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <span className="block w-2 h-3.5 rounded-[2px] bg-emerald-500" />
+                    )}
+                    {isAr ? "رفع الكل" : "Raise all"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void liftAll("DOWN")}
+                    disabled={liftAllBusy !== null}
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg admin-text-xs font-semibold text-rose-500 hover:bg-rose-500/10 transition-colors active:scale-[0.97] disabled:opacity-50"
+                  >
+                    {liftAllBusy === "DOWN" ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <span className="block w-3 h-3 rounded-[2px] bg-rose-500" />
+                    )}
+                    {isAr ? "خفض الكل" : "Lower all"}
+                  </button>
+                </div>
+                {!readOnly && (
+                  <button
+                    type="button"
+                    onClick={() => void addLane()}
+                    className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl admin-text-xs font-semibold hud-btn-primary transition-transform active:scale-[0.97]"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    {isAr ? "إضافة حارة" : "Add lane"}
+                  </button>
+                )}
+              </>
+            }
+          />
         </div>
-
-        <p className="admin-text-xs font-mono hud-text-subtle mb-3">
-          {isAr
-            ? `شبكة واحدة للميدان بالكامل (${RANGE_SUBNET}.x) — يُشتق العنوان من الحارة والموضع ولا يُكتب يدوياً.`
-            : `One router, one subnet for the whole range (${RANGE_SUBNET}.x). Addresses are derived from lane and position — never typed.`}
-        </p>
 
         {lanes.length === 0 && !loading && (
           <div className="px-3 py-6 rounded-lg border border-dashed border-hud text-center">
@@ -929,7 +968,7 @@ export function LaneHardwarePanel({
           </div>
         )}
 
-        <div className="space-y-3">
+        <div className="space-y-4 pb-8">
           {lanes.map((lane) => {
             const rows = targetsOf(lane);
             const laneBusy = busyId === `lane-${lane.id}`;
@@ -937,18 +976,15 @@ export function LaneHardwarePanel({
             const usedSlots = new Set(rows.map((t) => t.positionIndex));
 
             return (
-              <div
-                key={lane.id}
-                className="rounded-lg border border-hud bg-hud-elevated p-4"
-              >
+              <div key={lane.id} className="hud-glass rounded-3xl p-4 md:p-5">
                 <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                   <div className="flex items-baseline gap-2.5 min-w-0">
-                    <h3 className="admin-text-lg font-mono font-bold hud-text uppercase tracking-wider">
+                    <h3 className="admin-text-lg font-bold tracking-[-0.015em] hud-text">
                       {isAr
                         ? `حارة ${lane.id}`
                         : `Lane ${String(lane.id).padStart(2, "0")}`}
                     </h3>
-                    <span className="admin-text-xs font-mono hud-text-subtle truncate">
+                    <span className="admin-text-xs hud-text-muted truncate">
                       {lane.siteName || lane.name}
                       {" · "}
                       {rows.length}{" "}
@@ -1021,7 +1057,7 @@ export function LaneHardwarePanel({
                   </p>
                 ) : (
                   <div className="space-y-2 mb-2">
-                    <div className={`hidden md:grid ${gridCls} px-1`}>
+                    <div className={`hidden lg:grid ${gridCls} px-1`}>
                       <span className={`${labelCls} w-12 text-center`}>
                         {isAr ? "الوجه" : "Face"}
                       </span>
@@ -1090,12 +1126,44 @@ export function LaneHardwarePanel({
                         // implicit next row.
                         <div
                           key={target.id}
-                          className={`space-y-1.5 cursor-pointer rounded p-2 transition-colors ${
+                          tabIndex={0}
+                          role="button"
+                          aria-pressed={selectedTargetId === target.id}
+                          aria-label={
+                            isAr
+                              ? `اختيار الهدف ${slotCode(lane.id, target.positionIndex)}`
+                              : `Select target ${slotCode(lane.id, target.positionIndex)}`
+                          }
+                          className={`space-y-1.5 cursor-pointer rounded p-2 border transition-colors outline-none ${
                             selectedTargetId === target.id
-                              ? "bg-hud-accent/10 border border-hud-accent/30"
-                              : "hover:bg-hud/50"
-                          }`}
+                              ? "bg-hud-accent/10 border-hud-accent/30"
+                              : "border-transparent hover:bg-hud/50 focus-within:bg-hud-accent/10 focus-within:border-hud-accent/30"
+                          } focus-visible:ring-2 focus-visible:ring-[var(--hud-accent)] focus-visible:ring-offset-1 focus-visible:ring-offset-transparent`}
                           onClick={() => setSelectedTargetId(target.id)}
+                          onFocus={() => {
+                            // Tabbing into the row — or into its IP input /
+                            // selects — should select it so the sensor console
+                            // follows and the row highlights.
+                            setSelectedTargetId(target.id);
+                          }}
+                          onKeyDown={(e) => {
+                            // Let typing inside the row's own fields work
+                            // untouched — only bare Enter/Space on the row
+                            // itself selects it.
+                            const el = e.target as HTMLElement;
+                            if (
+                              el !== e.currentTarget &&
+                              (el.tagName === "INPUT" ||
+                                el.tagName === "SELECT" ||
+                                el.tagName === "TEXTAREA" ||
+                                el.tagName === "BUTTON")
+                            )
+                              return;
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              setSelectedTargetId(target.id);
+                            }
+                          }}
                         >
                           <div className={gridCls}>
                             <TargetFacePreview
@@ -1199,29 +1267,11 @@ export function LaneHardwarePanel({
                             blur/Enter; off-convention targets also get a snap
                             back to the derived address. */}
                             {readOnly ? (
-                              expectedIp === target.ipAddress ? (
-                                <span
-                                  className={`${readonlyCellCls} hud-accent border-hud/40`}
-                                  title={
-                                    isAr
-                                      ? "يُشتق من الحارة والموضع"
-                                      : `Derived: lane ${lane.id}, slot ${target.positionIndex + 1}`
-                                  }
-                                >
-                                  {target.ipAddress}
-                                </span>
-                              ) : (
-                                <span
-                                  className={`${readonlyCellCls} text-amber-500 border-amber-500/40`}
-                                  title={
-                                    isAr
-                                      ? `خارج الاتفاقية. المتوقع ${expectedIp}`
-                                      : `Off-convention. Expected ${expectedIp}`
-                                  }
-                                >
-                                  {target.ipAddress} → {expectedIp}
-                                </span>
-                              )
+                              <span
+                                className={`${readonlyCellCls} hud-text border-hud/40`}
+                              >
+                                {target.ipAddress}
+                              </span>
                             ) : (
                               <div
                                 className={`${readonlyCellCls} flex items-center gap-1 border-hud/40 p-1`}
@@ -1295,123 +1345,117 @@ export function LaneHardwarePanel({
                               </select>
                             )}
 
-                            {!readOnly && (
+                            {
                               <div className="flex items-center justify-end gap-1.5 shrink-0">
-                                {/* PLAY/STOP live in the sensor console for the
+                                <TargetLiftSwitch
+                                  refreshKey={liftVersion}
+                                  targetId={target.id}
+                                  isAr={isAr}
+                                  onError={triggerErrorBanner}
+                                />
+                                {!readOnly && (
+                                  <>
+                                    {/* PLAY/STOP live in the sensor console for the
                               selected target — the row used to carry its own
                               copies, which duplicated the console's. */}
-                                {/* Green only after the board has actually run and
+                                    {/* Green only after the board has actually run and
                               PASSED its own self-test ('T'). Never green from
                               configuration alone — a row can be perfectly
                               filled in and point at a board that is unplugged,
                               or one that is reachable but whose timing circuit
                               has actually failed. */}
-                                <button
-                                  type="button"
-                                  onClick={() => void runSelfTest(target)}
-                                  disabled={isTesting}
-                                  title={
-                                    test
-                                      ? test.message
-                                      : isAr
-                                        ? "تشغيل الهدف وتنفيذ اختبار ذاتي، ثم إيقافه"
-                                        : "Arm the target, run its self-test, then disarm it"
-                                  }
-                                  className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded admin-text-xs font-mono font-bold cursor-pointer transition-colors disabled:cursor-wait ${
-                                    testStatus === "testing"
-                                      ? "border border-hud hud-text-subtle"
-                                      : testStatus === "pass"
-                                        ? "border border-emerald-500/50 text-emerald-500 bg-emerald-500/10 hover:bg-emerald-500/20"
-                                        : testStatus === "fail"
-                                          ? "border border-rose-500/50 text-rose-500 bg-rose-500/10 hover:bg-rose-500/20"
-                                          : testStatus === "not-armed"
-                                            ? "border border-amber-500/50 text-amber-500 bg-amber-500/10 hover:bg-amber-500/20"
-                                            : testStatus === "no-answer"
+                                    <button
+                                      type="button"
+                                      onClick={() => void runSelfTest(target)}
+                                      disabled={isTesting}
+                                      title={
+                                        test
+                                          ? test.message
+                                          : isAr
+                                            ? "تشغيل الهدف وتنفيذ اختبار ذاتي، ثم إيقافه"
+                                            : "Arm the target, run its self-test, then disarm it"
+                                      }
+                                      className={`inline-flex items-center justify-center gap-1.5 w-24 px-2.5 py-1.5 rounded admin-text-xs font-mono font-bold cursor-pointer transition-colors disabled:cursor-wait ${
+                                        testStatus === "testing"
+                                          ? "border border-hud hud-text-subtle"
+                                          : testStatus === "pass"
+                                            ? "border border-emerald-500/50 text-emerald-500 bg-emerald-500/10 hover:bg-emerald-500/20"
+                                            : testStatus === "fail"
                                               ? "border border-rose-500/50 text-rose-500 bg-rose-500/10 hover:bg-rose-500/20"
-                                              : "hud-btn-secondary"
-                                  }`}
-                                >
-                                  {testStatus === "testing" ? (
-                                    <>
-                                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                      {isAr ? "جارٍ" : "Testing"}
-                                    </>
-                                  ) : testStatus === "pass" ? (
-                                    <>
-                                      <CheckCircle2 className="w-3.5 h-3.5" />
-                                      {isAr ? "ناجح" : "Passed"}
-                                    </>
-                                  ) : testStatus === "fail" ? (
-                                    <>
-                                      <AlertCircle className="w-3.5 h-3.5" />
-                                      {isAr ? "فشل الاختبار" : "Failed"}
-                                    </>
-                                  ) : testStatus === "not-armed" ? (
-                                    <>
-                                      <AlertTriangle className="w-3.5 h-3.5" />
-                                      {isAr ? "غير مسلَّح" : "Not armed"}
-                                    </>
-                                  ) : testStatus === "no-answer" ? (
-                                    <>
-                                      <AlertCircle className="w-3.5 h-3.5" />
-                                      {isAr ? "لا يستجيب" : "No reply"}
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Play className="w-3.5 h-3.5" />
-                                      {isAr ? "اختبار" : "Test"}
-                                    </>
-                                  )}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => toggleCal(target.id)}
-                                  title={
-                                    isAr
-                                      ? "المعايرة — أطلق طلقة واضبط الإزاحة"
-                                      : "Calibration — fire a shot and set the offset"
-                                  }
-                                  className={`p-1.5 rounded cursor-pointer transition-colors ${
-                                    calOpen.has(target.id)
-                                      ? "hud-accent bg-[var(--hud-accent-bg-subtle)]"
-                                      : "hud-text-subtle hover:bg-hud-elevated"
-                                  }`}
-                                >
-                                  <TargetIcon className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => toggleSens(target.id)}
-                                  title={
-                                    isAr
-                                      ? "الحساسية (مواضع المقاومات)"
-                                      : "Sensitivity (wiper positions)"
-                                  }
-                                  className={`p-1.5 rounded cursor-pointer transition-colors ${
-                                    sensOpen.has(target.id)
-                                      ? "hud-accent bg-[var(--hud-accent-bg-subtle)]"
-                                      : "hud-text-subtle hover:bg-hud-elevated"
-                                  }`}
-                                >
-                                  <SlidersHorizontal className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    void removeTarget(lane, target)
-                                  }
-                                  disabled={busy}
-                                  title={isAr ? "حذف" : "Remove"}
-                                  className="p-1.5 rounded text-rose-500 hover:bg-rose-500/10 cursor-pointer disabled:opacity-50 transition-colors"
-                                >
-                                  {busy ? (
-                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                  ) : (
-                                    <X className="w-3.5 h-3.5" />
-                                  )}
-                                </button>
+                                              : testStatus === "not-armed"
+                                                ? "border border-amber-500/50 text-amber-500 bg-amber-500/10 hover:bg-amber-500/20"
+                                                : testStatus === "no-answer"
+                                                  ? "border border-rose-500/50 text-rose-500 bg-rose-500/10 hover:bg-rose-500/20"
+                                                  : "hud-btn-secondary"
+                                      }`}
+                                    >
+                                      {testStatus === "testing" ? (
+                                        <>
+                                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                          {isAr ? "جارٍ" : "Testing"}
+                                        </>
+                                      ) : testStatus === "pass" ? (
+                                        <>
+                                          <CheckCircle2 className="w-3.5 h-3.5" />
+                                          {isAr ? "ناجح" : "Passed"}
+                                        </>
+                                      ) : testStatus === "fail" ? (
+                                        <>
+                                          <AlertCircle className="w-3.5 h-3.5" />
+                                          {isAr ? "فشل الاختبار" : "Failed"}
+                                        </>
+                                      ) : testStatus === "not-armed" ? (
+                                        <>
+                                          <AlertTriangle className="w-3.5 h-3.5" />
+                                          {isAr ? "غير مسلَّح" : "Not armed"}
+                                        </>
+                                      ) : testStatus === "no-answer" ? (
+                                        <>
+                                          <AlertCircle className="w-3.5 h-3.5" />
+                                          {isAr ? "لا يستجيب" : "No reply"}
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Play className="w-3.5 h-3.5" />
+                                          {isAr ? "اختبار" : "Test"}
+                                        </>
+                                      )}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleSens(target.id)}
+                                      title={
+                                        isAr
+                                          ? "الحساسية (مواضع المقاومات)"
+                                          : "Sensitivity (wiper positions)"
+                                      }
+                                      className={`p-1.5 rounded cursor-pointer transition-colors ${
+                                        sensOpen.has(target.id)
+                                          ? "hud-accent bg-[var(--hud-accent-bg-subtle)]"
+                                          : "hud-text-subtle hover:bg-hud-elevated"
+                                      }`}
+                                    >
+                                      <SlidersHorizontal className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        void removeTarget(lane, target)
+                                      }
+                                      disabled={busy}
+                                      title={isAr ? "حذف" : "Remove"}
+                                      className="p-1.5 rounded text-rose-500 hover:bg-rose-500/10 cursor-pointer disabled:opacity-50 transition-colors"
+                                    >
+                                      {busy ? (
+                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                      ) : (
+                                        <X className="w-3.5 h-3.5" />
+                                      )}
+                                    </button>
+                                  </>
+                                )}
                               </div>
-                            )}
+                            }
                           </div>
 
                           {/* Command unicast override — Docker/simulated targets
@@ -1505,25 +1549,6 @@ export function LaneHardwarePanel({
                               </div>
                             )}
 
-                          {/* Calibration — fire one at a known point and derive
-                          the mounting offset from where the board saw it.
-                          Commissioning's counterpart to the ADMIN board's
-                          drag-to-calibrate, which needs a live relay. */}
-                          {!readOnly && calOpen.has(target.id) && (
-                            <TargetCalibrationPanel
-                              target={target}
-                              siblings={otherTargets(target.id)}
-                              isAr={isAr}
-                              onNotice={triggerSuccessBanner}
-                              onError={triggerErrorBanner}
-                              addAdminLog={addAdminLog}
-                              onPacket={logPacket}
-                              onCalibrated={(saved) =>
-                                mergeTarget(saved.laneId, saved)
-                              }
-                            />
-                          )}
-
                           {/* Sensitivity — SUPER_ADMIN only, live off the board.
                           See TargetSensitivityPanel for why channels are
                           A1..A5/B1..B5 and never a physical sensor name. */}
@@ -1577,7 +1602,21 @@ export function LaneHardwarePanel({
           target={getSelectedTarget()}
           isAr={isAr}
           packets={packetLogs.get(selectedTargetId ?? "") ?? []}
-          isConnected={true}
+          isConnected={(() => {
+            const t = getSelectedTarget();
+            if (!t) return false;
+            const seen = t.lastSeenAt ? new Date(t.lastSeenAt).getTime() : 0;
+            const lastRx = (packetLogs.get(t.id) ?? [])
+              .filter(
+                (p) =>
+                  p.direction === "rx" && !!p.hex && p.hex !== "(no reply)",
+              )
+              .reduce(
+                (m, p) => Math.max(m, new Date(p.timestamp).getTime()),
+                0,
+              );
+            return now - Math.max(seen, lastRx) < TELEMETRY_ONLINE_MS;
+          })()}
           isArmed={
             selectedTargetId ? armedTargets.has(selectedTargetId) : false
           }

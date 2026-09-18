@@ -429,20 +429,25 @@ export function TargetCalibrationPanel({
   };
 
   const numCls =
-    "w-20 text-center admin-text-sm font-mono px-2 py-1.5 rounded border border-hud/40 bg-transparent hover:border-hud focus:border-[var(--hud-accent-border)] outline-none transition-colors disabled:opacity-50";
+    "w-24 text-center admin-text-sm font-mono px-3 py-2.5 rounded-xl border border-hud bg-hud-elevated hover:border-[var(--hud-accent-border)] focus:border-[var(--hud-accent-border-strong)] focus:ring-2 focus:ring-[var(--hud-accent-bg-subtle)] outline-none transition-colors disabled:opacity-50";
   const labelCls =
-    "admin-text-2xs font-mono hud-text-subtle uppercase tracking-wider mb-1 block";
+    "admin-text-2xs font-semibold hud-text-muted uppercase tracking-[0.12em] mb-1.5 block";
 
   return (
-    <div className="rounded-lg border border-hud bg-hud-elevated/60 p-3 space-y-3">
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <p className="admin-text-xs font-mono hud-accent uppercase tracking-wider font-bold">
-          {isAr ? "معايرة الهدف" : "Target Calibration"}
-        </p>
+    <div className="hud-glass rounded-3xl p-4 md:p-6 space-y-5">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <p className="admin-text-2xs font-semibold hud-accent uppercase tracking-[0.14em]">
+            {isAr ? "مساحة المعايرة" : "Calibration workspace"}
+          </p>
+          <h3 className="admin-text-xl font-bold tracking-[-0.02em] hud-text mt-1">
+            {target.label}
+          </h3>
+        </div>
         <div className="flex items-center gap-2">
-          <span className="admin-text-2xs font-mono hud-text-subtle">
-            {isAr ? "الإزاحة الحالية" : "Current offset"}{" "}
-            <span className="hud-text font-bold tabular-nums">
+          <span className="rounded-xl bg-hud-elevated px-3 py-2 admin-text-2xs hud-text-muted">
+            {isAr ? "الإزاحة الحالية" : "Current offset"}
+            <span className="block hud-text font-semibold font-mono tabular-nums mt-0.5">
               ({target.offsetXmm}, {target.offsetYmm}) mm
             </span>
           </span>
@@ -459,7 +464,7 @@ export function TargetCalibrationPanel({
                   ? "الإزاحة صفر بالفعل"
                   : "Offset is already zero"
             }
-            className="inline-flex items-center gap-1 px-2 py-1 rounded admin-text-2xs font-mono font-bold border border-rose-500/50 text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl admin-text-2xs font-semibold border border-rose-500/40 text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             {busy === "reset" ? (
               <Loader2 className="w-3 h-3 animate-spin" />
@@ -472,15 +477,15 @@ export function TargetCalibrationPanel({
       </div>
 
       {/* Step 1 — arm and fire */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="admin-text-2xs font-mono hud-text-subtle shrink-0">
+      <div className="rounded-2xl border border-hud bg-hud-elevated/50 p-3.5 flex items-center gap-2.5 flex-wrap">
+        <span className="admin-text-2xs font-semibold hud-text-muted shrink-0 me-1">
           {isAr ? "١. سلِّح وأطلق" : "1. Arm & fire"}
         </span>
         <button
           type="button"
           onClick={() => void arm()}
           disabled={busy !== null || armed}
-          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded admin-text-xs font-mono font-bold border border-emerald-500/50 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl admin-text-xs font-semibold border border-emerald-500/50 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {busy === "arm" ? (
             <Loader2 className="w-3 h-3 animate-spin" />
@@ -493,7 +498,7 @@ export function TargetCalibrationPanel({
           type="button"
           onClick={() => void disarm()}
           disabled={busy !== null || !armed}
-          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded admin-text-xs font-mono font-bold border border-rose-500/50 text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl admin-text-xs font-semibold border border-rose-500/50 text-rose-600 dark:text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {busy === "disarm" ? (
             <Loader2 className="w-3 h-3 animate-spin" />
@@ -517,8 +522,8 @@ export function TargetCalibrationPanel({
           so clicking it opens the fullscreen view and the mark is placed there,
           zoomed into the hole. The True X / Y boxes still take typed
           coordinates without going near the dialog. */}
-      <div className="flex items-start gap-3 flex-wrap">
-        <div className="space-y-1.5 shrink-0">
+      <div className="grid gap-5 xl:grid-cols-[auto_minmax(0,1fr)] items-start">
+        <div className="space-y-2 shrink-0 rounded-2xl bg-hud-elevated/50 border border-hud p-3">
           <CalibrationTargetFace
             profileType={target.profileType}
             reads={reads}
@@ -550,8 +555,8 @@ export function TargetCalibrationPanel({
           </div>
         </div>
 
-        <div className="flex-1 min-w-[16rem] space-y-2.5">
-          <div className="flex items-end gap-3 flex-wrap">
+        <div className="min-w-0 space-y-3">
+          <div className="flex items-end gap-3 flex-wrap rounded-2xl border border-hud bg-hud-elevated/50 p-3.5">
             <div>
               <label className={labelCls}>
                 {isAr ? "رقم الطلقة" : "Shot #"}
@@ -611,7 +616,7 @@ export function TargetCalibrationPanel({
                   ? "اقرأ ما رآه الجهاز لهذه الطلقة (معاينة فقط)"
                   : "Read back what the board saw for this shot (preview only)"
               }
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded admin-text-xs font-mono font-bold hud-btn-secondary cursor-pointer disabled:opacity-50 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl admin-text-xs font-semibold hud-btn-secondary cursor-pointer disabled:opacity-50 transition-colors"
             >
               {busy === "read" ? (
                 <Loader2 className="w-3 h-3 animate-spin" />
@@ -777,7 +782,7 @@ export function TargetCalibrationPanel({
 
       {/* Step 3 — carry it to the other boards */}
       {siblings.length > 0 && (
-        <div className="pt-2 border-t border-hud/40 space-y-1.5">
+        <div className="rounded-2xl border border-hud bg-hud-elevated/50 p-3.5 space-y-2">
           <p className={labelCls}>
             {isAr
               ? "طبّق الإزاحة نفسها على أهداف أخرى"
@@ -825,7 +830,7 @@ export function TargetCalibrationPanel({
               ? "حدِّد أولاً موضع الطلقة الحقيقي على وجه الهدف"
               : "Mark the bullet's true position on the face first"
         }
-        className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded admin-text-xs font-mono font-bold hud-btn-primary cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="w-full inline-flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl admin-text-sm font-semibold hud-btn-primary cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         {busy === "apply" ? (
           <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -835,7 +840,7 @@ export function TargetCalibrationPanel({
         {isAr ? "احسب الإزاحة وطبّقها" : "Derive offset & apply"}
       </button>
 
-      <p className="admin-text-2xs font-mono hud-text-subtle leading-relaxed">
+      <p className="admin-text-xs hud-text-muted leading-relaxed max-w-4xl">
         {isAr
           ? "سلِّح الهدف، أطلق طلقة أو طلقتين، ثم اقرأ كل طلقة برقمها لتظهر على وجه الهدف (بالبرتقالي). انقر على وجه الهدف لفتحه بالحجم الكامل، حيث يمكن التكبير والتحريك وقراءة طلقات أخرى، ثم حدِّد الثقب الحقيقي (بالأخضر) — الفرق بين النقطتين هو إزاحة التركيب. يُعاد قراءة الطلقة من الجهاز عند التطبيق. مركز الوجه هو (٠، ٠)."
           : "Arm the target, fire one or two bullets, then read each shot number back — it appears on the face in amber. Click the face to open it full size, where you can zoom, pan and read further shots, then mark where the hole really is (green); the gap between the two markers is the mounting offset. The shot is re-read from the board on apply. Centre of the face is (0, 0)."}

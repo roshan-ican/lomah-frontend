@@ -18,10 +18,7 @@ export function targetProfileFromTargetId(
   if (
     key === "CIRCULAR" ||
     key.includes("BULL") ||
-    key.includes("RING") ||
-    key === "TARGET 02" ||
-    key === "TARGET 03" ||
-    key === "TARGET 04"
+    key.includes("RING")
   ) {
     return "CIRCULAR";
   }

@@ -3,6 +3,7 @@ import type {
   SessionStage,
   SessionStatus,
 } from "@shared/types/session";
+import type { TargetProfileType } from "@shared/coordinates";
 
 export interface Operator {
   operatorId: string;
@@ -92,6 +93,9 @@ export interface ActiveShooterChannel {
   shots: DisplayShot[];
   distance: string;
   targetName: string;
+  /** Authoritative face of the active session stage. Never infer this from a
+   * target UUID or lane number once the server has supplied it. */
+  profileType?: TargetProfileType;
   bulletLimit?: number;
   durationSeconds?: number;
   totalPausedMs?: number;

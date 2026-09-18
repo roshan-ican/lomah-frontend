@@ -308,7 +308,7 @@ export function ShooterDevicesTab({
  px-3 py-1.5
  rounded-lg
  border-2
- border-[var(--hud-primary-border)]
+ border-[var(--hud-accent)]
  admin-text-2xs
  font-mono
  font-bold
@@ -316,9 +316,9 @@ export function ShooterDevicesTab({
  cursor-pointer
  transition-all
  duration-150
- hover:bg-[var(--hud-primary-bg)]
- hover:border-[var(--hud-primary-border)]
- hover:brightness-125
+ hover:bg-[var(--hud-accent)]
+ hover:border-[var(--hud-accent)]
+ hover:brightness-110
  "
           >
             <UserPlus className="w-3 h-3 shrink-0" />

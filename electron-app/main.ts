@@ -159,6 +159,7 @@ function flushLogsSync(): void {
 
 let backendProc: ChildProcess | null = null;
 let backendOwnedByElectron = false;
+const expectedBackendStops = new WeakSet<ChildProcess>();
 
 /** Free a port held by a stale process. Returns true if anything was killed. */
 async function killProcessOnPort(
@@ -225,7 +226,7 @@ async function startBackend(): Promise<void> {
   // prepare-database.ts), which is what let the installer drop the 90 MB
   // Prisma CLI and the 18 MB schema engine it needed. The guarantee is
   // unchanged: the schema is current before anything serves a request.
-  backendProc = spawn(process.execPath, [resolveBackendEntry()], {
+  const child = spawn(process.execPath, [resolveBackendEntry()], {
     cwd: BACKEND_DIR,
     stdio: ["ignore", "pipe", "pipe"],
     windowsHide: true,
@@ -242,31 +243,54 @@ async function startBackend(): Promise<void> {
       LOMAH_STATIC_DIR: FRONTEND_DIST,
     },
   });
+  backendProc = child;
   backendOwnedByElectron = true;
 
-  backendProc.stdout?.on("data", (chunk) => {
+  child.stdout?.on("data", (chunk) => {
     const msg = chunk.toString();
     process.stdout.write(msg);
     writeLog(BACKEND_LOG, msg);
   });
-  backendProc.stderr?.on("data", (chunk) => {
+  child.stderr?.on("data", (chunk) => {
     const msg = chunk.toString();
     process.stderr.write(msg);
     writeLog(BACKEND_LOG, msg);
   });
-  backendProc.on("exit", (code, sig) => {
-    writeLog(ERROR_LOG, `exited code=${code} sig=${sig}`);
+
+  child.on("exit", (code, sig) => {
+    const expected = expectedBackendStops.has(child);
+    expectedBackendStops.delete(child);
+
+    writeLog(
+      ERROR_LOG,
+      `exited pid=${child.pid ?? "unknown"} code=${code} sig=${sig} expected=${expected}`,
+    );
     // The async flush's setTimeout may never fire once the process is tearing
     // down around it — drain synchronously so the exit line (and anything just
     // before it) actually reaches disk instead of being lost mid-buffer.
     flushLogsSync();
-    backendProc = null;
+
+    if (backendProc === child) {
+      backendProc = null;
+      backendOwnedByElectron = false;
+    }
+
+    if (expected) {
+      console.log("[electron] Backend stopped intentionally.");
+      return;
+    }
+
+    console.error(
+      `[electron] Backend exited unexpectedly: pid=${child.pid ?? "unknown"} code=${code} signal=${sig}`,
+    );
   });
 }
 function stopBackend(): Promise<void> {
   return new Promise((resolve) => {
     if (!backendOwnedByElectron || !backendProc) return resolve();
+
     const p = backendProc;
+    expectedBackendStops.add(p);
     backendProc = null;
     backendOwnedByElectron = false;
     p.once("exit", () => resolve());

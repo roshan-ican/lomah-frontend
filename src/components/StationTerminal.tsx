@@ -44,6 +44,7 @@ interface StationSession {
   stageId?: string;
   stageOrder?: number;
   targetId?: string;
+  profileType?: "FIGURE" | "CIRCULAR";
   bulletLimit?: number;
   durationSeconds?: number;
   startedAt?: string;
@@ -404,7 +405,8 @@ export function StationTerminal() {
       const shots = stage?.shots ?? [];
       if (!shots.length) return;
 
-      const profile = targetProfileFromTargetId(stage?.targetId);
+      const profile =
+        stage?.profileType ?? targetProfileFromTargetId(stage?.targetId);
       const restored = shots.map((s) =>
         mapRawShotToDisplay(
           {
@@ -464,6 +466,7 @@ export function StationTerminal() {
         stageId: stage?.id,
         stageOrder: stage?.order,
         targetId: stage?.targetId,
+        profileType: stage?.profileType,
         bulletLimit: stage?.bulletLimit,
         durationSeconds: stage?.durationSeconds,
         startedAt: stage?.startedAt ?? undefined,
@@ -480,6 +483,7 @@ export function StationTerminal() {
         activeStageId: stage?.id,
         activeStageOrder: stage?.order,
         targetName: stage?.targetId ?? prev.targetName,
+        profileType: stage?.profileType ?? prev.profileType,
         bulletLimit: stage?.bulletLimit,
         durationSeconds: stage?.durationSeconds,
         totalPausedMs: record.totalPausedMs,
@@ -736,6 +740,7 @@ export function StationTerminal() {
           activeStageId: data.stageId,
           activeStageOrder: data.stageOrder,
           targetName: data.targetId,
+          profileType: data.profileType ?? prev.profileType,
           // The clock belongs to the stage that just armed.
           startTime: new Date(data.startedAt).toISOString(),
           totalPausedMs: 0,
@@ -775,6 +780,7 @@ export function StationTerminal() {
           ...prev,
           activeStageId: data.toStageId,
           activeStageOrder: data.toStageOrder,
+          profileType: data.profileType ?? prev.profileType,
           // Each stage scores against its own target, so the board resets
           // rather than carrying the previous stage's holes forward.
           shots: [],
@@ -826,7 +832,8 @@ export function StationTerminal() {
           },
           data.shotNumber,
           laneId,
-          targetProfileFromTargetId(activeChannelRef.current.targetName),
+          activeChannelRef.current.profileType ??
+            targetProfileFromTargetId(activeChannelRef.current.targetName),
           data.score,
         );
         if (newShot.id <= 0) return;
@@ -874,7 +881,8 @@ export function StationTerminal() {
           },
           data.shotNumber,
           laneId,
-          targetProfileFromTargetId(activeChannelRef.current.targetName),
+          activeChannelRef.current.profileType ??
+            targetProfileFromTargetId(activeChannelRef.current.targetName),
           data.score,
         );
         setActiveChannel((prev) => ({
@@ -956,7 +964,6 @@ export function StationTerminal() {
     setIsShotPending(false);
   }, [isShotPending, sessionStatus, laneId, isAr, triggerSuccessBanner]);
 
-  const isArabic = language === "ar";
 
   const currentSessionId =
     activeChannel.sessionId ?? session?.sessionId ?? null;

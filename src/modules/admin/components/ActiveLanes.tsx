@@ -317,7 +317,8 @@ export const ActiveLanes: React.FC<ActiveLanesProps> = ({
                       {reservation
                         ? `${reservationTime(reservation, isAr)} • ${isAr ? "حجز نشط" : "Active reservation"}`
                         : `${targetProfileLabel(
-                            targetProfileFromTargetId(ch.targetName),
+                            ch.profileType ??
+                              targetProfileFromTargetId(ch.targetName),
                             language,
                           )} • ${ch.distance}`}
                     </span>

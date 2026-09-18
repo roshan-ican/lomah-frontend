@@ -216,7 +216,10 @@ export function useSessionActions({
         replaceExisting,
       });
 
-      setProfileType(targetProfileFromTargetId(first.targetId));
+      const firstProfile =
+        created.stages?.[0]?.profileType ??
+        targetProfileFromTargetId(first.targetId);
+      setProfileType(firstProfile);
 
       setChannels((prev) =>
         prev.map((ch) =>
@@ -234,6 +237,7 @@ export function useSessionActions({
                 // it — the control panel gates on stageCount > 1.
                 stageCount: created.stages?.length ?? stages.length,
                 targetName: first.targetId,
+                profileType: firstProfile,
                 distance: config.distance ?? ch.distance,
                 bulletLimit: first.bulletLimit,
                 durationSeconds: first.durationSeconds,

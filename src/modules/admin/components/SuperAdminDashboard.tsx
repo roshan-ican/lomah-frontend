@@ -1,6 +1,6 @@
 /// <reference types="react" />
 import React, { useState } from "react";
-import { Crosshair, Wifi, BookOpen, Users } from "lucide-react";
+import { Crosshair, Wifi, BookOpen, Users, ScanLine } from "lucide-react";
 import { translations, TranslationSet } from "../../../translations";
 import { AdminHeader } from "./admin-dashboard/AdminHeader";
 import { LaneHardwarePanel } from "./admin-dashboard/LaneHardwarePanel";
@@ -8,9 +8,11 @@ import { LaneAssignmentPanel } from "./admin-dashboard/LaneAssignmentPanel";
 import { AdminAccountsPanel } from "./admin-dashboard/AdminAccountsPanel";
 import { AdminHelp } from "./AdminHelp";
 import { ActivityLog } from "./ActivityLog";
+import { TargetCalibrationView } from "./admin-dashboard/TargetCalibrationView";
 import type { LanguageCode } from "./admin-dashboard/types";
 
-type SuperAdminTab = "LANE_HARDWARE" | "DEVICES" | "HELP" | "USERS";
+type SuperAdminTab =
+  "LANE_HARDWARE" | "CALIBRATION" | "DEVICES" | "HELP" | "USERS";
 
 interface SuperAdminDashboardProps {
   isDarkMode: boolean;
@@ -71,8 +73,13 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
       label: isAr ? "أجهزة الرماة" : "Devices",
     },
     {
+      tab: "CALIBRATION",
+      icon: <ScanLine className="w-4 h-4 shrink-0" />,
+      label: isAr ? "معايرة الأهداف" : "Target Calibration",
+    },
+    {
       tab: "USERS",
-      icon: <Users className="w-5 h-4 shrink-0" />,
+      icon: <Users className="w-4 h-4 shrink-0" />,
       label: isAr ? "المشرفون" : "Admins",
     },
     {
@@ -133,8 +140,8 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
         >
           <div className="admin-sidebar-min flex flex-col flex-1">
             <div className="px-4 pt-4 pb-2">
-              <p className="admin-text-2xs font-mono uppercase tracking-[0.18em] text-amber-500">
-                {isAr ? "المشرف الأعلى — العتاد" : "Super Admin — Hardware"}
+              <p className="admin-text-2xs font-semibold uppercase tracking-[0.16em] hud-accent">
+                {isAr ? "المشرف الأعلى" : "Super Admin"}
               </p>
             </div>
 
@@ -144,10 +151,10 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
                   key={item.tab}
                   type="button"
                   onClick={() => selectTab(item.tab)}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg admin-text-base font-mono cursor-pointer transition-colors ${
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl admin-text-sm font-semibold cursor-pointer transition-colors active:scale-[0.98] border ${
                     activeTab === item.tab
-                      ? "bg-[var(--hud-accent-bg-subtle)] hud-accent font-bold"
-                      : "hud-text-subtle hover:hud-text"
+                      ? "bg-[var(--hud-accent-bg-subtle)] border-[var(--hud-accent-border)] hud-text"
+                      : "border-transparent hud-text-muted hover:hud-text"
                   }`}
                 >
                   {item.icon}
@@ -157,10 +164,8 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
             </nav>
 
             <div className="px-4 py-3 border-t border-hud">
-              <p className="admin-text-2xs font-mono hud-text-subtle leading-relaxed">
-                {isAr
-                  ? "لا توجد أدوات تحكم بالجلسات هنا. بدء أو إيقاف الرماية يتم من حساب المشرف."
-                  : "No session controls here. Starting and stopping fire is done from the operations account."}
+              <p className="admin-text-2xs hud-text-subtle leading-relaxed">
+                {isAr ? "الجلسات تُدار من حساب المشرف." : "Sessions run from the admin account."}
               </p>
             </div>
           </div>
@@ -189,6 +194,14 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
                 isAr={isAr}
                 triggerSuccessBanner={triggerSuccessBanner}
                 triggerErrorBanner={triggerErrorBanner}
+              />
+            )}
+            {activeTab === "CALIBRATION" && (
+              <TargetCalibrationView
+                isAr={isAr}
+                triggerSuccessBanner={triggerSuccessBanner}
+                triggerErrorBanner={triggerErrorBanner}
+                addAdminLog={addAdminLog}
               />
             )}
             {activeTab === "HELP" && (

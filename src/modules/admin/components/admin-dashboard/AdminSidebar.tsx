@@ -9,12 +9,14 @@ import {
   FileSpreadsheet,
   Users,
   CalendarClock,
+  Loader2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { TranslationSet } from "../../../../translations";
 import type { AdminTab, SensorGate } from "./types";
 import { api } from "../../../../utils/api";
 import type { SystemInfo } from "../../../../types";
+import { liftAllTargets } from "./TargetLiftSwitch";
 
 interface Props {
   navOpen: boolean;
@@ -28,6 +30,8 @@ interface Props {
   onPauseAllSessions: () => void;
   sensorGate: SensorGate;
   setSensorHold: (held: boolean) => void;
+  onNotice: (msg: string) => void;
+  onError: (msg: string) => void;
 }
 
 export function AdminSidebar({
@@ -42,7 +46,42 @@ export function AdminSidebar({
   onPauseAllSessions,
   sensorGate,
   setSensorHold,
+  onNotice,
+  onError,
 }: Props) {
+  const [liftBusy, setLiftBusy] = useState<"UP" | "DOWN" | null>(null);
+
+  const liftAll = async (position: "UP" | "DOWN") => {
+    setLiftBusy(position);
+    try {
+      const r = await liftAllTargets(position);
+      const verb =
+        position === "UP"
+          ? isAr
+            ? "رُفعت"
+            : "raised"
+          : isAr
+            ? "خُفضت"
+            : "lowered";
+      if (r.failed.length === 0) {
+        onNotice(
+          isAr
+            ? `${verb} كل الأهداف (${r.moved})`
+            : `All ${r.moved} targets ${verb}`,
+        );
+      } else {
+        onError(
+          isAr
+            ? `${verb} ${r.moved}/${r.total} — تعذّر: ${r.failed.join(", ")}`
+            : `${r.moved}/${r.total} ${verb}. No answer from: ${r.failed.join(", ")}`,
+        );
+      }
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "Failed");
+    } finally {
+      setLiftBusy(null);
+    }
+  };
   // Split-brain (two admins, each with its own database) is otherwise silent
   // until a shooter roster or shot count mismatch is noticed in the field —
   // this makes the database this device is actually writing to checkable at a
@@ -114,22 +153,22 @@ export function AdminSidebar({
             : "md:w-0 md:p-0 md:border-0 md:opacity-0 md:overflow-hidden"
         }`}
     >
-      <div className="hidden md:block pb-3 border-b border-hud mb-3 admin-sidebar-min">
-        <span className="hud-label hud-text-muted">
-          {isAr ? "لوحة الملاحة العامة" : "RANGE CONSOLE NAV"}
-        </span>
+      <div className="hidden md:block px-1 pb-1 admin-sidebar-min">
+        <p className="admin-text-2xs font-semibold uppercase tracking-[0.16em] hud-accent">
+          {isAr ? "المشرف" : "Admin"}
+        </p>
       </div>
 
-      <div className="admin-sidebar-min flex flex-col gap-2">
+      <div className="admin-sidebar-min flex flex-col gap-1">
         {navItems.map(({ tab, icon, label }) => (
           <button
             key={tab}
             type="button"
             onClick={() => selectTab(tab)}
-            className={`hud-sidebar-nav-btn flex items-center justify-start gap-2.5 p-3 rounded-lg cursor-pointer whitespace-nowrap ${
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl admin-text-sm font-semibold cursor-pointer whitespace-nowrap transition-colors active:scale-[0.98] border ${
               activeTab === tab
-                ? "hud-sidebar-nav-btn--active"
-                : "hud-sidebar-nav-btn--idle"
+                ? "bg-[var(--hud-accent-bg-subtle)] border-[var(--hud-accent-border)] hud-text"
+                : "border-transparent hud-text-muted hover:hud-text"
             }`}
           >
             {icon}
@@ -139,13 +178,13 @@ export function AdminSidebar({
 
         {activeTab === "CONTROL" && (
           <div className="mt-3 pt-3 border-t border-hud flex flex-col gap-2">
-            <span className="range-rail-label px-1 mb-0.5">
-              {isAr ? "تحكم الميدان" : "RANGE OPS"}
+            <span className="admin-text-2xs font-semibold uppercase tracking-[0.14em] hud-text-muted px-1 mb-0.5">
+              {isAr ? "تحكم الميدان" : "Range ops"}
             </span>
             <button
               type="button"
               onClick={toggleLiveBoardMode}
-              className={`range-rail-btn flex items-center gap-2 p-2.5 rounded-lg cursor-pointer transition-colors ${
+              className={`w-full flex items-center justify-start text-start gap-3 px-3 py-2.5 rounded-xl admin-text-sm font-semibold active:scale-[0.98] cursor-pointer transition-colors ${
                 liveBoardMode
                   ? "hud-accent bg-[var(--hud-accent-bg-subtle)]"
                   : "hud-text-secondary hover:hud-accent hover:bg-[var(--hud-accent-bg-subtle)]"
@@ -167,7 +206,7 @@ export function AdminSidebar({
             <button
               type="button"
               onClick={onStartAllSessions}
-              className="range-rail-btn flex items-center gap-2 p-2.5 rounded-lg hud-success hover:bg-[color-mix(in_srgb,var(--hud-success)_10%,transparent)] cursor-pointer transition-colors"
+              className="w-full flex items-center justify-start text-start gap-3 px-3 py-2.5 rounded-xl admin-text-sm font-semibold active:scale-[0.98] hud-success hover:bg-[color-mix(in_srgb,var(--hud-success)_10%,transparent)] cursor-pointer transition-colors"
             >
               <Radio className="w-3.5 h-3.5 shrink-0" />
               {isAr ? "تشغيل الكل" : "Start All Lanes"}
@@ -175,15 +214,45 @@ export function AdminSidebar({
             <button
               type="button"
               onClick={onPauseAllSessions}
-              className="range-rail-btn flex items-center gap-2 p-2.5 rounded-lg hud-warning hover:bg-[var(--hud-warning-bg)] cursor-pointer transition-colors"
+              className="w-full flex items-center justify-start text-start gap-3 px-3 py-2.5 rounded-xl admin-text-sm font-semibold active:scale-[0.98] hud-warning hover:bg-[var(--hud-warning-bg)] cursor-pointer transition-colors"
             >
               <Pause className="w-3.5 h-3.5 shrink-0" />
               {isAr ? "إيقاف الكل" : "Pause All Lanes"}
             </button>
             <button
               type="button"
+              onClick={() => void liftAll("UP")}
+              disabled={liftBusy !== null}
+              className="w-full flex items-center justify-start text-start gap-3 px-3 py-2.5 rounded-xl admin-text-sm font-semibold active:scale-[0.98] text-emerald-500 hover:bg-emerald-500/10 cursor-pointer transition-colors disabled:opacity-50"
+            >
+              {liftBusy === "UP" ? (
+                <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin" />
+              ) : (
+                <span className="grid place-items-center w-3.5 h-3.5 shrink-0">
+                  <span className="block w-2 h-3.5 rounded-[2px] bg-emerald-500" />
+                </span>
+              )}
+              {isAr ? "رفع كل الأهداف" : "Raise all targets"}
+            </button>
+            <button
+              type="button"
+              onClick={() => void liftAll("DOWN")}
+              disabled={liftBusy !== null}
+              className="w-full flex items-center justify-start text-start gap-3 px-3 py-2.5 rounded-xl admin-text-sm font-semibold active:scale-[0.98] text-rose-500 hover:bg-rose-500/10 cursor-pointer transition-colors disabled:opacity-50"
+            >
+              {liftBusy === "DOWN" ? (
+                <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin" />
+              ) : (
+                <span className="grid place-items-center w-3.5 h-3.5 shrink-0">
+                  <span className="block w-3 h-3 rounded-[2px] bg-rose-500" />
+                </span>
+              )}
+              {isAr ? "خفض كل الأهداف" : "Lower all targets"}
+            </button>
+            <button
+              type="button"
               onClick={() => setSensorHold(!sensorGate.adminHeld)}
-              className={`range-rail-btn flex items-center gap-2 p-2.5 rounded-lg cursor-pointer transition-colors ${
+              className={`w-full flex items-center justify-start text-start gap-3 px-3 py-2.5 rounded-xl admin-text-sm font-semibold active:scale-[0.98] cursor-pointer transition-colors ${
                 sensorGate.adminHeld
                   ? "hud-accent hover:bg-[var(--hud-accent-bg-subtle)]"
                   : "hud-danger hover:bg-[var(--hud-danger-bg)]"
@@ -199,7 +268,7 @@ export function AdminSidebar({
                   : "Hold sensor"}
             </button>
             <div
-              className={`flex items-center gap-1.5 px-2.5 py-2 font-mono admin-text-sm ${
+              className={`flex items-center gap-2 px-3 py-2 admin-text-xs font-semibold ${
                 sensorGate.accepting ? "hud-success" : "hud-text-muted"
               }`}
             >
@@ -222,7 +291,7 @@ export function AdminSidebar({
         )}
       </div>
 
-      <div className="hidden md:flex flex-col-reverse flex-grow font-mono admin-text-sm leading-snug hud-text-subtle select-none pb-2 gap-1 admin-sidebar-min">
+      <div className="hidden md:flex flex-col-reverse flex-grow admin-text-2xs px-1 leading-snug hud-text-subtle select-none pb-2 gap-1 admin-sidebar-min">
         {dbInfo && (
           <span
             className="truncate opacity-60"

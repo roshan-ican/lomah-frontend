@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { RefreshCw, Laptop, Monitor, Unlink } from "lucide-react";
+import { Laptop, Monitor, Unlink, Wifi } from "lucide-react";
+import { PageHeader, EmptyState } from "./PageHeader";
 import { api, ApiError } from "../../../../utils/api";
 import type { ConnectedShooter, Lane } from "../../../../types";
 
@@ -53,7 +54,7 @@ export function LaneAssignmentPanel({
       // code change.
       setLanes((Array.isArray(rows) ? rows : []).sort((a, b) => a.id - b.id));
     } catch (err) {
-      triggerSuccessBanner(
+      triggerErrorBanner(
         isAr
           ? "تعذّر تحميل الحارات"
           : `Could not load lanes${err instanceof ApiError ? `: ${err.message}` : ""}`,
@@ -116,139 +117,99 @@ export function LaneAssignmentPanel({
     devices.find((d) => d.laneId === laneId);
   const unassigned = devices.filter((d) => d.laneId == null);
 
-  const selectCls =
-    "hud-form-input rounded px-2 py-1 admin-text-2xs font-mono shrink-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed";
+  const laneLabel = (id: number) => (isAr ? `حارة ${id}` : `Lane ${id}`);
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-3">
-        <div>
-          <h2 className="admin-text-lg font-semibold hud-text">
-            {isAr ? "توزيع الرماة على الحارات" : "Lane Assignment"}
-          </h2>
-          <p className="admin-text-2xs hud-text-muted font-mono mt-0.5">
-            {isAr
-              ? "انقل أجهزة الرماة بين الحارات بين الجولات"
-              : "Move shooter devices between lanes as relays change"}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => {
-            void loadLanes();
-            void loadDevices();
-          }}
-          disabled={loading}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg admin-text-2xs font-mono font-bold hud-btn-secondary cursor-pointer transition-colors disabled:opacity-50"
-        >
-          <RefreshCw
-            className={`w-3 h-3 shrink-0 ${loading ? "animate-spin" : ""}`}
-          />
-          {isAr ? "تحديث" : "Refresh"}
-        </button>
-      </div>
+    <section className="space-y-5 pb-8">
+      <PageHeader
+        eyebrow={isAr ? "أجهزة الرماة" : "Shooter devices"}
+        title={isAr ? "توزيع الحارات" : "Lane Assignment"}
+        subtitle={
+          isAr ? "اختر حارة لكل جهاز متصل." : "Pick a lane for each connected device."
+        }
+        isAr={isAr}
+        loading={loading}
+        onRefresh={() => {
+          void loadLanes();
+          void loadDevices();
+        }}
+      />
 
-      {/* ── Connected devices ─────────────────────────────────────────────── */}
-      <div className="mb-5">
-        <div className="flex items-center gap-2 mb-2">
-          <h3 className="admin-text-base font-mono font-bold hud-text uppercase tracking-wider">
-            {isAr ? "الأجهزة المتصلة" : "Connected Devices"}
-          </h3>
-          <span className="admin-text-2xs font-mono hud-text-subtle">
-            {devices.length}
-          </span>
-          {unassigned.length > 0 && (
-            <span className="px-1.5 py-0.5 rounded admin-text-2xs font-mono bg-amber-500/10 text-amber-500 border border-amber-500/20">
-              {unassigned.length} {isAr ? "بلا حارة" : "unassigned"}
+      <div className="hud-glass rounded-3xl p-4 md:p-5">
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <div className="flex items-center gap-2">
+            <Wifi className="w-4 h-4 hud-accent" />
+            <p className="admin-text-2xs font-semibold uppercase tracking-[0.14em] hud-text-muted">
+              {isAr ? "المتصلة" : "Connected"}
+            </p>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="rounded-full bg-hud-elevated px-3 py-1.5 admin-text-2xs font-semibold hud-text-muted tabular-nums">
+              {devices.length}
             </span>
-          )}
+            {unassigned.length > 0 && (
+              <span className="rounded-full bg-amber-500/10 text-amber-500 px-3 py-1.5 admin-text-2xs font-semibold">
+                {unassigned.length} {isAr ? "بلا حارة" : "unassigned"}
+              </span>
+            )}
+          </div>
         </div>
 
         {devices.length === 0 ? (
-          <div className="px-3 py-4 rounded-lg border border-dashed border-hud text-center">
-            <p className="admin-text-2xs font-mono hud-text-subtle">
-              {isAr
-                ? "لا توجد أجهزة متصلة. افتح تطبيق الرامي على الجهاز وسيظهر هنا."
-                : "No devices connected. Open the shooter app on a device and it will appear here."}
-            </p>
-          </div>
+          <EmptyState
+            icon={<Laptop className="w-9 h-9" />}
+            title={isAr ? "لا توجد أجهزة" : "No devices"}
+            hint={isAr ? "افتح تطبيق الرامي على الجهاز." : "Open the shooter app on a device."}
+          />
         ) : (
-          <div className="space-y-1.5">
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
             {devices.map((device) => {
               const busy = busyKey === device.key;
+              const assigned = device.laneId != null;
               return (
                 <div
                   key={device.key}
-                  className="flex items-center justify-between gap-2 px-3 py-2 bg-hud-elevated rounded-lg border border-hud"
+                  className={`rounded-2xl px-3.5 py-3 border transition-colors ${
+                    assigned ? "border-hud" : "border-amber-500/30 bg-amber-500/5"
+                  }`}
                 >
-                  <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="flex items-center gap-3">
                     <span
-                      className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
-                        device.laneId != null
-                          ? "bg-[var(--hud-accent-bg-subtle)] hud-accent"
-                          : "bg-amber-500/10 text-amber-500 border border-amber-500/20"
+                      className={`grid place-items-center w-9 h-9 rounded-xl shrink-0 ${
+                        assigned
+                          ? "bg-[var(--hud-accent)] text-black"
+                          : "bg-amber-500/15 text-amber-500"
                       }`}
                     >
-                      <Laptop className="w-3 h-3" />
+                      <Laptop className="w-4 h-4" />
                     </span>
-                    <div className="min-w-0">
-                      <p className="admin-text-base font-mono hud-text truncate">
+                    <div className="min-w-0 flex-1">
+                      <p className="admin-text-sm font-semibold hud-text font-mono truncate">
                         {device.ip}
-                        {device.deviceId && (
-                          <span
-                            className="hud-text-subtle ms-2"
-                            title={isAr ? "معرّف الجهاز" : "Device id"}
-                          >
-                            {device.deviceId}
-                          </span>
-                        )}
                       </p>
-                      <p className="admin-text-2xs font-mono hud-text-subtle">
-                        {device.laneId != null
-                          ? isAr
-                            ? `معيَّن للحارة ${device.laneId}`
-                            : `Assigned to lane ${device.laneId}`
-                          : isAr
-                            ? "بانتظار التعيين"
-                            : "Awaiting assignment"}
-                      </p>
+                      {device.deviceId && (
+                        <p className="admin-text-2xs font-mono hud-text-subtle truncate">
+                          {device.deviceId}
+                        </p>
+                      )}
                     </div>
                   </div>
-
                   <select
                     value={device.laneId ?? ""}
                     disabled={busy}
                     onChange={(e) =>
-                      void assign(
-                        device,
-                        e.target.value === "" ? null : Number(e.target.value),
-                      )
+                      void assign(device, e.target.value === "" ? null : Number(e.target.value))
                     }
-                    className={selectCls}
+                    className="hud-form-input mt-3 w-full rounded-xl px-3 py-2 admin-text-sm font-semibold cursor-pointer disabled:opacity-50 disabled:cursor-wait"
                   >
-                    <option value="">
-                      {isAr ? "— غير معيَّن —" : "— Unassigned —"}
-                    </option>
+                    <option value="">{isAr ? "بلا حارة" : "No lane"}</option>
                     {lanes.map((lane) => {
-                      // An occupied lane cannot be taken by another tablet
-                      // accidentally. The current holder keeps its own option
-                      // enabled; release it first when a deliberate swap is
-                      // needed.
                       const holder = deviceOnLane(lane.id);
-                      const takenByOther =
-                        !!holder && holder.key !== device.key;
+                      const takenByOther = !!holder && holder.key !== device.key;
                       return (
-                        <option
-                          key={lane.id}
-                          value={lane.id}
-                          disabled={takenByOther}
-                        >
-                          {isAr ? `حارة ${lane.id}` : `Lane ${lane.id}`}
-                          {takenByOther
-                            ? isAr
-                              ? " (مشغولة)"
-                              : " (in use)"
-                            : ""}
+                        <option key={lane.id} value={lane.id} disabled={takenByOther}>
+                          {laneLabel(lane.id)}
+                          {takenByOther ? (isAr ? " (مشغولة)" : " (in use)") : ""}
                         </option>
                       );
                     })}
@@ -260,68 +221,62 @@ export function LaneAssignmentPanel({
         )}
       </div>
 
-      {/* ── The same picture by lane ──────────────────────────────────────── */}
-      <h3 className="admin-text-base font-mono font-bold hud-text uppercase tracking-wider mb-2">
-        {isAr ? "حسب الحارة" : "By Lane"}
-      </h3>
-      {lanes.length === 0 ? (
-        <p className="admin-text-2xs font-mono hud-text-subtle px-3 py-4 rounded-lg border border-dashed border-hud text-center">
-          {isAr
-            ? "لا توجد حارات مهيّأة. يقوم المشرف الأعلى بتهيئتها."
-            : "No lanes commissioned yet. A super admin sets those up."}
-        </p>
-      ) : (
-        <div className="space-y-1.5">
-          {lanes.map((lane) => {
-            const device = deviceOnLane(lane.id);
-            const busy = !!device && busyKey === device.key;
-            return (
-              <div
-                key={lane.id}
-                className="flex items-center justify-between gap-2 px-3 py-2 bg-hud-elevated rounded-lg border border-hud"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <span
-                    className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
-                      device
-                        ? "bg-[var(--hud-accent-bg-subtle)] hud-accent"
-                        : "bg-hud-elevated hud-text-subtle border border-hud"
+      <div className="hud-glass rounded-3xl p-4 md:p-5">
+        <div className="flex items-center gap-2 mb-3">
+          <Monitor className="w-4 h-4 hud-accent" />
+          <p className="admin-text-2xs font-semibold uppercase tracking-[0.14em] hud-text-muted">
+            {isAr ? "الحارات" : "Lanes"}
+          </p>
+        </div>
+        {lanes.length === 0 ? (
+          <EmptyState
+            icon={<Monitor className="w-9 h-9" />}
+            title={isAr ? "لا توجد حارات" : "No lanes yet"}
+            hint={isAr ? "أضفها من الحارات والأهداف." : "Add them in Lanes & Targets."}
+          />
+        ) : (
+          <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 xl:grid-cols-5">
+            {lanes.map((lane) => {
+              const device = deviceOnLane(lane.id);
+              const busy = !!device && busyKey === device.key;
+              return (
+                <div
+                  key={lane.id}
+                  className={`rounded-2xl px-3.5 py-3 border ${
+                    device
+                      ? "border-[var(--hud-accent-border)] bg-[var(--hud-accent-bg-subtle)]"
+                      : "border-hud"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="admin-text-sm font-bold hud-text tabular-nums">
+                      {laneLabel(lane.id)}
+                    </span>
+                    {device && (
+                      <button
+                        type="button"
+                        onClick={() => void assign(device, null)}
+                        disabled={busy}
+                        title={isAr ? "إلغاء الربط" : "Release device"}
+                        className="p-1.5 -m-1 rounded-lg hud-text-muted hover:text-rose-400 hover:bg-rose-500/10 transition-colors disabled:opacity-50 active:scale-[0.94]"
+                      >
+                        <Unlink className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                  <p
+                    className={`admin-text-2xs mt-1 truncate ${
+                      device ? "font-mono hud-accent" : "hud-text-subtle"
                     }`}
                   >
-                    <Monitor className="w-3 h-3" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="admin-text-base font-mono font-bold hud-text">
-                      {isAr ? `حارة ${lane.id}` : `Lane ${lane.id}`}
-                      <span className="hud-text-subtle font-normal ms-2">
-                        {lane.siteName || lane.name}
-                      </span>
-                    </p>
-                    <p
-                      className={`admin-text-2xs font-mono truncate ${
-                        device ? "hud-text-muted" : "hud-text-subtle italic"
-                      }`}
-                    >
-                      {device ? device.ip : isAr ? "لا يوجد جهاز" : "No device"}
-                    </p>
-                  </div>
+                    {device ? device.ip : isAr ? "فارغة" : "Empty"}
+                  </p>
                 </div>
-                {device && (
-                  <button
-                    type="button"
-                    onClick={() => void assign(device, null)}
-                    disabled={busy}
-                    title={isAr ? "إلغاء الربط" : "Release device"}
-                    className="p-1.5 rounded hover:bg-rose-500/10 cursor-pointer transition-colors shrink-0 disabled:opacity-50"
-                  >
-                    <Unlink className="w-3.5 h-3.5 hud-text-muted hover:text-rose-400" />
-                  </button>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </section>
   );
 }

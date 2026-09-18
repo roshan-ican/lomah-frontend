@@ -188,6 +188,7 @@ export function handleRealtimeEvent(
             activeStageId: data.stageId,
             activeStageOrder: data.stageOrder,
             targetName: data.targetId,
+            profileType: data.profileType ?? ch.profileType,
             shots: fresh ? [] : ch.shots,
             referenceShotId: undefined,
             calibratedShotCount: undefined,
@@ -258,6 +259,7 @@ export function handleRealtimeEvent(
             ...ch,
             activeStageId: data.toStageId,
             activeStageOrder: data.toStageOrder,
+            profileType: data.profileType ?? ch.profileType,
             // Each stage scores against its own target, so the board starts
             // clean rather than carrying the previous stage's holes.
             shots: [],
@@ -385,7 +387,8 @@ export function handleRealtimeEvent(
           },
           data.shotNumber,
           laneId,
-          targetProfileFromTargetId(laneChannel?.targetName),
+          laneChannel?.profileType ??
+            targetProfileFromTargetId(laneChannel?.targetName),
           // Server score wins: it was computed against the STAGE's profile
           // snapshot, which the client cannot reconstruct once a target has
           // been re-faced.
@@ -485,7 +488,8 @@ export function handleRealtimeEvent(
           },
           data.shotNumber,
           laneId,
-          targetProfileFromTargetId(laneChannel?.targetName),
+          laneChannel?.profileType ??
+            targetProfileFromTargetId(laneChannel?.targetName),
           data.score,
         );
         return prev.map((ch) => {

@@ -109,8 +109,11 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     ),
   };
   useEffect(() => {
-    setProfileType(targetProfileFromTargetId(previewChannel.targetName));
-  }, [previewChannel.targetName, setProfileType]);
+    setProfileType(
+      previewChannel.profileType ??
+        targetProfileFromTargetId(previewChannel.targetName),
+    );
+  }, [previewChannel.profileType, previewChannel.targetName, setProfileType]);
 
   const liveFiringCount = channels.filter(
     (c) => c.sessionStatus === "ACTIVE",
@@ -118,9 +121,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const sensorBlockingShots = liveFiringCount > 0 && sensorGate.adminHeld;
 
   return (
-    <div
-      className="h-dvh-screen overflow-hidden flex flex-col bg-[var(--color-page-bg)] text-[var(--color-text-primary)]"
-    >
+    <div className="h-dvh-screen overflow-hidden flex flex-col bg-[var(--color-page-bg)] text-[var(--color-text-primary)]">
       <AdminHeader
         t={t}
         isAr={isAr}
@@ -156,6 +157,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           onPauseAllSessions={onPauseAllSessions}
           sensorGate={sensorGate}
           setSensorHold={setSensorHold}
+          onNotice={triggerSuccessBanner}
+          onError={triggerErrorBanner}
         />
 
         <main

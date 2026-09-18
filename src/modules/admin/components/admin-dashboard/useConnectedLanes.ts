@@ -3,7 +3,7 @@ import type { LaneConnection } from "./types";
 import { api } from "../../../../utils/api";
 import type { Lane } from "../../../../types";
 
-const TELEMETRY_ONLINE_MS = 30_000;
+export const TELEMETRY_ONLINE_MS = 30_000;
 
 /**
  * Live station status per lane.

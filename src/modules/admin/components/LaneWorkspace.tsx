@@ -31,6 +31,7 @@ import {
   shotPanelTitle,
 } from "./admin-dashboard/LatestShotPanel";
 import { DraggablePanel } from "./admin-dashboard/DraggablePanel";
+import { LaneTargetLifts } from "./admin-dashboard/LaneTargetLifts";
 
 import type { InstructorFeedback } from "./InstructorFeedbackForm";
 
@@ -137,7 +138,8 @@ const LiveLaneTargetCard: React.FC<LiveLaneTargetCardProps> = ({
   const hasSession = laneHasSession(channel.sessionStatus);
   const isLive = channel.sessionStatus === "ACTIVE";
   const visibleShots = hasSession ? channel.shots : [];
-  const profile = targetProfileFromTargetId(channel.targetName);
+  const profile =
+    channel.profileType ?? targetProfileFromTargetId(channel.targetName);
   const totalScore = visibleShots.reduce((sum, shot) => sum + shot.score, 0);
   const laneLabel = `${isAr ? "حارة" : "Lane"} ${String(laneIndex + 1).padStart(2, "0")}`;
   const roundsLabel =
@@ -320,7 +322,8 @@ export const LaneWorkspace: React.FC<LaneWorkspaceProps> = ({
   const hasRail = showLiveRail || showAssignRail;
 
   const laneLabel = formatLaneLabel(channel.id, language);
-  const laneProfile = targetProfileFromTargetId(channel.targetName);
+  const laneProfile =
+    channel.profileType ?? targetProfileFromTargetId(channel.targetName);
 
   const [mobilePane, setMobilePane] = useState<MobilePane>("main");
 
@@ -571,6 +574,7 @@ export const LaneWorkspace: React.FC<LaneWorkspaceProps> = ({
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto p-3 sm:p-4 hud-panel-contents">
+        <LaneTargetLifts laneId={laneId} isAr={isAr} />
         <SessionControlPanel
           variant="hud"
           channel={channel}

@@ -45,6 +45,7 @@ export interface SessionStartedEvent {
   stageId: string;
   stageOrder: number;
   targetId: string;
+  profileType?: "FIGURE" | "CIRCULAR";
   startedAt: string;
 }
 
@@ -69,6 +70,7 @@ export interface SessionAdvancedEvent {
   fromStageId: string;
   toStageId?: string;
   toStageOrder?: number;
+  profileType?: "FIGURE" | "CIRCULAR";
 }
 
 export interface SessionCompletedEvent {

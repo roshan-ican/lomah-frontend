@@ -102,7 +102,9 @@ export const ShooterDashboard: React.FC<ShooterDashboardProps> = ({
   const laneNumber =
     activeChannel.id?.startsWith("CH-") && activeChannel.id !== "CH-UNASSIGNED"
       ? activeChannel.id.replace("CH-", "")
-      : null;
+      : assignedLaneId != null
+        ? String(assignedLaneId)
+        : null;
   const isAr = language === "ar";
 
   const isMobilePortrait = useMobilePortrait();
@@ -116,7 +118,9 @@ export const ShooterDashboard: React.FC<ShooterDashboardProps> = ({
 
   const showWaitHint = !canShoot;
 
-  const sessionProfile = targetProfileFromTargetId(activeChannel.targetName);
+  const sessionProfile =
+    activeChannel.profileType ??
+    targetProfileFromTargetId(activeChannel.targetName);
   const realShots = activeChannel.shots.filter((s) => !s.isCalibrationMarker);
   const totalShots = realShots.length;
 
@@ -125,7 +129,42 @@ export const ShooterDashboard: React.FC<ShooterDashboardProps> = ({
       ? `${totalShots}/${activeChannel.bulletLimit}`
       : `${totalShots}`;
 
-  const totalScore = realShots.reduce((sum, shot) => sum + shot.score, 0);
+  const targetLabel =
+    sessionProfile === "FIGURE"
+      ? isAr
+        ? "شاخص"
+        : "Silhouette"
+      : sessionProfile === "CIRCULAR"
+        ? isAr
+          ? "دائري"
+          : "Bullseye"
+        : activeChannel.targetName || "-";
+
+  const stageText =
+    activeChannel.stageCount && activeChannel.stageCount > 0
+      ? `${(activeChannel.activeStageOrder ?? 0) + 1}/${activeChannel.stageCount}`
+      : "-";
+
+  const status =
+    activeChannel.sessionStatus === "ACTIVE"
+      ? {
+          label: isAr ? "مباشر" : "Live",
+          cls: "bg-emerald-500/15 text-emerald-500",
+        }
+      : activeChannel.sessionStatus === "PAUSED"
+        ? {
+            label: isAr ? "متوقف" : "Paused",
+            cls: "bg-amber-500/15 text-amber-500",
+          }
+        : activeChannel.sessionStatus === "CREATED"
+          ? {
+              label: isAr ? "جاهز" : "Ready",
+              cls: "bg-[var(--hud-accent-bg-subtle)] hud-accent",
+            }
+          : {
+              label: isAr ? "بانتظار" : "Waiting",
+              cls: "bg-hud-elevated hud-text-secondary",
+            };
 
   return (
     <div className="h-dvh-screen overflow-hidden flex flex-col bg-hud-page hud-text">
@@ -190,32 +229,41 @@ export const ShooterDashboard: React.FC<ShooterDashboardProps> = ({
           }`}
         >
           <div className="range-layout-target flex flex-col min-h-0 px-0.5 sm:px-2 py-0.5 bg-hud-target-stage">
-            <div className="mx-2 mb-2 rounded-xl border border-hud bg-hud-rail px-3 py-4 sm:px-5">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-4 text-center">
-                <div>
-                  <div className="range-stat-label opacity-80">Lane</div>
-                  <div className="range-stat-value">{laneNumber ?? "-"}</div>
-                </div>
-
-                <div>
-                  <div className="range-stat-label opacity-80">Shooter</div>
-                  <div className="range-stat-value truncate">
-                    {loggedInShooter ?? "Unassigned"}
-                  </div>
-                </div>
-
-                <div>
-                  <div className="range-stat-label opacity-80">Shots</div>
-                  <div className="range-stat-value">{roundsText}</div>
-                </div>
-
-                <div>
-                  <div className="range-stat-label opacity-80">Score</div>
-                  <div className="range-stat-value text-emerald-500">
-                    {totalScore}
-                  </div>
-                </div>
-              </div>
+            <div className="mx-2 mb-2 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-2xl border border-hud bg-hud-rail px-4 py-2.5">
+              <span
+                className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${status.cls}`}
+              >
+                <span
+                  className={`w-1.5 h-1.5 rounded-full bg-current ${isLive ? "animate-pulse" : ""}`}
+                />
+                {status.label}
+              </span>
+              {[
+                { k: isAr ? "الحارة" : "Lane", v: laneNumber ?? "–" },
+                {
+                  k: isAr ? "المسافة" : "Distance",
+                  v: activeChannel.distance || "–",
+                },
+                { k: isAr ? "الهدف" : "Target", v: targetLabel },
+                ...(activeChannel.stageCount && activeChannel.stageCount > 1
+                  ? [{ k: isAr ? "المرحلة" : "Stage", v: stageText }]
+                  : []),
+                ...(activeChannel.bulletLimit && activeChannel.bulletLimit > 0
+                  ? [{ k: isAr ? "الطلقات" : "Rounds", v: roundsText }]
+                  : []),
+              ].map((item) => (
+                <span
+                  key={item.k}
+                  className="inline-flex items-baseline gap-1.5 min-w-0"
+                >
+                  <span className="text-[0.7rem] font-medium uppercase tracking-[0.08em] hud-text-secondary">
+                    {item.k}
+                  </span>
+                  <span className="text-base font-semibold tracking-[-0.01em] hud-text tabular-nums truncate">
+                    {item.v}
+                  </span>
+                </span>
+              ))}
             </div>
             <div className="flex-1 min-h-0 target-stage overflow-hidden">
               <div className="target-fit-box h-full">

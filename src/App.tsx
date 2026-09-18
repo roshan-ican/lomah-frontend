@@ -16,9 +16,6 @@ import { AuthStage, AUTH_STAGE_PATH, authStageFromPath } from "./types";
 import { translations, TranslationSet } from "./translations";
 import { clickToSensorCoords } from "./utils/shotCoordinates";
 import {
-  apiFetchJson,
-  ApiError,
-  BACKEND_URL,
   getAuthRole,
   api,
 } from "./utils/api";

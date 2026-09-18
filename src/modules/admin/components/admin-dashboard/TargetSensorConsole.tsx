@@ -103,7 +103,7 @@ export function TargetSensorConsole({
 
   if (!target) {
     return (
-      <div className="hidden md:flex flex-col w-80 border-l border-hud bg-hud-elevated p-4 items-center justify-center text-center">
+      <div className="hidden lg:flex flex-col w-80 border-l border-hud bg-hud-elevated p-4 items-center justify-center text-center">
         <Activity className="w-8 h-8 hud-text-muted mb-2 opacity-50" />
         <p className="admin-text-xs hud-text-muted">
           {isAr
@@ -115,7 +115,7 @@ export function TargetSensorConsole({
   }
 
   return (
-    <div className="hidden md:flex flex-col w-80 border-l border-hud bg-hud-elevated">
+    <div className="flex flex-col w-full lg:w-80 shrink-0 rounded-3xl lg:rounded-none overflow-hidden border lg:border-0 lg:border-l border-hud bg-hud-elevated max-h-[70vh] lg:max-h-none">
       {/* Header */}
       <div className="border-b border-hud p-3 space-y-2">
         <div className="flex items-start justify-between gap-2">

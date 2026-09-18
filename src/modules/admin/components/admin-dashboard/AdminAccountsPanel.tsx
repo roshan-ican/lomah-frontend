@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { RefreshCw, UserPlus, User as UserIcon } from "lucide-react";
+import { Loader2, UserPlus, Users } from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { PageHeader, EmptyState } from "./PageHeader";
 import { api, ApiError } from "../../../../utils/api";
 import { PasswordInput } from "../../../../components/common/PasswordInput";
 import type { AdminSummary, CreateAdminRequest } from "../../../../types";
@@ -36,6 +38,11 @@ export function AdminAccountsPanel({
   /** Shown next to the form, not in the top banner — a toast for "password too
    *  short" is easy to miss while looking at the input that caused it. */
   const [formError, setFormError] = useState<string | null>(null);
+
+  const reduceMotion = useReducedMotion();
+  const spring = reduceMotion
+    ? { duration: 0.15 }
+    : { type: "spring" as const, bounce: 0, duration: 0.35 };
 
   const load = async () => {
     setLoading(true);
@@ -117,169 +124,149 @@ export function AdminAccountsPanel({
     }
   };
 
-  /** Colours only — PasswordInput supplies its own width and padding. */
   const inputSkin =
-    "hud-form-input rounded admin-text-base font-mono disabled:opacity-50";
-  const inputCls = `${inputSkin} px-2.5 py-1.5 w-full`;
+    "hud-form-input rounded-xl admin-text-sm disabled:opacity-50";
+  const inputCls = `${inputSkin} px-3 py-2.5 w-full`;
+  const labelCls =
+    "block admin-text-2xs font-semibold uppercase tracking-[0.14em] hud-text-muted mb-1.5";
+
+  const closeForm = () => {
+    setShowForm(false);
+    setForm(EMPTY_FORM);
+    setFormError(null);
+  };
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-3 gap-2">
-        <div>
-          <h2 className="admin-text-lg font-semibold hud-text">
-            {isAr ? "حسابات المشرفين" : "Admin Accounts"}
-          </h2>
-          <p className="admin-text-2xs hud-text-muted font-mono mt-0.5">
-            {isAr
-              ? "من يستطيع تسجيل الدخول إلى هذا المدى"
-              : "Who can sign in to this range"}
-          </p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={() => void load()}
-            disabled={loading}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg admin-text-2xs font-mono font-bold hud-btn-secondary cursor-pointer transition-colors disabled:opacity-50"
-          >
-            <RefreshCw
-              className={`w-3 h-3 shrink-0 ${loading ? "animate-spin" : ""}`}
-            />
-            {isAr ? "تحديث" : "Refresh"}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setShowForm((v) => !v);
-              setFormError(null);
-            }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5  rounded-lg admin-text-2xs font-mono font-bold hud-btn-primary cursor-pointer transition-colors"
-          >
-            <UserPlus className="w-3 h-3 shrink-0" />
-            {isAr ? "إضافة مشرف" : "Add Admin"}
-          </button>
-        </div>
-      </div>
-
-      {showForm && (
-        <form
-          onSubmit={submit}
-          className="mb-4 p-3 bg-hud-elevated rounded-lg border border-hud space-y-3"
-        >
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <label className="block">
-              <span className="admin-text-2xs font-mono hud-text-subtle uppercase tracking-wider">
-                {isAr ? "اسم المستخدم" : "Username"}
-              </span>
-              <input
-                className={inputCls}
-                value={form.username}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, username: e.target.value }))
-                }
-                disabled={submitting}
-                autoComplete="off"
-                spellCheck={false}
-              />
-            </label>
-            <label className="block">
-              <span className="admin-text-2xs font-mono hud-text-subtle uppercase tracking-wider">
-                {isAr ? "كلمة المرور" : "Password"}
-              </span>
-              {/* Sizing comes from PasswordInput — it reserves room on the
-                  right for the eye, so `inputCls`'s own padding is left off. */}
-              <PasswordInput
-                value={form.password}
-                onChange={(password) => setForm((f) => ({ ...f, password }))}
-                disabled={submitting}
-                autoComplete="new-password"
-                showLockIcon={false}
-                inputClassName={inputSkin}
-                placeholder=""
-              />
-            </label>
-          </div>
-
-          {formError && (
-            <p className="admin-text-2xs font-mono text-red-500">{formError}</p>
-          )}
-
-          <p className="admin-text-2xs font-mono hud-text-subtle">
-            {isAr
-              ? "لا يمكن استرجاع كلمة المرور لاحقًا — سلّمها للمشرف الآن."
-              : "The password cannot be read back later — hand it to the admin now."}
-          </p>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="submit"
-              disabled={submitting}
-              className="px-3 py-1.5 rounded-lg admin-text-2xs font-mono font-bold hud-btn-primary cursor-pointer disabled:opacity-50"
-            >
-              {submitting
-                ? isAr
-                  ? "جارٍ الإنشاء…"
-                  : "Creating…"
-                : isAr
-                  ? "إنشاء الحساب"
-                  : "Create Account"}
-            </button>
+    <section className="space-y-5 pb-8">
+      <PageHeader
+        eyebrow={isAr ? "الوصول" : "Access"}
+        title={isAr ? "المشرفون" : "Admins"}
+        subtitle={isAr ? "من يستطيع تسجيل الدخول." : "Who can sign in to this range."}
+        isAr={isAr}
+        loading={loading}
+        onRefresh={() => void load()}
+        actions={
+          !showForm && (
             <button
               type="button"
               onClick={() => {
-                setShowForm(false);
-                setForm(EMPTY_FORM);
+                setShowForm(true);
                 setFormError(null);
               }}
-              disabled={submitting}
-              className="px-3 py-1.5 rounded-lg admin-text-2xs font-mono hud-btn-secondary cursor-pointer disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl admin-text-xs font-semibold hud-btn-primary transition-transform active:scale-[0.97]"
             >
-              {isAr ? "إلغاء" : "Cancel"}
+              <UserPlus className="w-3.5 h-3.5" />
+              {isAr ? "إضافة" : "Add admin"}
             </button>
-          </div>
-        </form>
-      )}
+          )
+        }
+      />
+
+      <AnimatePresence initial={false}>
+        {showForm && (
+          <motion.form
+            onSubmit={submit}
+            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 }}
+            transition={spring}
+            className="hud-glass rounded-3xl p-4 md:p-5 space-y-4"
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label className="block">
+                <span className={labelCls}>{isAr ? "اسم المستخدم" : "Username"}</span>
+                <input
+                  className={inputCls}
+                  value={form.username}
+                  onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))}
+                  disabled={submitting}
+                  autoComplete="off"
+                  spellCheck={false}
+                  autoFocus
+                />
+              </label>
+              <label className="block">
+                <span className={labelCls}>{isAr ? "كلمة المرور" : "Password"}</span>
+                <PasswordInput
+                  value={form.password}
+                  onChange={(password) => setForm((f) => ({ ...f, password }))}
+                  disabled={submitting}
+                  autoComplete="new-password"
+                  showLockIcon={false}
+                  inputClassName={inputSkin}
+                  placeholder={isAr ? "٨ أحرف على الأقل" : "8+ characters"}
+                />
+              </label>
+            </div>
+
+            {formError && (
+              <p className="admin-text-xs font-medium text-red-500">{formError}</p>
+            )}
+
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <p className="admin-text-2xs hud-text-subtle">
+                {isAr ? "لا يمكن عرض كلمة المرور لاحقًا." : "Password can't be viewed later."}
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={closeForm}
+                  disabled={submitting}
+                  className="px-3.5 py-2 rounded-xl admin-text-xs font-semibold hud-btn-secondary disabled:opacity-50 active:scale-[0.97]"
+                >
+                  {isAr ? "إلغاء" : "Cancel"}
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl admin-text-xs font-semibold hud-btn-primary disabled:opacity-50 active:scale-[0.97]"
+                >
+                  {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  {isAr ? "إنشاء" : "Create"}
+                </button>
+              </div>
+            </div>
+          </motion.form>
+        )}
+      </AnimatePresence>
 
       {admins.length === 0 ? (
-        <div className="px-3 py-4 rounded-lg border border-dashed border-hud text-center">
-          <p className="admin-text-2xs font-mono hud-text-subtle">
-            {loading
-              ? isAr
-                ? "جارٍ التحميل…"
-                : "Loading…"
-              : isAr
-                ? "لم يتم إنشاء أي مشرف بعد. استخدم «إضافة مشرف» أعلاه."
-                : "No admins created yet. Use Add Admin above."}
-          </p>
-        </div>
+        loading ? (
+          <div className="min-h-56 grid place-items-center rounded-3xl border border-hud hud-glass">
+            <Loader2 className="w-6 h-6 animate-spin hud-accent" />
+          </div>
+        ) : (
+          <EmptyState
+            icon={<Users className="w-9 h-9" />}
+            title={isAr ? "لا يوجد مشرفون" : "No admins yet"}
+            hint={isAr ? "أضف أول مشرف." : "Add the first one above."}
+          />
+        )
       ) : (
-        <div className="space-y-1.5">
+        <div className="hud-glass rounded-3xl p-2.5">
           {admins.map((admin) => (
             <div
               key={admin.id}
-              className="flex items-center justify-between gap-2 px-3 py-2 bg-hud-elevated rounded-lg border border-hud"
+              className="flex items-center gap-3 rounded-2xl px-3 py-3"
             >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <span className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 bg-[var(--hud-accent-bg-subtle)] hud-accent">
-                  <UserIcon className="w-3 h-3" />
-                </span>
-                <div className="min-w-0">
-                  <p className="admin-text-base font-mono hud-text truncate">
-                    {admin.username}
-                  </p>
-                  <p className="admin-text-2xs font-mono hud-text-subtle">
-                    {isAr ? "أُنشئ" : "Created"}{" "}
-                    {new Date(admin.createdAt).toLocaleDateString()}
-                  </p>
-                </div>
+              <span className="grid place-items-center w-9 h-9 rounded-xl shrink-0 bg-[var(--hud-accent-bg-subtle)] hud-accent admin-text-sm font-bold uppercase">
+                {admin.username.slice(0, 1)}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="admin-text-sm font-semibold hud-text truncate">
+                  {admin.username}
+                </p>
+                <p className="admin-text-2xs hud-text-muted mt-0.5">
+                  {new Date(admin.createdAt).toLocaleDateString()}
+                </p>
               </div>
-              <span className="px-1.5 py-0.5 rounded admin-text-2xs font-mono shrink-0 bg-[var(--hud-accent-bg-subtle)] hud-accent">
-                {isAr ? "مشرف" : "ADMIN"}
+              <span className="rounded-full bg-hud-elevated px-3 py-1 admin-text-2xs font-semibold hud-text-muted">
+                {isAr ? "مشرف" : "Admin"}
               </span>
             </div>
           ))}
         </div>
       )}
-    </div>
+    </section>
   );
 }

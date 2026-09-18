@@ -105,7 +105,7 @@ function applyApiSessionToChannel(
           },
           undefined,
           laneId,
-          targetProfileFromTargetId(stage?.targetId),
+          stage?.profileType ?? targetProfileFromTargetId(stage?.targetId),
           // Server score wins — it was computed against this stage's profile
           // snapshot, which the client cannot reconstruct after a re-face.
           sh.score,
@@ -126,6 +126,7 @@ function applyApiSessionToChannel(
     durationSeconds: stage?.durationSeconds,
     totalPausedMs: activeSession.totalPausedMs ?? 0,
     targetName: stage?.targetId ?? ch.targetName,
+    profileType: stage?.profileType ?? ch.profileType,
     // Read off the stage's own target, so advancing from 100m to 300m actually
     // moves the label. Falls back to whatever the lane was showing when the
     // payload has no target selected on it.

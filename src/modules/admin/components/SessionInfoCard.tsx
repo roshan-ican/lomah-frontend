@@ -40,7 +40,8 @@ const SessionInfoCard = ({
       {isAr ? "الهدف:" : "Target:"}{" "}
       <strong>
         {targetProfileLabel(
-          targetProfileFromTargetId(channel.targetName),
+          channel.profileType ??
+            targetProfileFromTargetId(channel.targetName),
           isAr ? "ar" : "en",
         )}{" "}
         ({channel.distance})

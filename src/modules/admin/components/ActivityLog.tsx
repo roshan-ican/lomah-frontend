@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Activity, ChevronDown, ChevronUp } from "lucide-react";
-import { getBorderColor, getLabelColor, type LogTone } from "./logTones";
+import { getLabelColor, type LogTone } from "./logTones";
 
 interface ActivityLogProps {
   logs: string[];
@@ -169,7 +169,7 @@ export const ActivityLog: React.FC<ActivityLogProps> = ({
   }, []);
 
   return (
-    <div className={`shrink-0 border-t border-hud mt-3 ${className}`}>
+    <div className={`shrink-0 mt-3 ${className}`}>
       {!collapsed && (
         <div
           onPointerDown={onHandleDown}
@@ -215,11 +215,11 @@ export const ActivityLog: React.FC<ActivityLogProps> = ({
 
       {!collapsed && (
         <div
-          className="space-y-0.5 overflow-y-auto"
+          className="overflow-y-auto"
           // Explicit height, not min/max: the log shares a flex column with a
           // greedy flex-1 sibling, and a content-sized list renders as a
           // sliver there no matter how much room is free.
-          style={{ height, fontSize: "10px" }}
+          style={{ height }}
         >
           {rows.length === 0 ? (
             <p className="font-mono admin-text-3xs hud-text-muted italic">
@@ -232,15 +232,19 @@ export const ActivityLog: React.FC<ActivityLogProps> = ({
               return (
                 <div
                   key={idx}
-                  className={`flex items-start gap-1.5 px-1.5 py-1 rounded border font-mono ${getBorderColor(tone)}`}
+                  className="flex items-baseline gap-3 px-2 py-1.5 rounded odd:bg-black/[0.03] dark:odd:bg-white/[0.03] hover:bg-black/5 dark:hover:bg-white/5"
                 >
+                  {time && (
+                    <span className="font-mono text-xs hud-text-subtle tabular-nums shrink-0">
+                      {time}
+                    </span>
+                  )}
                   <span
-                    className={`admin-text-2xs px-1 rounded font-bold shrink-0 ${getLabelColor(tone)}`}
+                    className={`font-mono text-[11px] px-1.5 py-0.5 rounded font-bold shrink-0 min-w-[6.5rem] text-center ${getLabelColor(tone)}`}
                   >
                     {categoryOf(rest)}
                   </span>
-                  <span className="admin-text-2xs break-all leading-snug">
-                    {time && <span className="hud-text-subtle">[{time}] </span>}
+                  <span className="text-[13px] hud-text break-words leading-relaxed min-w-0">
                     {renderHex(rest)}
                   </span>
                 </div>
