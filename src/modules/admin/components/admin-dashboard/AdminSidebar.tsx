@@ -16,7 +16,7 @@ import type { TranslationSet } from "../../../../translations";
 import type { AdminTab, SensorGate } from "./types";
 import { api } from "../../../../utils/api";
 import type { SystemInfo } from "../../../../types";
-import { liftAllTargets } from "./TargetLiftSwitch";
+import { liftAllMessage, liftAllTargets } from "./TargetLiftSwitch";
 
 interface Props {
   navOpen: boolean;
@@ -55,27 +55,8 @@ export function AdminSidebar({
     setLiftBusy(position);
     try {
       const r = await liftAllTargets(position);
-      const verb =
-        position === "UP"
-          ? isAr
-            ? "رُفعت"
-            : "raised"
-          : isAr
-            ? "خُفضت"
-            : "lowered";
-      if (r.failed.length === 0) {
-        onNotice(
-          isAr
-            ? `${verb} كل الأهداف (${r.moved})`
-            : `All ${r.moved} targets ${verb}`,
-        );
-      } else {
-        onError(
-          isAr
-            ? `${verb} ${r.moved}/${r.total} — تعذّر: ${r.failed.join(", ")}`
-            : `${r.moved}/${r.total} ${verb}. No answer from: ${r.failed.join(", ")}`,
-        );
-      }
+      const m = liftAllMessage(r, position, isAr);
+      (m.ok ? onNotice : onError)(m.text);
     } catch (err) {
       onError(err instanceof Error ? err.message : "Failed");
     } finally {

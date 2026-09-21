@@ -19,7 +19,7 @@ import { TargetSensitivityPanel } from "./TargetSensitivityPanel";
 import { TargetSensorConsole, type SensorPacket } from "./TargetSensorConsole";
 import { TELEMETRY_ONLINE_MS } from "./useConnectedLanes";
 import { PageHeader } from "./PageHeader";
-import { TargetLiftSwitch, liftAllTargets } from "./TargetLiftSwitch";
+import { TargetLiftSwitch, liftAllMessage, liftAllTargets } from "./TargetLiftSwitch";
 import type {
   Lane,
   LaneStatus,
@@ -118,27 +118,8 @@ export function LaneHardwarePanel({
     setLiftAllBusy(position);
     try {
       const r = await liftAllTargets(position);
-      const verb =
-        position === "UP"
-          ? isAr
-            ? "رُفعت"
-            : "raised"
-          : isAr
-            ? "خُفضت"
-            : "lowered";
-      if (r.failed.length === 0) {
-        triggerSuccessBanner(
-          isAr
-            ? `${verb} كل الأهداف (${r.moved})`
-            : `All ${r.moved} targets ${verb}`,
-        );
-      } else {
-        triggerErrorBanner(
-          isAr
-            ? `${verb} ${r.moved}/${r.total} — تعذّر: ${r.failed.join(", ")}`
-            : `${r.moved}/${r.total} ${verb}. No answer from: ${r.failed.join(", ")}`,
-        );
-      }
+      const m = liftAllMessage(r, position, isAr);
+      (m.ok ? triggerSuccessBanner : triggerErrorBanner)(m.text);
     } catch (err) {
       triggerErrorBanner(err instanceof Error ? err.message : "Failed");
     } finally {

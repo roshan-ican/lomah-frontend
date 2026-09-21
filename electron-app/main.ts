@@ -796,7 +796,10 @@ function createWindow(url: string) {
   });
 
   win.webContents.on("before-input-event", (event, input) => {
-    if (input.key === "F12") {
+    const devToolsKey =
+      input.key === "F12" ||
+      (input.control && input.shift && input.key.toLowerCase() === "i");
+    if (devToolsKey && input.type === "keyDown") {
       win?.webContents.toggleDevTools();
     }
     // The window opens full screen, so there has to be a way back — and it has
