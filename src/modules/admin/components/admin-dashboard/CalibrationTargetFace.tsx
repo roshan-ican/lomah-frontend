@@ -1,3 +1,4 @@
+import { BullseyeTarget } from "../../../shooter/components/target-view/BullseyeTarget";
 import { useRef } from "react";
 import {
   clientToSvgPoint,
@@ -62,6 +63,8 @@ interface Props {
    *  the fullscreen view rather than marking, and announcing "click to mark"
    *  there would describe the wrong action. */
   hint?: string;
+  /** Widen the view to include reads that landed off the paper. */
+  fitReads?: boolean;
 }
 
 const clamp = (v: number, half: number) => Math.max(-half, Math.min(half, v));
@@ -96,6 +99,7 @@ export function CalibrationTargetFace({
   size = 240,
   connectReads = false,
   hint,
+  fitReads = false,
 }: Props) {
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -156,10 +160,24 @@ export function CalibrationTargetFace({
     trueMarked &&
     (Math.abs(seenPt.x - truePt.x) > 1 || Math.abs(seenPt.y - truePt.y) > 1);
 
+  const viewBox = (() => {
+    if (!fitReads) return `0 0 ${SVG_VIEW_SIZE} ${SVG_VIEW_SIZE}`;
+    const pts = reads.map((r) => mmToSvgPoint(r.sensorX + offsetXmm, r.sensorY + offsetYmm));
+    const pad = 20;
+    const minX = Math.min(0, ...pts.map((p) => p.x - pad));
+    const minY = Math.min(0, ...pts.map((p) => p.y - pad));
+    const maxX = Math.max(SVG_VIEW_SIZE, ...pts.map((p) => p.x + pad));
+    const maxY = Math.max(SVG_VIEW_SIZE, ...pts.map((p) => p.y + pad));
+    const side = Math.max(maxX - minX, maxY - minY);
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
+    return `${cx - side / 2} ${cy - side / 2} ${side} ${side}`;
+  })();
+
   return (
     <svg
       ref={svgRef}
-      viewBox={`0 0 ${SVG_VIEW_SIZE} ${SVG_VIEW_SIZE}`}
+      viewBox={viewBox}
       style={{ width: size, height: size }}
       onClick={(e) => pick(e.clientX, e.clientY)}
       role="img"
@@ -169,7 +187,7 @@ export function CalibrationTargetFace({
           ? "وجه الهدف — انقر لتحديد موضع الطلقة الحقيقي"
           : "Target face — click to mark where the bullet really landed")
       }
-      className={`shrink-0 rounded border border-hud bg-black/20 ${
+      className={`shrink-0 rounded-lg bg-black ${
         disabled ? "opacity-50" : "cursor-crosshair"
       }`}
     >
@@ -193,18 +211,7 @@ export function CalibrationTargetFace({
           preserveAspectRatio="xMidYMid meet"
         />
       ) : (
-        [180, 160, 140, 120, 100, 80, 60, 40, 20].map((r, i) => (
-          <circle
-            key={r}
-            cx={200}
-            cy={200}
-            r={r}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={1}
-            opacity={0.3 + i * 0.05}
-          />
-        ))
+        <BullseyeTarget isDarkMode />
       )}
 
       {/* Paper edge and the (0, 0) axes — without them a click is a guess at

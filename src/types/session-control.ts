@@ -1,3 +1,4 @@
+import type { StageMode, StageModeConfig } from "../utils/stageMode";
 import { TranslationSet } from "../translations";
 import { ActiveShooterChannel, LaneScheduleView, Shooter } from "../types";
 
@@ -15,6 +16,8 @@ export interface StagePlanConfig {
    *  0: the API's @Min(1) rejects that, so an unlimited stage omits the key. */
   bulletLimit?: number;
   durationSeconds?: number;
+  mode?: StageMode;
+  modeConfig?: StageModeConfig;
 }
 
 /** What the "configure session" form produces. */

@@ -139,6 +139,8 @@ export interface WiperPageValues {
   page: WiperPage;
   /** Length 5, each 0-255, wipers 1-5 in array order. */
   values: number[];
+  /** Officer-saved default for this page, or null if none saved yet. */
+  defaults?: number[] | null;
   readAt: string;
   /** The 'G'/'W' round trip that produced these values, for the packet log. */
   txHex: string;

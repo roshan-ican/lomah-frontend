@@ -1194,10 +1194,12 @@ body,
     }
 
     .range-layout-rail {
+      position: relative;
       flex: 0 0 auto;
-      width: min(28rem, 38vw);
-      min-width: 16rem;
-      max-width: 28rem;
+      width: var(--rail-width, min(32rem, 42vw));
+      transition: width 260ms cubic-bezier(0.22, 1, 0.36, 1);
+      min-width: 18rem;
+      max-width: 60vw;
       border-top: none;
       border-left: 1px solid var(--hud-accent-border);
     }
@@ -1576,11 +1578,15 @@ button:not(:disabled):not([data-no-press]):active,
     min-height: 2.75rem;
   }
 
-  button:has(> svg:only-child) {
-    min-width: 2.75rem;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+  /* Layered so a button's own justify-*/display utilities win: `:only-child`
+     ignores text nodes, so "icon + bare text" buttons match this too. */
+  @layer base {
+    button:has(> svg:only-child) {
+      min-width: 2.75rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
   }
 }
 
@@ -1750,5 +1756,15 @@ html[lang="ar"] .range-stat-value {
      550px and left roughly 900px of a 1440px-tall screen unused. */
   .report-stage-h {
     height: clamp(24rem, 58vh, 46rem);
+  }
+}
+
+html[data-rail-dragging] .range-layout-rail {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .range-layout-rail {
+    transition: none;
   }
 }

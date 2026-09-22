@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Loader2, RefreshCw, RotateCcw, Save } from "lucide-react";
 import { api } from "../../../../utils/api";
 import { ConfirmDialog } from "../../../../components/common/ConfirmDialog";
 import type { Target, WiperPage, WiperPageValues } from "../../../../types";
@@ -63,6 +63,9 @@ export function TargetSensitivityPanel({
 }: Props) {
   const [page, setPage] = useState<WiperPage>("A");
   const [values, setValues] = useState<number[] | null>(null);
+  const [defaults, setDefaults] = useState<number[] | null>(null);
+  const [pendingBulk, setPendingBulk] = useState<"save" | "reset" | null>(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
   const [loading, setLoading] = useState(false);
   /** What the last failed read actually said. Kept so the panel can show the
    *  board's own reason instead of a generic "unreachable" that hides which
@@ -89,6 +92,7 @@ export function TargetSensitivityPanel({
         `/targets/${target.id}/wipers?page=${forPage}`,
       );
       setValues(result.values);
+      setDefaults(result.defaults ?? null);
       onPacket?.(
         target.id,
         "G",
@@ -208,19 +212,63 @@ export function TargetSensitivityPanel({
 
   const displayed = (i: number): number => drafts.get(i) ?? values?.[i] ?? 0;
 
+  const atDefault =
+    !!defaults && !!values && defaults.every((v, i) => v === values[i]);
+
+  const doBulk = async () => {
+    const action = pendingBulk;
+    setPendingBulk(null);
+    if (!action) return;
+    setBulkBusy(true);
+    try {
+      const result = await api.post<WiperPageValues>(
+        `/targets/${target.id}/wipers/${action === "save" ? "default" : "reset"}`,
+        { page },
+      );
+      setValues(result.values);
+      setDefaults(result.defaults ?? null);
+      setDrafts(new Map());
+      const summary = result.values.map((v, i) => `${page}${i + 1}=${v}`).join(" ");
+      addAdminLog?.(
+        action === "save"
+          ? `SENSITIVITY DEFAULT: ${target.label} Calibration ${page} saved (${summary})`
+          : `SENSITIVITY RESET: ${target.label} Calibration ${page} restored (${summary})`,
+      );
+      onNotice(
+        action === "save"
+          ? isAr ? "تم حفظ القيم كافتراضية" : "Saved as default"
+          : isAr ? "تمت الاستعادة للقيم الافتراضية" : "Reset to default",
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Request failed";
+      onNotice(isAr ? `خطأ: ${msg}` : `Error: ${msg}`);
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  const commitKeys = ["ArrowLeft", "ArrowRight", "Home", "End", "PageUp", "PageDown"];
+  const actionCls =
+    "flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-2 rounded-lg admin-text-xs font-mono font-bold hud-btn-secondary cursor-pointer active:scale-[0.97] transition-transform duration-100 disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100";
+
   return (
-    <div className="rounded-lg border border-hud bg-hud-elevated/60 p-3 space-y-2.5">
+    <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1">
+        <div
+          role="tablist"
+          className="inline-flex p-0.5 rounded-lg bg-black/30 border border-hud/60"
+        >
           {PAGES.map((p) => (
             <button
               key={p}
               type="button"
+              role="tab"
+              aria-selected={page === p}
               onClick={() => setPage(p)}
-              disabled={loading}
-              className={`px-2.5 py-1 rounded admin-text-xs font-mono font-bold cursor-pointer transition-colors disabled:cursor-wait ${
+              disabled={loading || bulkBusy}
+              className={`px-3 py-1 rounded-md admin-text-xs font-mono font-bold cursor-pointer transition-colors duration-150 disabled:cursor-wait ${
                 page === p
-                  ? "hud-accent bg-[var(--hud-accent-bg-subtle)]"
+                  ? "hud-accent bg-[var(--hud-accent-bg-subtle)] shadow-sm"
                   : "hud-text-subtle hover:hud-text"
               }`}
             >
@@ -231,128 +279,162 @@ export function TargetSensitivityPanel({
         <button
           type="button"
           onClick={() => void load(page)}
-          disabled={loading}
+          disabled={loading || bulkBusy}
           title={isAr ? "إعادة القراءة من الجهاز" : "Re-read from the board"}
-          className="inline-flex items-center gap-1.5 px-2 py-1 rounded admin-text-xs font-mono hud-text-subtle hover:hud-text cursor-pointer disabled:opacity-50 transition-colors"
+          aria-label={isAr ? "تحديث" : "Refresh"}
+          className="p-1.5 rounded-lg hud-text-subtle hover:hud-text hover:bg-hud-elevated cursor-pointer active:scale-[0.94] transition-transform duration-100 disabled:opacity-50"
         >
-          {loading ? (
-            <Loader2 className="w-3 h-3 animate-spin" />
-          ) : (
-            <RefreshCw className="w-3 h-3" />
-          )}
-          {isAr ? "تحديث" : "Refresh"}
+          {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
         </button>
       </div>
 
       {values === null && !loading ? (
-        <div className="space-y-1">
+        <div className="space-y-1 p-3 rounded-lg bg-[var(--hud-warning-bg)]">
           <p className="admin-text-xs font-mono text-amber-500">
             {isAr
               ? "تعذّرت قراءة الحساسية — تحقّق من أن الهدف متصل."
               : "Could not read sensitivity — check that the board is reachable."}
           </p>
           {readError && (
-            <p className="admin-text-2xs font-mono text-amber-500/70 break-words">
-              {readError}
-            </p>
+            <p className="admin-text-2xs font-mono text-amber-500/70 break-words">{readError}</p>
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
+        <div className="space-y-3">
           {Array.from({ length: WIPER_COUNT }, (_v, i) => i).map((i) => {
-            const busy = savingWiper === i || loading || pendingCommit !== null;
+            const busy = savingWiper === i || loading || bulkBusy || pendingCommit !== null;
             const val = displayed(i);
+            const differs = defaults && values && defaults[i] !== val;
             return (
-              <div key={i} className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="admin-text-2xs font-mono hud-text-subtle uppercase tracking-wider">
-                    {page}
-                    {i + 1}
-                  </span>
-                  <span className="admin-text-2xs font-mono hud-text tabular-nums">
-                    {savingWiper === i ? (
-                      <Loader2 className="w-3 h-3 animate-spin inline" />
-                    ) : (
-                      val
-                    )}
-                  </span>
-                </div>
+              <div key={i} className="grid grid-cols-[2rem_1fr_3.5rem] items-center gap-3">
+                <span className="admin-text-xs font-mono font-bold hud-text-secondary">
+                  {page}
+                  {i + 1}
+                </span>
                 <input
                   type="range"
                   min={0}
                   max={255}
                   step={1}
                   value={val}
+                  aria-label={`${page}${i + 1}`}
                   disabled={busy || values === null}
                   className="hud-form-range w-full"
-                  onChange={(e) =>
-                    setDrafts((prev) =>
-                      new Map(prev).set(i, Number(e.target.value)),
-                    )
-                  }
-                  // Commit on release/blur, never on every onChange — dragging
-                  // fires dozens of change events, and each commit here is a
-                  // ~750ms serialised UDP write. Committing per-pixel would
-                  // back the per-target queue up for the better part of a
-                  // minute for one drag.
-                  onPointerUp={(e) =>
-                    void requestCommitWiper(
-                      i,
-                      Number((e.target as HTMLInputElement).value),
-                    )
-                  }
+                  onChange={(e) => setDrafts((prev) => new Map(prev).set(i, Number(e.target.value)))}
+                  onPointerUp={(e) => void requestCommitWiper(i, Number((e.target as HTMLInputElement).value))}
                   onKeyUp={(e) => {
-                    if (
-                      [
-                        "ArrowLeft",
-                        "ArrowRight",
-                        "Home",
-                        "End",
-                        "PageUp",
-                        "PageDown",
-                      ].includes(e.key)
-                    ) {
-                      void requestCommitWiper(
-                        i,
-                        Number((e.target as HTMLInputElement).value),
-                      );
+                    if (commitKeys.includes(e.key)) {
+                      void requestCommitWiper(i, Number((e.target as HTMLInputElement).value));
                     }
                   }}
                 />
-                <input
-                  type="number"
-                  min={0}
-                  max={255}
-                  value={val}
-                  disabled={busy || values === null}
-                  onChange={(e) =>
-                    setDrafts((prev) =>
-                      new Map(prev).set(
-                        i,
-                        Math.max(0, Math.min(255, Number(e.target.value) || 0)),
-                      ),
-                    )
-                  }
-                  onBlur={(e) =>
-                    void requestCommitWiper(i, Number(e.target.value) || 0)
-                  }
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter")
-                      (e.target as HTMLInputElement).blur();
-                  }}
-                  className="w-full text-center admin-text-xs font-mono px-1.5 py-1 rounded border border-hud/40 bg-transparent hover:border-hud focus:border-[var(--hud-accent-border)] outline-none transition-colors disabled:opacity-50"
-                />
+                <div className="relative">
+                  {savingWiper === i ? (
+                    <div className="flex justify-center py-1">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin hud-accent" />
+                    </div>
+                  ) : (
+                    <input
+                      type="number"
+                      min={0}
+                      max={255}
+                      value={val}
+                      disabled={busy || values === null}
+                      onChange={(e) =>
+                        setDrafts((prev) =>
+                          new Map(prev).set(i, Math.max(0, Math.min(255, Number(e.target.value) || 0))),
+                        )
+                      }
+                      onBlur={(e) => void requestCommitWiper(i, Number(e.target.value) || 0)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                      }}
+                      className="w-full text-center admin-text-xs font-mono tabular-nums px-1 py-1 rounded-md border border-hud/40 bg-black/20 hover:border-hud focus:border-[var(--hud-accent-border)] outline-none transition-colors disabled:opacity-50"
+                    />
+                  )}
+                  {differs && (
+                    <span
+                      title={isAr ? `الافتراضي ${defaults![i]}` : `Default ${defaults![i]}`}
+                      className="absolute -top-1 -end-1 w-1.5 h-1.5 rounded-full bg-amber-500"
+                    />
+                  )}
+                </div>
               </div>
             );
           })}
         </div>
       )}
 
-      <p className="admin-text-2xs font-mono hud-text-subtle leading-relaxed pt-1 border-t border-hud/40">
-        {isAr
-          ? "لا يوجد توثيق لربط الحساسات بالمقاومات المتغيرة. غيّر قيمة واحدة، شغّل اختبار الهدف، ولاحظ الأثر. القيم مباشرة من الجهاز ولا تُحفظ في أي مكان."
-          : "Wiper→sensor mapping is not documented. Change one value, run a self-test, and observe. Values are live on the board and are not saved anywhere."}
+      <div className="flex gap-2 pt-1">
+        <button
+          type="button"
+          onClick={() => setPendingBulk("save")}
+          disabled={loading || bulkBusy || values === null || atDefault}
+          title={isAr ? "حفظ القيم الحالية كافتراضية لهذا الهدف" : "Save the current values as this target's default"}
+          className={actionCls}
+        >
+          <Save className="w-3.5 h-3.5" />
+          {isAr ? "حفظ كافتراضي" : "Save as default"}
+        </button>
+        <button
+          type="button"
+          onClick={() => setPendingBulk("reset")}
+          disabled={loading || bulkBusy || !defaults || atDefault}
+          title={defaults ? undefined : isAr ? "لا توجد قيم افتراضية محفوظة" : "No default saved yet"}
+          className={actionCls}
+        >
+          {bulkBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5" />}
+          {isAr ? "استعادة" : "Reset"}
+        </button>
+      </div>
+
+      {bulkBusy && (
+        <p className="admin-text-2xs font-mono hud-accent">
+          {isAr
+            ? "جارٍ الكتابة إلى الجهاز — حوالي ١٠ ث لكل قيمة. الجهاز يتوقف عن الرد بعد كل كتابة، لذا يتم التأكد بإعادة القراءة. لا تغلق هذه اللوحة."
+            : "Writing to the board — about 10s per value. The board goes silent after each write, so every value is confirmed by a re-read. Keep this panel open."}
+        </p>
+      )}
+
+      <p className="admin-text-2xs font-mono hud-text-muted leading-relaxed">
+        {defaults
+          ? isAr
+            ? `الافتراضي المحفوظ: ${defaults.join("، ")}${atDefault ? " — مطابق" : ""}`
+            : `Saved default: ${defaults.join(", ")}${atDefault ? " — matches board" : ""}`
+          : isAr
+            ? "لا يوجد افتراضي محفوظ لهذه الصفحة بعد."
+            : "No default saved for this page yet."}
       </p>
+
+      <p className="admin-text-2xs font-mono hud-text-subtle leading-relaxed pt-3 border-t border-hud/40">
+        {isAr
+          ? "لا يوجد توثيق لربط الحساسات بالمقاومات. غيّر قيمة واحدة، أطلق طلقة، واقرأها على الوجه."
+          : "Wiper→sensor mapping is undocumented. Change one value, fire a round, and read it back on the face."}
+      </p>
+
+      <ConfirmDialog
+        open={pendingBulk !== null}
+        title={
+          pendingBulk === "save"
+            ? isAr ? "حفظ كافتراضي" : "Save as Default"
+            : isAr ? "استعادة الافتراضي" : "Reset to Default"
+        }
+        message={
+          pendingBulk === "save"
+            ? isAr
+              ? `حفظ قيم المعايرة ${page} الحالية (${values?.join("، ")}) كافتراضية للهدف ${target.label}؟`
+              : `Save the current Calibration ${page} values (${values?.join(", ")}) as ${target.label}'s default?`
+            : isAr
+              ? `إعادة المعايرة ${page} للهدف ${target.label} إلى (${defaults?.join("، ")})؟`
+              : `Reset Calibration ${page} on ${target.label} to (${defaults?.join(", ")})?`
+        }
+        language={isAr ? "ar" : "en"}
+        confirmLabel={pendingBulk === "save" ? (isAr ? "حفظ" : "Save") : (isAr ? "استعادة" : "Reset")}
+        cancelLabel={isAr ? "إلغاء" : "Cancel"}
+        variant="primary"
+        onConfirm={() => void doBulk()}
+        onCancel={() => setPendingBulk(null)}
+      />
 
       <ConfirmDialog
         open={pendingCommit !== null}

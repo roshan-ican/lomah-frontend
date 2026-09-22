@@ -33,6 +33,7 @@ interface RangeControlRailProps {
    *  while the admin edits the values). */
   onStartEditOffset: () => void;
   onResetOffset: () => void;
+  onClose?: () => void;
 }
 
 export const RangeControlRail: React.FC<RangeControlRailProps> = ({
@@ -50,6 +51,7 @@ export const RangeControlRail: React.FC<RangeControlRailProps> = ({
   onDiscardReadySession,
   onStartEditOffset,
   onResetOffset,
+  onClose,
 }) => {
   const isAr = language === "ar";
 
@@ -173,17 +175,25 @@ export const RangeControlRail: React.FC<RangeControlRailProps> = ({
             {laneLabel}
           </span>
 
-          {isLive ? (
-            <span className="range-rail-label hud-success flex items-center gap-1 shrink-0">
-              <span className="w-1.5 h-1.5 rounded-full bg-[var(--hud-success)] animate-pulse" />
-
-              {isAr ? "مباشر" : "Live"}
-            </span>
-          ) : (
-            <span className="range-rail-label hud-text-subtle shrink-0">
-              {""}
-            </span>
-          )}
+          <div className="flex items-center gap-2 shrink-0">
+            {isLive && (
+              <span className="range-rail-label hud-success flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--hud-success)] animate-pulse" />
+                {isAr ? "مباشر" : "Live"}
+              </span>
+            )}
+            {onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                title={isAr ? "إغلاق اللوحة" : "Close panel"}
+                aria-label={isAr ? "إغلاق اللوحة" : "Close panel"}
+                className="hidden md:inline-flex items-center justify-center p-1 rounded hud-text-muted hover:hud-text hover:bg-hud-elevated cursor-pointer active:scale-[0.94] transition-transform duration-100"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
 
         <p className="range-rail-meta truncate">

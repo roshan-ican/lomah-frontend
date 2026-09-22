@@ -27,6 +27,17 @@ export interface SessionStage {
   /** Snapshot of the target's face at stage creation — re-facing a target
    *  later must not rescore a stage that already happened. */
   profileType: TargetProfileType;
+  mode?: "STATIC" | "TIMELINE" | "REACTIVE" | "COMBINED";
+  modeConfig?: {
+    preset?: "PEEKABOO" | "DROP_AFTER_N" | "SNAP" | "CUSTOM";
+    timeline?: { repeat: number; upForMs: number[]; downForMs: number };
+    rules?: Array<{
+      when: "hits";
+      zone?: "CENTER" | "MIDDLE" | "OUTER" | "SILHOUETTE";
+      count: number;
+      then: "DROP_AND_HOLD" | "DROP_AND_RESUME" | "END_STAGE";
+    }>;
+  } | null;
   shots?: Shot[];
   /** The commissioned target this stage engages, enough of it to label the
    *  stage without a second round trip. Reachability fields (ipAddress,

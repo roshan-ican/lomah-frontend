@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import type { StageMode, StageModeConfig } from "../utils/stageMode";
+import { StageBehaviourBanner } from "./StageBehaviourBanner";
 import {
   AlertTriangle,
   Camera,
@@ -50,6 +52,8 @@ interface StationSession {
   startedAt?: string;
   totalPausedMs?: number;
   notes?: string;
+  mode?: StageMode;
+  modeConfig?: StageModeConfig | null;
 }
 
 type RecognitionStatus =
@@ -472,6 +476,8 @@ export function StationTerminal() {
         startedAt: stage?.startedAt ?? undefined,
         totalPausedMs: record.totalPausedMs,
         notes: record.notes ?? undefined,
+        mode: stage?.mode,
+        modeConfig: stage?.modeConfig,
       });
 
       setActiveChannel((prev) => ({
@@ -1420,6 +1426,13 @@ export function StationTerminal() {
           {session?.bulletLimit ? `${session.bulletLimit} RDS` : "UNLIMITED"}
         </span>
       </div>
+
+      <StageBehaviourBanner
+        stageId={session?.stageId}
+        mode={session?.mode}
+        config={session?.modeConfig}
+        isAr={isAr}
+      />
 
       <ShooterDashboard
         activeChannel={activeChannel}

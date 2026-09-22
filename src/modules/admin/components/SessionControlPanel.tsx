@@ -38,6 +38,15 @@ import { slotCode } from "../../../utils/rangeAddressing";
 import { TargetFacePreview } from "../../../components/common/TargetFacePreview";
 import type { Lane, Target } from "../../../types";
 import { getLaneIdFromChannelId } from "../../../utils/helper";
+import { StageBehaviour } from "./StageBehaviour";
+import {
+  MAX_TOTAL_SECONDS,
+  modeSentence,
+  timelineError,
+  timelineTotalSeconds,
+  type StageMode,
+  type StageModeConfig,
+} from "../../../utils/stageMode";
 
 /** 0 is "no clock" — see StageMonitorService, which skips those stages. */
 const DURATION_PRESETS = [
@@ -71,6 +80,8 @@ interface StageDraft {
   targetId: string;
   bulletLimit: number;
   durationSeconds: number;
+  mode: StageMode;
+  modeConfig: StageModeConfig;
 }
 
 let stageKeySeq = 0;
@@ -82,6 +93,8 @@ function makeStage(targetId: string): StageDraft {
     targetId,
     bulletLimit: 0,
     durationSeconds: DEFAULT_STAGE_SECONDS,
+    mode: "STATIC",
+    modeConfig: {},
   };
 }
 
@@ -94,11 +107,21 @@ function makeStage(targetId: string): StageDraft {
  * would let the column default (600) apply and quietly put a ten-minute timer
  * on a stage the admin asked to leave open.
  */
+function stageSeconds(draft: StageDraft): number {
+  if (draft.modeConfig.timeline) return timelineTotalSeconds(draft.modeConfig.timeline);
+  if (draft.mode === "REACTIVE") return MAX_TOTAL_SECONDS;
+  return draft.durationSeconds;
+}
+
 function toStagePlan(draft: StageDraft): StagePlanConfig {
   return {
     targetId: draft.targetId,
     bulletLimit: draft.bulletLimit > 0 ? draft.bulletLimit : undefined,
-    durationSeconds: draft.durationSeconds,
+    durationSeconds: stageSeconds(draft),
+    ...(draft.mode !== "STATIC" && {
+      mode: draft.mode,
+      modeConfig: draft.modeConfig,
+    }),
   };
 }
 
@@ -242,6 +265,13 @@ const StageCard: React.FC<{
         </div>
       </div>
 
+      <StageBehaviour
+        mode={stage.mode}
+        config={stage.modeConfig}
+        isAr={isAr}
+        onChange={(mode, modeConfig) => onPatch(index, { mode, modeConfig })}
+      />
+
       <div className="grid grid-cols-2 gap-2">
         <div>
           <label className="block hud-text-subtle mb-1 font-mono uppercase admin-text-2xs">
@@ -280,6 +310,19 @@ const StageCard: React.FC<{
           <label className="block hud-text-subtle mb-1 font-mono uppercase admin-text-2xs">
             {isAr ? "المدة" : "Time"}
           </label>
+          {stage.modeConfig.timeline ? (
+            <div className="px-2 py-1.5 rounded admin-text-2xs font-mono border border-hud hud-text-muted">
+              {isAr
+                ? `~${timelineTotalSeconds(stage.modeConfig.timeline)} ث (من البرنامج)`
+                : `~${timelineTotalSeconds(stage.modeConfig.timeline)}s (from program)`}
+            </div>
+          ) : stage.mode === "REACTIVE" ? (
+            <div className="px-2 py-1.5 rounded admin-text-2xs font-mono border border-hud hud-text-muted">
+              {isAr
+                ? `حد ${MAX_TOTAL_SECONDS / 60} د`
+                : `${MAX_TOTAL_SECONDS / 60} min cap`}
+            </div>
+          ) : (
           <select
             value={stage.durationSeconds}
             onChange={(e) =>
@@ -300,6 +343,7 @@ const StageCard: React.FC<{
               </option>
             ))}
           </select>
+          )}
         </div>
       </div>
 
@@ -307,7 +351,15 @@ const StageCard: React.FC<{
  three combinations behave differently and none of it
  is visible from the controls alone. */}
       <p className="admin-text-2xs font-mono hud-text-subtle leading-snug">
-        {stage.bulletLimit > 0
+        {stage.mode !== "STATIC"
+          ? `${modeSentence(stage.mode, stage.modeConfig, isAr)}${
+              stage.bulletLimit > 0
+                ? isAr
+                  ? ` أو بعد ${stage.bulletLimit} طلقة.`
+                  : ` Or after ${stage.bulletLimit} round${stage.bulletLimit === 1 ? "" : "s"}.`
+                : ""
+            }`
+          : stage.bulletLimit > 0
           ? isAr
             ? `تنتهي تلقائياً بعد ${stage.bulletLimit} طلقة${stage.durationSeconds > 0 ? " أو بانتهاء الوقت" : ""} — ثم تبدأ المرحلة التالية.`
             : `Ends itself after ${stage.bulletLimit} round${stage.bulletLimit === 1 ? "" : "s"}${stage.durationSeconds > 0 ? " (or when time runs out)" : ""}, then arms the next stage.`
@@ -539,19 +591,27 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
               targetId: s.targetId,
               bulletLimit: s.bulletLimit,
               durationSeconds: s.durationSeconds,
+              mode: s.mode ?? "STATIC",
+              modeConfig: s.modeConfig ?? {},
             })),
           );
         })
         .catch(() => {
           /* keep whatever the live grid gave us */
         });
-    } else if (channel.sessionStatus !== "NONE" && channel.targetName) {
+    } else if (
+      channel.sessionStatus !== "NONE" &&
+      channel.targetName &&
+      !sessionId
+    ) {
       setStages([
         {
           key: newStageKey(),
           targetId: channel.targetName,
           bulletLimit: channel.bulletLimit ?? 0,
           durationSeconds: channel.durationSeconds ?? DEFAULT_STAGE_SECONDS,
+          mode: "STATIC",
+          modeConfig: {},
         },
       ]);
     }
@@ -599,7 +659,12 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
     return first ? `${first.distanceM}m` : channel.distance;
   })();
   const planIsValid =
-    stages.length > 0 && stages.every((s) => targetById.has(s.targetId));
+    stages.length > 0 &&
+    stages.every(
+      (s) =>
+        targetById.has(s.targetId) &&
+        !(s.modeConfig.timeline && timelineError(s.modeConfig.timeline, false)),
+    );
 
   /**
    * Submit the plan and report whether the SERVER took it.
@@ -854,6 +919,18 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
                 </button>
               </Reorder.Group>
             )}
+            {stages.some((s) => s.mode !== "STATIC") && (
+              <p className="mt-2 admin-text-2xs font-mono hud-text-secondary">
+                {(() => {
+                  const open = stages.some((s) => stageSeconds(s) === 0);
+                  const total = stages.reduce((sum, s) => sum + stageSeconds(s), 0);
+                  const clock = `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+                  return isAr
+                    ? `المدة الكلية: ${open ? "على الأقل " : ""}${clock}`
+                    : `Total session: ${open ? "at least " : ""}${clock}`;
+                })()}
+              </p>
+            )}
           </div>
 
           <div>
@@ -957,6 +1034,26 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
         </h4>
 
         <SessionInfoCard channel={channel} isAr={isAr} isHud={isHud} />
+
+        {stages.some((st) => st.mode !== "STATIC") && (
+          <div className="space-y-1.5 p-2.5 rounded-lg border border-hud">
+            <p className="admin-text-2xs font-mono font-bold hud-text-subtle uppercase tracking-wider">
+              {isAr ? "الخطة المحفوظة" : "Saved plan"}
+            </p>
+            {stages.map((st, i) => (
+              <p key={st.key} className="admin-text-2xs font-mono hud-text-muted leading-snug">
+                <span className="hud-accent font-bold">
+                  {isAr ? `المرحلة ${i + 1}: ` : `Stage ${i + 1}: `}
+                </span>
+                {st.mode === "STATIC"
+                  ? isAr
+                    ? "ثابت."
+                    : "Static."
+                  : modeSentence(st.mode, st.modeConfig, isAr)}
+              </p>
+            ))}
+          </div>
+        )}
 
         <div className="flex gap-2">
           <button

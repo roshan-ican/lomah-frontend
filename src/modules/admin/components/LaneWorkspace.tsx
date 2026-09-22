@@ -36,6 +36,7 @@ import { LaneTargetLifts } from "./admin-dashboard/LaneTargetLifts";
 import type { InstructorFeedback } from "./InstructorFeedbackForm";
 
 import { MobileRangeTabBar } from "../../../components/common/MobileRangeTabBar";
+import { RailResizeHandle, useRailWidth } from "./RailResizeHandle";
 import { ConfirmDialog } from "../../../components/common/ConfirmDialog";
 import { LaneOffsetEditDialog } from "../../../components/common/LaneOffsetEditDialog";
 
@@ -550,6 +551,7 @@ export const LaneWorkspace: React.FC<LaneWorkspaceProps> = ({
       onDiscardReadySession={onDiscardSession}
       onStartEditOffset={startEditOffset}
       onResetOffset={requestResetOffset}
+      onClose={isMobilePortrait ? undefined : () => setControlPanelOpen(false)}
     />
   ) : showAssignRail ? (
     <aside className="admin-range-rail range-layout-rail bg-hud-rail flex flex-col min-h-0 overflow-hidden">
@@ -563,7 +565,9 @@ export const LaneWorkspace: React.FC<LaneWorkspaceProps> = ({
             <button
               type="button"
               onClick={() => setControlPanelOpen(false)}
-              className="lg:hidden touch-target inline-flex items-center justify-center hud-text-muted hover:hud-text cursor-pointer"
+              title={isAr ? "إغلاق اللوحة" : "Close panel"}
+              aria-label={isAr ? "إغلاق اللوحة" : "Close panel"}
+              className="touch-target inline-flex items-center justify-center hud-text-muted hover:hud-text cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -597,6 +601,8 @@ export const LaneWorkspace: React.FC<LaneWorkspaceProps> = ({
     </aside>
   ) : null;
 
+  const [railWidth, setRailWidth, commitRailWidth] = useRailWidth();
+
   const mobileTabs = showTarget
     ? [
         { id: "main", label: isAr ? "الهدف" : "Target" },
@@ -612,6 +618,11 @@ export const LaneWorkspace: React.FC<LaneWorkspaceProps> = ({
   return (
     <div className="flex-1 flex min-h-0 min-w-0 flex-col overflow-visible">
       <div
+        style={
+          railWidth
+            ? ({ "--rail-width": `${railWidth}px` } as React.CSSProperties)
+            : undefined
+        }
         className={`flex-1 min-h-0 range-layout-inner range-layout-inner--pane ${
           isMobilePortrait && mobilePane === "rail"
             ? "range-layout-show-rail"
@@ -839,6 +850,15 @@ export const LaneWorkspace: React.FC<LaneWorkspaceProps> = ({
           )}
         </div>
 
+        {laneFocused && showRailInLayout && !isMobilePortrait && (
+          <RailResizeHandle
+            isAr={isAr}
+            width={railWidth}
+            onWidth={setRailWidth}
+            onCommit={commitRailWidth}
+            onClose={() => setControlPanelOpen(false)}
+          />
+        )}
         {laneFocused && showRailInLayout && railContent}
       </div>
 
@@ -854,7 +874,7 @@ export const LaneWorkspace: React.FC<LaneWorkspaceProps> = ({
         <button
           type="button"
           onClick={() => setControlPanelOpen(true)}
-          className="hidden lg:flex fixed right-0 top-1/2 -translate-y-1/2 z-20 flex-col items-center gap-1 px-2 py-4 hud-sidebar border border-hud-strong border-r-0 hud-accent cursor-pointer hover:bg-[var(--hud-accent-bg-subtle)]"
+          className="hidden md:flex fixed right-0 top-1/2 -translate-y-1/2 z-20 flex-col items-center gap-1 px-2 py-4 hud-sidebar border border-hud-strong border-r-0 hud-accent cursor-pointer hover:bg-[var(--hud-accent-bg-subtle)]"
           title={isAr ? "فتح لوحة التحكم" : "Open range control"}
         >
           <span className="hud-label [writing-mode:vertical-rl] rotate-180">

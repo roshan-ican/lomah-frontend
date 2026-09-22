@@ -12,10 +12,10 @@ import {
   AlertTriangle,
   SlidersHorizontal,
 } from "lucide-react";
+import { TargetSensitivityPanel } from "./TargetSensitivityPanel";
 import { api, ApiError } from "../../../../utils/api";
 import { TargetFacePreview } from "../../../../components/common/TargetFacePreview";
 import { ConfirmDialog } from "../../../../components/common/ConfirmDialog";
-import { TargetSensitivityPanel } from "./TargetSensitivityPanel";
 import { TargetSensorConsole, type SensorPacket } from "./TargetSensorConsole";
 import { TELEMETRY_ONLINE_MS } from "./useConnectedLanes";
 import { PageHeader } from "./PageHeader";
@@ -172,9 +172,7 @@ export function LaneHardwarePanel({
    *  for every target on the screen. */
   const [sensOpen, setSensOpen] = useState<Set<string>>(new Set());
   const toggleSens = (targetId: string) => {
-    // Opening the panel fires a live 'G' read straight away — point the
-    // console at this target so those frames land somewhere visible.
-    if (!sensOpen.has(targetId)) setSelectedTargetId(targetId);
+    setSelectedTargetId(targetId);
     setSensOpen((prev) => {
       const next = new Set(prev);
       if (next.has(targetId)) next.delete(targetId);
@@ -1404,7 +1402,14 @@ export function LaneHardwarePanel({
                                     </button>
                                     <button
                                       type="button"
-                                      onClick={() => toggleSens(target.id)}
+                                      // No focus on press: focusing selects the row and re-renders
+                                      // under the pointer, which swallowed the first click.
+                                      onMouseDown={(e) => e.preventDefault()}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        toggleSens(target.id);
+                                      }}
+                                      aria-expanded={sensOpen.has(target.id)}
                                       title={
                                         isAr
                                           ? "الحساسية (مواضع المقاومات)"
@@ -1530,18 +1535,21 @@ export function LaneHardwarePanel({
                               </div>
                             )}
 
-                          {/* Sensitivity — SUPER_ADMIN only, live off the board.
-                          See TargetSensitivityPanel for why channels are
-                          A1..A5/B1..B5 and never a physical sensor name. */}
                           {!readOnly && sensOpen.has(target.id) && (
-                            <TargetSensitivityPanel
-                              target={target}
-                              isAr={isAr}
-                              onNotice={triggerSuccessBanner}
-                              addAdminLog={addAdminLog}
-                              onPacket={logPacket}
-                            />
+                            <div
+                              className="mt-2 max-w-xl rounded-lg border border-hud bg-hud-elevated/60 p-4"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <TargetSensitivityPanel
+                                target={target}
+                                isAr={isAr}
+                                onNotice={triggerSuccessBanner}
+                                addAdminLog={addAdminLog}
+                                onPacket={logPacket}
+                              />
+                            </div>
                           )}
+
                         </div>
                       );
                     })}

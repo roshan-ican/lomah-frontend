@@ -18,6 +18,7 @@ import { useSessionStore } from "../store/sessionStore";
 import { toVacantLane } from "../store/channelMutations";
 import { getLaneIdFromChannelId } from "../utils/helper";
 import { clearCachedShots } from "../db/shotCache";
+import type { StageMode, StageModeConfig } from "../utils/stageMode";
 import type { Session, Target } from "../types";
 
 interface SessionActionsDeps {
@@ -35,6 +36,8 @@ export interface StagePlan {
   targetId: string;
   bulletLimit?: number;
   durationSeconds?: number;
+  mode?: StageMode;
+  modeConfig?: StageModeConfig;
 }
 
 export function useSessionActions({
@@ -240,7 +243,8 @@ export function useSessionActions({
                 profileType: firstProfile,
                 distance: config.distance ?? ch.distance,
                 bulletLimit: first.bulletLimit,
-                durationSeconds: first.durationSeconds,
+                durationSeconds:
+                  created.stages?.[0]?.durationSeconds ?? first.durationSeconds,
                 // Echo what the SERVER stored, not what the form held. If the
                 // column ever truncates or normalises the text, the panel
                 // shows the stored value rather than a hopeful local copy.

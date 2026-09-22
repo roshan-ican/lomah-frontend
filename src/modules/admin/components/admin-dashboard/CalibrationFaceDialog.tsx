@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Crosshair,
   Loader2,
   Maximize2,
+  SlidersHorizontal,
   X,
   ZoomIn,
   ZoomOut,
@@ -36,6 +38,8 @@ interface Props {
   /** Whatever the panel is currently doing; non-null locks the face. */
   busy: string | null;
   isAr: boolean;
+  /** Rendered in a side inspector beside the face — the sensitivity controls. */
+  inspector?: React.ReactNode;
 }
 
 /** One click of the ± buttons. */
@@ -72,7 +76,9 @@ export function CalibrationFaceDialog({
   onReadBack,
   busy,
   isAr,
+  inspector,
 }: Props) {
+  const [inspectorOpen, setInspectorOpen] = useState(true);
   const panAreaRef = useRef<HTMLDivElement>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
 
@@ -154,10 +160,12 @@ export function CalibrationFaceDialog({
     // surface whose root IS the flex column. It takes the fade so it stops
     // appearing instantly, but a 0.96 scale on something filling the screen
     // reads as the display zooming rather than a panel arriving.
+    // Portaled to body: a transformed ancestor would otherwise trap `fixed` inside it.
+    createPortal(
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-[110] flex flex-col bg-black/80 backdrop-blur-sm"
+          className="fixed inset-0 z-[110] flex flex-col bg-black"
           role="dialog"
           aria-modal="true"
           aria-label={isAr ? "وجه الهدف — عرض كامل" : "Target face — full view"}
@@ -256,17 +264,29 @@ export function CalibrationFaceDialog({
               </span>
             </div>
 
+            {inspector && (
+              <button
+                type="button"
+                onClick={() => setInspectorOpen((v) => !v)}
+                aria-pressed={inspectorOpen}
+                className={`${btnCls} ${isAr ? "mr-auto" : "ml-auto"} ${inspectorOpen ? "hud-accent" : ""}`}
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+                {isAr ? "الحساسية" : "Sensitivity"}
+              </button>
+            )}
             <button
               type="button"
               onClick={onClose}
               title={isAr ? "إغلاق" : "Close"}
-              className={`${btnCls} ${isAr ? "mr-auto" : "ml-auto"}`}
+              className={`${btnCls} ${inspector ? "" : isAr ? "mr-auto" : "ml-auto"}`}
             >
               <X className="w-3.5 h-3.5" />
               {isAr ? "إغلاق" : "Close"}
             </button>
           </div>
 
+          <div className="flex-1 min-h-0 flex">
           {/* The board itself */}
           <div
             ref={panAreaRef}
@@ -302,9 +322,37 @@ export function CalibrationFaceDialog({
                 disabled={busy !== null}
                 isAr={isAr}
                 connectReads
+                fitReads
                 size="min(82vh, 82vw)"
               />
             </div>
+          </div>
+
+          <AnimatePresence initial={false}>
+            {inspector && inspectorOpen && (
+              <motion.aside
+                key="inspector"
+                aria-label={isAr ? "حساسية الهدف" : "Target sensitivity"}
+                initial={{ width: 0, opacity: 0 }}
+                animate={{ width: 360, opacity: 1 }}
+                exit={{ width: 0, opacity: 0 }}
+                transition={{ type: "spring", bounce: 0, duration: 0.35 }}
+                className="shrink-0 overflow-hidden border-s border-hud bg-[var(--hud-elevated)]/85 backdrop-blur-xl shadow-[0_0_40px_rgba(0,0,0,0.45)]"
+              >
+                <div className="w-[360px] h-full overflow-y-auto p-4 space-y-4">
+                  <div>
+                    <p className="admin-text-xs font-mono font-bold hud-accent uppercase tracking-wider">
+                      {isAr ? "الحساسية" : "Sensitivity"}
+                    </p>
+                    <p className="admin-text-2xs font-mono hud-text-subtle mt-0.5">
+                      {isAr ? "مباشرة من الجهاز" : "Live from the board"}
+                    </p>
+                  </div>
+                  {inspector}
+                </div>
+              </motion.aside>
+            )}
+          </AnimatePresence>
           </div>
 
           <p className="shrink-0 px-3 py-2 border-t border-hud bg-hud-elevated admin-text-2xs font-mono hud-text-subtle leading-relaxed">
@@ -314,6 +362,8 @@ export function CalibrationFaceDialog({
           </p>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
+    )
   );
 }

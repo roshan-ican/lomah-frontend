@@ -20,4 +20,7 @@ export interface Shot {
    *  isMiss; x/y/score are zero and meaningless. */
   isLost?: boolean;
   firedAt: string;
+  /** Timed stages only: which exposure the shot belongs to and when it began. */
+  exposureIndex?: number | null;
+  exposureStartedAt?: string | null;
 }
