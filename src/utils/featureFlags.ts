@@ -16,3 +16,11 @@
  * to the literal `false` and reports every guarded branch as dead code.
  */
 export const CLICK_TO_FIRE_ENABLED: boolean = false;
+
+/**
+ * Stage modes (Peekaboo, Snap, Drop after N — target behaviour during a stage).
+ * OFF on the release/basic build: no Behaviour picker, no drill card on the
+ * shooter screen, every stage is plain STATIC. The schema is unchanged so this
+ * build shares a database with the full one.
+ */
+export const STAGE_MODES_ENABLED: boolean = false;

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import type { StageMode, StageModeConfig } from "../utils/stageMode";
 import { StageBehaviourBanner } from "./StageBehaviourBanner";
+import { STAGE_MODES_ENABLED } from "../utils/featureFlags";
 import {
   AlertTriangle,
   Camera,
@@ -1427,12 +1428,12 @@ export function StationTerminal() {
         </span>
       </div>
 
-      <StageBehaviourBanner
+      {STAGE_MODES_ENABLED && <StageBehaviourBanner
         stageId={session?.stageId}
         mode={session?.mode}
         config={session?.modeConfig}
         isAr={isAr}
-      />
+      />}
 
       <ShooterDashboard
         activeChannel={activeChannel}

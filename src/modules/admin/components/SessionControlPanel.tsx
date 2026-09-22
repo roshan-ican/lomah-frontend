@@ -39,6 +39,7 @@ import { TargetFacePreview } from "../../../components/common/TargetFacePreview"
 import type { Lane, Target } from "../../../types";
 import { getLaneIdFromChannelId } from "../../../utils/helper";
 import { StageBehaviour } from "./StageBehaviour";
+import { STAGE_MODES_ENABLED } from "../../../utils/featureFlags";
 import {
   MAX_TOTAL_SECONDS,
   modeSentence,
@@ -108,6 +109,7 @@ function makeStage(targetId: string): StageDraft {
  * on a stage the admin asked to leave open.
  */
 function stageSeconds(draft: StageDraft): number {
+  if (!STAGE_MODES_ENABLED) return draft.durationSeconds;
   if (draft.modeConfig.timeline) return timelineTotalSeconds(draft.modeConfig.timeline);
   if (draft.mode === "REACTIVE") return MAX_TOTAL_SECONDS;
   return draft.durationSeconds;
@@ -118,7 +120,7 @@ function toStagePlan(draft: StageDraft): StagePlanConfig {
     targetId: draft.targetId,
     bulletLimit: draft.bulletLimit > 0 ? draft.bulletLimit : undefined,
     durationSeconds: stageSeconds(draft),
-    ...(draft.mode !== "STATIC" && {
+    ...(STAGE_MODES_ENABLED && draft.mode !== "STATIC" && {
       mode: draft.mode,
       modeConfig: draft.modeConfig,
     }),
@@ -265,12 +267,14 @@ const StageCard: React.FC<{
         </div>
       </div>
 
-      <StageBehaviour
-        mode={stage.mode}
-        config={stage.modeConfig}
-        isAr={isAr}
-        onChange={(mode, modeConfig) => onPatch(index, { mode, modeConfig })}
-      />
+      {STAGE_MODES_ENABLED && (
+        <StageBehaviour
+          mode={stage.mode}
+          config={stage.modeConfig}
+          isAr={isAr}
+          onChange={(mode, modeConfig) => onPatch(index, { mode, modeConfig })}
+        />
+      )}
 
       <div className="grid grid-cols-2 gap-2">
         <div>
@@ -591,8 +595,8 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
               targetId: s.targetId,
               bulletLimit: s.bulletLimit,
               durationSeconds: s.durationSeconds,
-              mode: s.mode ?? "STATIC",
-              modeConfig: s.modeConfig ?? {},
+              mode: STAGE_MODES_ENABLED ? (s.mode ?? "STATIC") : "STATIC",
+              modeConfig: STAGE_MODES_ENABLED ? (s.modeConfig ?? {}) : {},
             })),
           );
         })
@@ -919,7 +923,7 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
                 </button>
               </Reorder.Group>
             )}
-            {stages.some((s) => s.mode !== "STATIC") && (
+            {STAGE_MODES_ENABLED && stages.some((s) => s.mode !== "STATIC") && (
               <p className="mt-2 admin-text-2xs font-mono hud-text-secondary">
                 {(() => {
                   const open = stages.some((s) => stageSeconds(s) === 0);
@@ -1035,7 +1039,7 @@ export const SessionControlPanel: React.FC<SessionControlPanelProps> = ({
 
         <SessionInfoCard channel={channel} isAr={isAr} isHud={isHud} />
 
-        {stages.some((st) => st.mode !== "STATIC") && (
+        {STAGE_MODES_ENABLED && stages.some((st) => st.mode !== "STATIC") && (
           <div className="space-y-1.5 p-2.5 rounded-lg border border-hud">
             <p className="admin-text-2xs font-mono font-bold hud-text-subtle uppercase tracking-wider">
               {isAr ? "الخطة المحفوظة" : "Saved plan"}
